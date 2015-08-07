@@ -1,12 +1,8 @@
-__author__ = 'jp'
-
-import numpy as np
 import cv2
-
 import time
 
 
-def doTheThing():
+def do_the_thing():
 
     # Instance of VideoCapture to capture webcam(0) images
     # cap = cv2.VideoCapture(0)
@@ -88,4 +84,4 @@ def doTheThing():
 
 
 if __name__ == '__main__':
-    doTheThing()
+    do_the_thing()
