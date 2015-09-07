@@ -1,6 +1,9 @@
 import numpy as np
 import cv2
 import time
+from black_boxes.background_substraction import BackgroundSubtractor
+from black_boxes.blob_detection import BlobDetector
+from black_boxes.tracking import Tracker
 
 
 def do_the_thing():
@@ -10,82 +13,35 @@ def do_the_thing():
     cap = cv2.VideoCapture('Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
-    # cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 640.0)
-    # cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 480.0)
-
     # Getting width and height of captured images
     w = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
     print "Width: ", w, "Height: ", h
 
-    # Threshold to consider a difference as a difference (u know what I mean)
-    # _threshold = 300
-    # print "Threshold: ", _threshold
-
-
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    bg_sub_mog = cv2.BackgroundSubtractorMOG(nmixtures=2, backgroundRatio=0.1, history=500)
-
-    # Setup SimpleBlobDetector parameters.
-    params = cv2.SimpleBlobDetector_Params()
-
-    # Change thresholds
-    params.minThreshold = 5
-    # params.thresholdStep = 5
-    params.maxThreshold = 50
-
-    # Filter by Area.
-    params.filterByArea = True
-    params.minArea = 55
-    params.maxArea = 7000
-
-    # Filter by Circularity
-    params.filterByCircularity = False
-    params.minCircularity = 0.01
-    params.maxCircularity = 1.0
-
-    # # Filter by Convexity
-    params.filterByConvexity = False
-    params.minConvexity = 0.01
-    params.maxConvexity = 1.0
-
-    # Filter by Inertia
-    params.filterByInertia = False
-    params.minInertiaRatio = 0
-    params.maxInertiaRatio = 1
-
-    params.minDistBetweenBlobs = 3
-
-    params.filterByColor = True
-    params.blobColor = 255
-
-    detector = cv2.SimpleBlobDetector(params)
+    background_substractor = BackgroundSubtractor()
+    blobs_detector = BlobDetector()
+    tracker = Tracker()
 
     _time = time.time()
-    _fps = ""
 
-    ret, to_show = cap.read()
     while True:
         ret, frame = cap.read()
 
-        to_show = frame
-        to_show = cv2.cvtColor(to_show, cv2.cv.CV_BGR2GRAY)
-        to_show = cv2.GaussianBlur(to_show, (11,11), 0)
-
-        to_show = bg_sub_mog.apply(to_show, 0.3, 0.05)
-
-        to_show = cv2.erode(to_show, np.ones((2,2),np.uint8), iterations=3)
-        to_show = cv2.dilate(to_show, np.ones((4,1),np.uint8), iterations=1)
-        to_show = cv2.dilate(to_show, np.ones((4,2),np.uint8), iterations=1)
-        to_show = cv2.dilate(to_show, np.ones((2,3),np.uint8), iterations=1)
-        # to_show = cv2.morphologyEx(src=to_show, op=cv2.MORPH_OPEN,
-        #                            kernel=np.ones((3,3),np.uint8), iterations=1)
-        # to_show = cv2.morphologyEx(src=to_show, op=cv2.MORPH_CLOSE,
-        #                            kernel=np.ones((1,1),np.uint8), iterations=2)
-
-        blobs_points = detector.detect(to_show)
-        to_show = cv2.drawKeypoints(to_show, blobs_points, outImage=np.array([]), color=(0,0,255), flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        to_show = background_substractor.apply(frame)
+        blobs_points = blobs_detector.apply(to_show)
+        print blobs_points
+        if blobs_points:
+            print blobs_points[0]
+            print blobs_points[0].pt
+            print blobs_points[0].size
+            # print help(blobs_points[0])
+        to_show = cv2.drawKeypoints(to_show, blobs_points,
+                                    outImage=np.array([]),
+                                    color=(0,0,255),
+                                    flags=
+                                    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
         # for blob in blobs_points:
         #     print help(blob)
@@ -114,4 +70,5 @@ def do_the_thing():
 
 
 if __name__ == '__main__':
+
     do_the_thing()
