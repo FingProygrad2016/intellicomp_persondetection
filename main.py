@@ -33,11 +33,11 @@ def do_the_thing():
         blobs_points = blobs_detector.apply(to_show)
         # trayecto = tracker.apply(blobs_points)
 
-        print blobs_points
-        if blobs_points:
-            print blobs_points[0]
-            print blobs_points[0].pt
-            print blobs_points[0].size
+        # print blobs_points
+        # if blobs_points:
+        #     print blobs_points[0]
+        #     print blobs_points[0].pt
+        #     print blobs_points[0].size
             # print help(blobs_points[0])
         to_show = cv2.drawKeypoints(to_show, blobs_points,
                                     outImage=np.array([]),
