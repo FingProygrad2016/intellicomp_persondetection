@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from tools import get_pxl_color
 
 __author__ = 'jp'
 
@@ -46,7 +47,7 @@ class Tracker:
     def get_matched_kfilter(self, raw_image, position_blob):
         matched_filter = None
         center_color = \
-            self.get_avg_color(raw_image,
+            get_pxl_color(raw_image,
                                position_blob.pt[0], position_blob.pt[1])
         size = position_blob.size
 
@@ -57,16 +58,3 @@ class Tracker:
             pass
 
         return matched_filter
-
-    @staticmethod
-    def get_avg_color(raw_image, x, y):
-        # TODO: ESto deberia ir en un modulo de Tools generales...
-        """
-        Returns the average color in the square with center x and y.
-        :param raw_image:
-        :param x:
-        :param y:
-        :return:
-        """
-        # TODO
-        return 255, 255, 255

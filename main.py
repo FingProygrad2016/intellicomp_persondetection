@@ -31,6 +31,8 @@ def do_the_thing():
 
         to_show = background_substractor.apply(frame)
         blobs_points = blobs_detector.apply(to_show)
+        # trayecto = tracker.apply(blobs_points)
+
         print blobs_points
         if blobs_points:
             print blobs_points[0]
@@ -42,11 +44,6 @@ def do_the_thing():
                                     color=(0,0,255),
                                     flags=
                                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-        # for blob in blobs_points:
-        #     print help(blob)
-        #     (x, y, w, h) = cv2.boundingRect(blob)
-        #     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 4)
 
         time_aux = time.time()
         _fps = "%.2f" % (1 / (time_aux - _time))
@@ -60,7 +57,6 @@ def do_the_thing():
                     (255, 255, 0), 2)
 
         to_show = cv2.resize(to_show, (w*3, h*3))
-        # frame = cv2.resize(frame, (w*3, h*3))
 
         cv2.imshow('frame', to_show)
         cv2.imshow('frame2', frame)
