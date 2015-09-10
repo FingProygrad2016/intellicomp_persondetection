@@ -1,6 +1,9 @@
 import numpy as np
+from random import randint
+from uuid import uuid4
 import cv2
-from tools import get_pxl_color
+from datetime import datetime
+from tools import get_avg_color
 
 __author__ = 'jp'
 
@@ -15,46 +18,109 @@ class Tracker:
 
     tracker = None
     initialized = False
-    estimateds = []
+    estimateds = {}
     k_filters = []
+    threshold_color = 30
+    threshold_size = 1
 
     def __init__(self):
-        self.tracker = cv2.KalmanFilter(4, 2, 0)
+        self.tracker = cv2.KalmanFilter(2, 2, 0)
 
-    def apply(self, position_blobs, raw_image):
-        for position_blob in position_blobs:
+    def apply(self, blobs, raw_image):
+        for blob in blobs:
             # Busco el filtro correspondiente al blob
-            matched_filter = self.get_matched_kfilter(raw_image, position_blob)
-            if matched_filter:
-                # Actializo el estimador
-                self.estimateds.append(matched_filter.predict())
-                # TODO: El paramerto que se pasa en el corrector da error
-                matched_filter.correct(position_blob.pt)
-            else:
-                # No hay filtro creado para este blob
-                self.add_new_tracking(position_blob)
+            average_color = get_avg_color(raw_image, blob.pt)
+            size = blob.size
+            matched_position = self.get_matched_kfilter(average_color, size)
 
-    def get_estimateds(self):
-        return [k_filter.getEstimate() for k_filter in self.estimateds]
+            # print size
+            # print average_color
 
-    def add_new_tracking(self, position_blob):
-        k_filter = cv2.KalmanFilter(4, 2, 0)
-        self.estimateds.append(k_filter.predict())
-        # TODO: El paramerto que se pasa en el corrector da error
-        k_filter.correct(position_blob.pt[0], position_blob.pt[1])
-        self.k_filters.append(k_filter)
+            # Si no hay filtro creado para este blob
+            if matched_position == -1:
+                matched_position = self.add_new_tracking(
+                    blob.size, get_avg_color(raw_image, blob.pt))
 
-    def get_matched_kfilter(self, raw_image, position_blob):
-        matched_filter = None
-        center_color = \
-            get_pxl_color(raw_image,
-                               position_blob.pt[0], position_blob.pt[1])
-        size = position_blob.size
+            # Actualizo el estimador
+            self.k_filters[matched_position]. \
+                update_info(new_point=blob.pt,
+                            color=get_avg_color(raw_image, blob.pt),
+                            size=blob.size)
 
-        for kfilter in self.k_filters:
+            # Guardo la estimacion para retornarla
+            info_id = self.k_filters[matched_position].id
+            try:
+                self.estimateds[info_id].\
+                    append(self.k_filters[matched_position].predict())
+            except KeyError:
+                self.estimateds[info_id] = \
+                    [self.k_filters[matched_position].predict()]
+
+        print "Num kfilters:: ", len(self.k_filters)
+        print self.k_filters[0:10]
+        # if randint(1,25) == 2:
+        #     print self.k_filters
+        # if randint(1,25) == 2:
+        #     print self.estimateds
+
+        return self.estimateds
+
+    def add_new_tracking(self, size, color):
+        """
+        Add a new instance of KalmanFilter and the corresponding metadata
+        to the control collection.
+
+        :param size:
+        :param color:
+        :return:
+        """
+        track_info = TrackInfo(color, size)
+        self.k_filters.append(track_info)
+
+        return len(self.k_filters) - 1
+
+    def get_matched_kfilter(self, average_color, size):
+        matched_filter = -1
+        for number_trackinfo, track_info in enumerate(self.k_filters):
             # Look for the best match
-            # TODO: deberia guardar el average color y el tamano anterior!
-            # Acordarse de hacer break de la iteracion al encontrar
-            pass
+            if abs(track_info.size - size) < self.threshold_size and \
+                abs(track_info.color[0]-average_color[0]) < \
+                    self.threshold_color and \
+                abs(track_info.color[1]-average_color[1]) < \
+                    self.threshold_color and \
+                abs(track_info.color[2]-average_color[2]) < \
+                    self.threshold_color:
+                print "MATCH! en ", number_trackinfo
+                return number_trackinfo
 
         return matched_filter
+
+
+class TrackInfo:
+
+    def __init__(self, color, size):
+        self.color = color
+        self.size = size
+        self.created_datetime = datetime.now()
+        self.id = uuid4().hex
+        self.last_update = self.created_datetime
+        self.kalman_filter = cv2.KalmanFilter(2, 2, 0)
+
+    def __repr__(self):
+        return "<TrackInfo color: %s, size: %s, last seen: %s, created: %s>" %\
+               (self.color, self.size, self.last_update, self.created_datetime)
+
+    def predict(self, control=None):
+        if control:
+            return self.kalman_filter.predict(control)
+        else:
+            return self.kalman_filter.predict()
+
+    def correct(self, measurement):
+        return self.kalman_filter.correct(measurement)
+
+    def update_info(self, new_point, color, size):
+        self.correct(np.array(new_point, np.float32))
+        self.color = color
+        self.size = size
+        self.last_update = datetime.now()

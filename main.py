@@ -26,12 +26,24 @@ def do_the_thing():
 
     _time = time.time()
 
+    number_frame = 0
+
     while True:
         ret, frame = cap.read()
 
+        time_aux = time.time()
+        _fps = "%.2f" % (1 / (time_aux - _time))
+
         to_show = background_substractor.apply(frame)
         blobs_points = blobs_detector.apply(to_show)
-        # trayecto = tracker.apply(blobs_points)
+
+        number_frame += 1
+        trayecto = {}
+        if number_frame % 24 == 0:
+            trayecto = tracker.apply(blobs_points, frame)
+            print trayecto
+
+        # print trayecto
 
         # print blobs_points
         # if blobs_points:
@@ -45,8 +57,7 @@ def do_the_thing():
                                     flags=
                                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-        time_aux = time.time()
-        _fps = "%.2f" % (1 / (time_aux - _time))
+
 
         # if float(_fps) > 10:
         #     time.sleep(0.03)
@@ -55,6 +66,9 @@ def do_the_thing():
 
         cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                     (255, 255, 0), 2)
+
+        # for trayecto
+        # cv2.line(to_show, )
 
         to_show = cv2.resize(to_show, (w*3, h*3))
 
