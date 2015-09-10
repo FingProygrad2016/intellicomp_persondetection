@@ -20,8 +20,8 @@ class Tracker:
     initialized = False
     estimateds = {}
     k_filters = []
-    threshold_color = 30
-    threshold_size = 1
+    threshold_color = 20
+    threshold_size = 0.5
 
     def __init__(self):
         self.tracker = cv2.KalmanFilter(2, 2, 0)
@@ -32,9 +32,6 @@ class Tracker:
             average_color = get_avg_color(raw_image, blob.pt)
             size = blob.size
             matched_position = self.get_matched_kfilter(average_color, size)
-
-            # print size
-            # print average_color
 
             # Si no hay filtro creado para este blob
             if matched_position == -1:
@@ -57,7 +54,7 @@ class Tracker:
                     [self.k_filters[matched_position].predict()]
 
         print "Num kfilters:: ", len(self.k_filters)
-        print self.k_filters[0:10]
+        # print self.k_filters[0:10]
         # if randint(1,25) == 2:
         #     print self.k_filters
         # if randint(1,25) == 2:

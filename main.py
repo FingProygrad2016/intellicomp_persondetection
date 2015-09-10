@@ -41,7 +41,7 @@ def do_the_thing():
         trayecto = {}
         if number_frame % 24 == 0:
             trayecto = tracker.apply(blobs_points, frame)
-            print trayecto
+            # print trayecto
 
         # print trayecto
 
