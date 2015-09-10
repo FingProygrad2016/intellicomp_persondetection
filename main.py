@@ -38,37 +38,29 @@ def do_the_thing():
         blobs_points = blobs_detector.apply(to_show)
 
         number_frame += 1
-        trayecto = {}
+        trayectos = {}
         if number_frame % 24 == 0:
-            trayecto = tracker.apply(blobs_points, frame)
+            trayectos = tracker.apply(blobs_points, frame)
             # print trayecto
 
-        # print trayecto
+        if float(_fps) > 24:
+            time.sleep(0.033)
 
-        # print blobs_points
-        # if blobs_points:
-        #     print blobs_points[0]
-        #     print blobs_points[0].pt
-        #     print blobs_points[0].size
-            # print help(blobs_points[0])
         to_show = cv2.drawKeypoints(to_show, blobs_points,
                                     outImage=np.array([]),
                                     color=(0,0,255),
                                     flags=
                                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-
-
-        # if float(_fps) > 10:
-        #     time.sleep(0.03)
-
         _time = time_aux
 
         cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                     (255, 255, 0), 2)
 
-        # for trayecto
-        # cv2.line(to_show, )
+        for trayecto in trayectos.values():
+            points = trayecto
+            for num in range(len(points)-1):
+                cv2.line(to_show, tuple(points[num]), tuple(points[num+1]), (0,155,0), 5)
 
         to_show = cv2.resize(to_show, (w*3, h*3))
 
