@@ -14,8 +14,8 @@ def do_the_thing():
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Getting width and height of captured images
-    w = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print "Width: ", w, "Height: ", h
 
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -39,8 +39,8 @@ def do_the_thing():
 
         number_frame += 1
         trayectos = {}
-        if number_frame % 24 == 0:
-            trayectos = tracker.apply(blobs_points, frame)
+        # if number_frame % 24 == 0:
+        trayectos = tracker.apply(blobs_points, frame)
             # print trayecto
 
         if float(_fps) > 24:
@@ -57,10 +57,10 @@ def do_the_thing():
         cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                     (255, 255, 0), 2)
 
-        for trayecto in trayectos.values():
-            points = trayecto
-            for num in range(len(points)-1):
-                cv2.line(to_show, tuple(points[num]), tuple(points[num+1]), (0,155,0), 5)
+        for journey in trayectos:
+            for num in range(min(len(journey)-1, 20)):
+                # print points[num]
+                cv2.line(to_show, tuple(journey[num][0:2]), tuple(journey[num+1][0:2]), (0,155,0), thickness=1)
 
         to_show = cv2.resize(to_show, (w*3, h*3))
 

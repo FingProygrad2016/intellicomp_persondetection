@@ -20,8 +20,8 @@ class Tracker:
     initialized = False
     estimateds = {}
     k_filters = []
-    threshold_color = 20
-    threshold_size = 0.5
+    threshold_color = 30
+    threshold_size = 0.8
 
     def __init__(self):
         self.tracker = cv2.KalmanFilter(2, 2, 0)
@@ -46,12 +46,12 @@ class Tracker:
 
             # Guardo la estimacion para retornarla
             info_id = self.k_filters[matched_position].id
-            try:
-                self.estimateds[info_id].\
-                    append(self.k_filters[matched_position].predict())
-            except KeyError:
-                self.estimateds[info_id] = \
-                    [self.k_filters[matched_position].predict()]
+            # try:
+            #     self.estimateds[info_id].\
+            #         append(self.k_filters[matched_position].predict())
+            # except KeyError:
+            #     self.estimateds[info_id] = \
+            #         [self.k_filters[matched_position].predict()]
 
         print "Num kfilters:: ", len(self.k_filters)
         # print self.k_filters[0:10]
@@ -60,7 +60,7 @@ class Tracker:
         # if randint(1,25) == 2:
         #     print self.estimateds
 
-        return self.estimateds
+        return [kf.journey for kf in self.k_filters if len(kf.journey)>5]
 
     def add_new_tracking(self, size, color):
         """
@@ -101,7 +101,12 @@ class TrackInfo:
         self.created_datetime = datetime.now()
         self.id = uuid4().hex
         self.last_update = self.created_datetime
-        self.kalman_filter = cv2.KalmanFilter(2, 2, 0)
+        self.kalman_filter = cv2.KalmanFilter(4, 2)
+        self.kalman_filter.measurementMatrix = np.array([[1,0,0,0],[0,1,0,0]],np.float32)
+        self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],[0,1,0,1],[0,0,1,0],[0,0,0,1]],np.float32)
+        self.kalman_filter.processNoiseCov = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],np.float32) * 0.03
+        self.journey = []
+        self.number_updates = 0
 
     def __repr__(self):
         return "<TrackInfo color: %s, size: %s, last seen: %s, created: %s>" %\
@@ -114,10 +119,15 @@ class TrackInfo:
             return self.kalman_filter.predict()
 
     def correct(self, measurement):
-        return self.kalman_filter.correct(measurement)
+        correction = self.kalman_filter.correct(measurement)
+        if (self.number_updates > 5):
+            self.journey.append(correction)
+        return correction
 
     def update_info(self, new_point, color, size):
+        self.predict()
         self.correct(np.array(new_point, np.float32))
         self.color = color
         self.size = size
         self.last_update = datetime.now()
+        self.number_updates += 1

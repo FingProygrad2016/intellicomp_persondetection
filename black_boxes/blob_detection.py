@@ -20,8 +20,8 @@ class BlobDetector:
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 55
-        params.maxArea = 7000
+        params.minArea = 100
+        params.maxArea = 4000
 
         # Filter by Circularity
         params.filterByCircularity = False
@@ -43,7 +43,7 @@ class BlobDetector:
         params.filterByColor = True
         params.blobColor = 255
 
-        self.detector = cv2.SimpleBlobDetector(params)
+        self.detector = cv2.SimpleBlobDetector_create(params)
 
     def apply(self, background):
          return self.detector.detect(background)

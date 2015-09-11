@@ -9,13 +9,11 @@ class BackgroundSubtractor:
     subtractor = None
 
     def __init__(self):
-        self.subtractor = cv2.BackgroundSubtractorMOG(nmixtures=2,
-                                                      backgroundRatio=0.1,
-                                                      history=500)
+        self.subtractor = cv2.createBackgroundSubtractorMOG2(history=500)
 
     def apply(self, raw_image):
         # Convierto imagen a escalas de grices
-        bg = cv2.cvtColor(raw_image, cv2.cv.CV_BGR2GRAY)
+        bg = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
 
         # Aplico filtro Blur
         bg = cv2.GaussianBlur(bg, (11,11), 0)
