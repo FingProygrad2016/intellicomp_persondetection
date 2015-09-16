@@ -3,7 +3,7 @@ from random import randint
 from uuid import uuid4
 import cv2
 from datetime import datetime
-from tools import get_avg_color
+from tools import get_avg_color, euclidean_distance
 
 __author__ = 'jp'
 
@@ -21,7 +21,8 @@ class Tracker:
     estimateds = {}
     k_filters = []
     threshold_color = 30
-    threshold_size = 0.8
+    threshold_size = 1
+    threshold_distance = 10
 
     def __init__(self):
         self.tracker = cv2.KalmanFilter(2, 2, 0)
@@ -31,18 +32,19 @@ class Tracker:
             # Busco el filtro correspondiente al blob
             average_color = get_avg_color(raw_image, blob.pt)
             size = blob.size
-            matched_position = self.get_matched_kfilter(average_color, size)
+            matched_position = \
+                self.get_matched_kfilter(blob.pt, average_color, size)
 
             # Si no hay filtro creado para este blob
             if matched_position == -1:
                 matched_position = self.add_new_tracking(
-                    blob.size, get_avg_color(raw_image, blob.pt))
+                    blob.size, get_avg_color(raw_image, blob.pt), blob.pt)
 
             # Actualizo el estimador
             self.k_filters[matched_position]. \
                 update_info(new_point=blob.pt,
                             color=get_avg_color(raw_image, blob.pt),
-                            size=blob.size)
+                            size=blob.size, point=blob.pt)
 
             # Guardo la estimacion para retornarla
             info_id = self.k_filters[matched_position].id
@@ -60,9 +62,9 @@ class Tracker:
         # if randint(1,25) == 2:
         #     print self.estimateds
 
-        return [kf.journey for kf in self.k_filters if len(kf.journey)>5]
+        return [kf for kf in self.k_filters if len(kf.journey) > 5]
 
-    def add_new_tracking(self, size, color):
+    def add_new_tracking(self, size, color, point):
         """
         Add a new instance of KalmanFilter and the corresponding metadata
         to the control collection.
@@ -71,22 +73,25 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(color, size)
+        track_info = TrackInfo(color, size, point)
         self.k_filters.append(track_info)
 
         return len(self.k_filters) - 1
 
-    def get_matched_kfilter(self, average_color, size):
+    def get_matched_kfilter(self, blob_center, average_color, size):
         matched_filter = -1
         for number_trackinfo, track_info in enumerate(self.k_filters):
             # Look for the best match
-            if abs(track_info.size - size) < self.threshold_size and \
-                abs(track_info.color[0]-average_color[0]) < \
-                    self.threshold_color and \
-                abs(track_info.color[1]-average_color[1]) < \
-                    self.threshold_color and \
-                abs(track_info.color[2]-average_color[2]) < \
-                    self.threshold_color:
+            distance = euclidean_distance(blob_center, track_info.last_point)
+            # if abs(track_info.size - size) < self.threshold_size and \
+            if distance < self.threshold_distance:
+                # abs(track_info.color[0]-average_color[0]) < \
+                # self.threshold_color and \
+                # abs(track_info.color[1]-average_color[1]) < \
+                # self.threshold_color and \
+                # abs(track_info.color[2]-average_color[2]) < \
+                #     self.threshold_color:
+
                 print "MATCH! en ", number_trackinfo
                 return number_trackinfo
 
@@ -95,16 +100,37 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size):
+    def __init__(self, color, size, point):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
         self.id = uuid4().hex
         self.last_update = self.created_datetime
-        self.kalman_filter = cv2.KalmanFilter(4, 2)
-        self.kalman_filter.measurementMatrix = np.array([[1,0,0,0],[0,1,0,0]],np.float32)
-        self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],[0,1,0,1],[0,0,1,0],[0,0,0,1]],np.float32)
-        self.kalman_filter.processNoiseCov = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],np.float32) * 0.03
+        self.last_point = point
+        self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
+        # self.kalman_filter.measurementMatrix = np.array([[1,0,0,0],
+        #                                                  [0,1,0,0]],
+        #                                                  np.float32)
+        self.kalman_filter.measurementMatrix = \
+            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]],np.float32)
+        # self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],
+        #                                                 [0,1,0,1],
+        #                                                 [0,0,1,0],
+        #                                                 [0,0,0,1]],np.float32)
+        self.kalman_filter.transitionMatrix = \
+            np.array([[1, 0, 1, 0, 0.5, 0],
+                      [0, 1, 0, 1, 0, 0.5],
+                      [0, 0, 1, 0, 1, 0],
+                      [0, 0, 0, 1, 0, 1],
+                      [0, 0, 0, 0, 1, 0],
+                      [0, 0, 0, 0, 0, 1]],np.float32)
+        self.kalman_filter.processNoiseCov = np.array([[1, 0, 0, 0, 0, 0],
+                                                       [0, 1, 0, 0, 0, 0],
+                                                       [0, 0, 1, 0, 0, 0],
+                                                       [0, 0, 0, 1, 0, 0],
+                                                       [0, 0, 0, 0, 1, 0],
+                                                       [0, 0, 0, 0, 0, 1]],
+                                                      np.float32) * 0.0001
         self.journey = []
         self.number_updates = 0
 
@@ -120,14 +146,15 @@ class TrackInfo:
 
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
-        if (self.number_updates > 5):
+        if self.number_updates > 5:
             self.journey.append(correction)
         return correction
 
-    def update_info(self, new_point, color, size):
+    def update_info(self, new_point, color, size, point):
         self.predict()
         self.correct(np.array(new_point, np.float32))
         self.color = color
         self.size = size
         self.last_update = datetime.now()
+        self.last_point = point
         self.number_updates += 1

@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import time
+from datetime import datetime, timedelta
 from black_boxes.background_substraction import BackgroundSubtractor
 from black_boxes.blob_detection import BlobDetector
 from black_boxes.tracking import Tracker
@@ -30,37 +31,33 @@ def do_the_thing():
 
     while True:
         ret, frame = cap.read()
-
-        time_aux = time.time()
-        _fps = "%.2f" % (1 / (time_aux - _time))
+        _fps = "%.2f" % (1 / (time.time() - _time))
+        print (time.time() - _time)
+        if float(_fps) > 24:
+            # FIXME
+            time.sleep(0.04)
+        _time = time.time()
 
         to_show = background_substractor.apply(frame)
         blobs_points = blobs_detector.apply(to_show)
 
         number_frame += 1
-        trayectos = {}
-        # if number_frame % 24 == 0:
         trayectos = tracker.apply(blobs_points, frame)
-            # print trayecto
-
-        if float(_fps) > 24:
-            time.sleep(0.033)
 
         to_show = cv2.drawKeypoints(to_show, blobs_points,
                                     outImage=np.array([]),
-                                    color=(0,0,255),
+                                    color=(0, 0, 255),
                                     flags=
                                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-        _time = time_aux
 
         cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                     (255, 255, 0), 2)
 
-        for journey in trayectos:
-            for num in range(min(len(journey)-1, 20)):
-                # print points[num]
-                cv2.line(to_show, tuple(journey[num][0:2]), tuple(journey[num+1][0:2]), (0,155,0), thickness=1)
+        for journey in [t.journey for t in trayectos if
+                        t.last_update > datetime.now() - timedelta(seconds=1)]:
+            for num in range(max(0, len(journey) - 20), len(journey) - 1):
+                cv2.line(to_show, tuple(journey[num][0:2]),
+                         tuple(journey[num+1][0:2]), (0, 155, 0), thickness=1)
 
         to_show = cv2.resize(to_show, (w*3, h*3))
 
@@ -69,6 +66,8 @@ def do_the_thing():
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+
 
 
 if __name__ == '__main__':
