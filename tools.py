@@ -14,3 +14,13 @@ def get_avg_color(raw_image, point, square_half_width=2):
     return raw_image[point[1]-square_half_width-1:point[1]+square_half_width,
            point[1]-square_half_width-1:point[1]+square_half_width].\
         mean(axis=0).mean(axis=0)
+
+
+def euclidean_distance(point1, point2):
+    """
+    Returns the euclidean distance between point 1 and 2.
+    :param point1: Tuple with the position of the point 1
+    :param point2: Tuple with the position of the point 2
+    :return:
+    """
+    return pow(abs(sum(map(lambda (x, y): (x-y)**2, zip(point1, point2)))), 0.5)
