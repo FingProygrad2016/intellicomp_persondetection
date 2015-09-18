@@ -158,34 +158,78 @@ class PatternRecognition:
     tracklets_info = []
 
 
-    def apply(self, tracklet_id, last_position, last_position_time, new_position, new_position_time):
-        time = self.calc_time_difference(last_position_time, new_position_time)
-        current_event = self.calc_event_with_two_points(last_position, new_position, time)
-        self.add_event_description(tracklet_id, current_event, time)
+    def apply(self, tracklet_id, new_position, new_position_time):
+
+        (tracklet_info, is_new) = self.get_tracklet_info(tracklet_id)
+
+        if (is_new):
+            tracklet_info.last_position = new_position
+            tracklet_info.last_position_time = new_position_time
+        else:
+
+            (time, distance, angle) = self.calc_movements_info(tracklet_info, new_position, new_position_time)
+
+            # TODO!! FROM THIS POINT
+            #current_events = self.calc_events(tracklet_info, time, distance, angle)
+
+            #self.add_event_description(tracklet_id, current_events)
 
         #TODO: verify rules and fire alarms
 
 
+    # search for and return the tracklet info with "id = tracklet_id" in the collection
+    # if there is not a tracklet info with that id, it creates the info, appends it to the collection, and returns the created info
+    def get_tracklet_info(self, tracklet_id):
+        tracklet_info = {}
+
+        tracklet_exists = False
+
+        for item in self.tracklets_info:
+            if item.id == tracklet_id:
+                tracklet_info = item
+                tracklet_exists = True
+
+        if (not tracklet_exists):
+            tracklet_info.id = tracklet_id
+            tracklet_info.active_event = {'event_id': -1, 'amount_of_time': 0}
+            tracklet_info.potential_speed_change_rules_to_reach = []
+            tracklet_info.last_position = {'x': -1, 'y': -1}
+            tracklet_info.last_position_time = -1
+            tracklet_info.average_direction = -1
+            self.tracklets_info.append(tracklet_info)
+
+        return (tracklet_info, tracklet_exists)
 
 
-    def calc_event_with_two_points(self, last_position, new_position, time):
-        #TODO: calculate distance between lastPosition and newPosition; if it is larger than a given threshold, trackletId is with event 'running'; else, it is with event 'walking'.
-        distance = self.calc_distance_between_points(last_position, new_position)
+    def calc_movements_info(self, tracklet_info, new_position, new_position_time):
+        time = new_position_time - tracklet_info.last_position_time
 
-        # TODO
+        (distance, angle) = self.calc_distance_and_angle_between_points(tracklet_info.last_position, new_position)
+
+        return (time, distance, angle)
+
+
+    def calc_events(self, tracklet_info, time, distance, angle):
+
+        current_events = []
+
+        # TODO!! FROM THIS POINT
         current_event = self.speed_change_events[0] # TODO
-        return current_event
+        return current_events
 
 
-    def calc_distance_between_points(self, point1, point2):
+    def calc_distance_and_angle_between_points(self, point1, point2):
         #TODO: calculate distance between point1 and point2
-        distance = 0
-        return distance
 
-    def calc_time_difference(self, time1, time2):
-        #TODO: calculate time between time1 and time2
-        difference = 0
-        return difference
+        distance = (point2.x - point1.x)*(point2.x - point1.x) + (point2.y - point1.y)*(point2.y - point1.y)
+
+        # sin(angle) = opposite / hypotenuse
+        sin_of_angle = abs(point2.y - point1.y) / distance
+
+        angle = np.arcsin(sin_of_angle)
+
+        return (distance, angle)
+
 
     #def add_event_description(self, tracklet_id, event, time):
     #TODO: if last saved event is the same as the new one, sum 'time' to the one of the last saved event description object; else, add a new event description, with the new event and time.
