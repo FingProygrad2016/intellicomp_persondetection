@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import time
 from datetime import datetime, timedelta
-from black_boxes.background_substraction import BackgroundSubtractor
+from black_boxes.background_substraction import BackgroundSubtractorMOG2, BackgroundSubtractorKNN
 from black_boxes.blob_detection import BlobDetector
 from black_boxes.tracking import Tracker
 
@@ -21,7 +21,8 @@ def do_the_thing():
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    background_substractor = BackgroundSubtractor()
+    #background_substractor = BackgroundSubtractorMOG2()
+    background_substractor = BackgroundSubtractorKNN()
     blobs_detector = BlobDetector()
     tracker = Tracker()
 
@@ -61,13 +62,11 @@ def do_the_thing():
 
         to_show = cv2.resize(to_show, (w*3, h*3))
 
-        cv2.imshow('frame', to_show)
-        cv2.imshow('frame2', frame)
+        #cv2.imshow('frame', to_show)
+        #cv2.imshow('frame2', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-
 
 
 if __name__ == '__main__':
