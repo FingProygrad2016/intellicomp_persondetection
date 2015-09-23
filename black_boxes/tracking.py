@@ -2,7 +2,7 @@ import numpy as np
 from random import randint
 from uuid import uuid4
 import cv2
-from datetime import datetime
+from datetime import datetime, timedelta
 from tools import get_avg_color, euclidean_distance
 
 __author__ = 'jp'
@@ -80,7 +80,13 @@ class Tracker:
 
     def get_matched_kfilter(self, blob_center, average_color, size):
         matched_filter = -1
+        to_remove = []
         for number_trackinfo, track_info in enumerate(self.k_filters):
+
+            # If TrackInfo is too old, remove it forever
+            if track_info.last_update < datetime.now() - timedelta(seconds=2):
+                to_remove.append(track_info)
+
             # Look for the best match
             distance = euclidean_distance(blob_center, track_info.last_point)
             # if abs(track_info.size - size) < self.threshold_size and \
@@ -95,6 +101,7 @@ class Tracker:
                 print "MATCH! en ", number_trackinfo
                 return number_trackinfo
 
+        map(lambda x: self.k_filters.remove(x), to_remove)
         return matched_filter
 
 
@@ -140,14 +147,16 @@ class TrackInfo:
 
     def predict(self, control=None):
         if control:
-            return self.kalman_filter.predict(control)
+            prediction = self.kalman_filter.predict(control)
         else:
-            return self.kalman_filter.predict()
+            prediction = self.kalman_filter.predict()
+
+        if self.number_updates > 10:
+            self.journey.append(prediction)
 
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
-        if self.number_updates > 5:
-            self.journey.append(correction)
+
         return correction
 
     def update_info(self, new_point, color, size, point):
