@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import time
 from datetime import datetime, timedelta
-from black_boxes.background_substraction import BackgroundSubtractor
+from black_boxes.background_substraction import BackgroundSubtractorMOG2, BackgroundSubtractorKNN
 from black_boxes.blob_detection import BlobDetector
 from black_boxes.tracking import Tracker
 
@@ -18,7 +18,7 @@ def start_to_process():
     try:
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
     except ValueError:
-        FPS = 24.
+        FPS = 7.
     SEC_PER_FRAME = 1. / FPS
 
     # Getting width and height of captured images
@@ -28,7 +28,8 @@ def start_to_process():
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    background_substractor = BackgroundSubtractor()
+    #background_substractor = BackgroundSubtractorMOG2()
+    background_substractor = BackgroundSubtractorKNN()
     blobs_detector = BlobDetector()
     tracker = Tracker()
 
@@ -93,7 +94,6 @@ def start_to_process():
         cv2.imshow('background subtraction', bg_sub)
         cv2.imshow('raw image', frame)
 
-        # Check keyboard events
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
