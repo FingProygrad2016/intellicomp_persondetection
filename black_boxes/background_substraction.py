@@ -36,14 +36,11 @@ class BackgroundSubtractorKNN:
     subtractor = None
 
     def __init__(self):
-        self.subtractor = cv2.createBackgroundSubtractorKNN(history=250, dist2Threshold=350, detectShadows=False)
-        self.subtractor.setkNNSamples(7)
+        self.subtractor = cv2.createBackgroundSubtractorKNN(history=50, dist2Threshold=350, detectShadows=False)
+        self.subtractor.setkNNSamples(5)
         self.subtractor.setShadowThreshold(0.5)
 
     def apply(self, raw_image):
-        #self.subtractor.SetNSamples(100)
-        #self.subtractor.setkNNSamples(25)
-        #self.subtractor.setShadowThreshold(0.5)
 
         # Convierto imagen a escalas de grices
         bg = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
@@ -59,11 +56,12 @@ class BackgroundSubtractorKNN:
         fgMaskKNN = self.subtractor.apply(bg, -1)
 
         # Erosiono y dilato el resultado para eliminar el ruido
-        erode_dilate = cv2.erode(fgMaskKNN, np.ones((3, 3), np.uint8), iterations=1)
-        erode_dilate = cv2.dilate(erode_dilate, np.ones((3, 3), np.uint8), iterations=1)
+        erode_dilate = cv2.erode(fgMaskKNN, np.ones((2, 2), np.uint8), iterations=2)
+        erode_dilate = cv2.dilate(erode_dilate, np.ones((4, 4), np.uint8), iterations=1)
+        erode_dilate = cv2.erode(erode_dilate, np.ones((2, 2), np.uint8), iterations=1)
 
         cv2.imshow("bg", bg)
         cv2.imshow("fgMaskKNN", fgMaskKNN)
         cv2.imshow("erode_dilate", erode_dilate)
 
-        return bg
+        return erode_dilate

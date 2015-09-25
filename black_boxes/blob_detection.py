@@ -20,15 +20,16 @@ class BlobDetector:
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 100
-        params.maxArea = 4000
+        params.minArea = 50
+        # params.maxArea = 4000
+        params.maxArea = 1500
 
         # Filter by Circularity
         params.filterByCircularity = False
         params.minCircularity = 0.01
         params.maxCircularity = 1.0
 
-        # # Filter by Convexity
+        # Filter by Convexity
         params.filterByConvexity = False
         params.minConvexity = 0.01
         params.maxConvexity = 1.0
@@ -38,12 +39,13 @@ class BlobDetector:
         params.minInertiaRatio = 0
         params.maxInertiaRatio = 1
 
-        params.minDistBetweenBlobs = 3
+        params.minDistBetweenBlobs = 2
 
-        params.filterByColor = True
+        # Filter by color
+        params.filterByColor = False
         params.blobColor = 255
 
         self.detector = cv2.SimpleBlobDetector_create(params)
 
     def apply(self, background):
-         return self.detector.detect(background)
+        return self.detector.detect(background)

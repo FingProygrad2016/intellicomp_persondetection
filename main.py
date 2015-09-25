@@ -45,24 +45,29 @@ def do_the_thing():
         number_frame += 1
         trayectos = tracker.apply(blobs_points, frame)
 
-        to_show = cv2.drawKeypoints(to_show, blobs_points,
+        # to_show = cv2.drawKeypoints(to_show, blobs_points,
+        #                             outImage=np.array([]),
+        #                             color=(0, 0, 255),
+        #                             flags=
+        #                             cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        frame = cv2.drawKeypoints(frame, blobs_points,
                                     outImage=np.array([]),
                                     color=(0, 0, 255),
-                                    flags=
-                                    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                                    flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-        cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
-                    (255, 255, 0), 2)
+        #cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1, (255, 255, 0), 2)
+        cv2.putText(frame, 'FPS: ' + _fps, (40, 40), font, 1, (255, 255, 0), 2)
 
         for journey in [t.journey for t in trayectos if
                         t.last_update > datetime.now() - timedelta(seconds=1)]:
             for num in range(max(0, len(journey) - 20), len(journey) - 1):
-                cv2.line(to_show, tuple(journey[num][0:2]),
+                cv2.line(frame, tuple(journey[num][0:2]),
                          tuple(journey[num+1][0:2]), (0, 155, 0), thickness=1)
 
-        to_show = cv2.resize(to_show, (w*3, h*3))
+        #to_show = cv2.resize(to_show, (w*3, h*3))
 
-        #cv2.imshow('frame', to_show)
+        cv2.imshow('frame', frame)
+        #cv2.imshow('to_show', to_show)
         #cv2.imshow('frame2', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

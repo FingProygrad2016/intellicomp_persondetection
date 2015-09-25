@@ -112,18 +112,18 @@ class TrackInfo:
         #                                                  [0,1,0,0]],
         #                                                  np.float32)
         self.kalman_filter.measurementMatrix = \
-            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]],np.float32)
+            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]], np.float32)
         # self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],
         #                                                 [0,1,0,1],
         #                                                 [0,0,1,0],
-        #                                                 [0,0,0,1]],np.float32)
+        #                                                 [0,0,0,1]], np.float32)
         self.kalman_filter.transitionMatrix = \
             np.array([[1, 0, 1, 0, 0.5, 0],
                       [0, 1, 0, 1, 0, 0.5],
                       [0, 0, 1, 0, 1, 0],
                       [0, 0, 0, 1, 0, 1],
                       [0, 0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 0, 1]],np.float32)
+                      [0, 0, 0, 0, 0, 1]], np.float32)
         self.kalman_filter.processNoiseCov = np.array([[1, 0, 0, 0, 0, 0],
                                                        [0, 1, 0, 0, 0, 0],
                                                        [0, 0, 1, 0, 0, 0],
