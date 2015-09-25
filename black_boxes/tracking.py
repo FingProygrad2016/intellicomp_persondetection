@@ -1,11 +1,9 @@
 import numpy as np
-from random import randint
 from uuid import uuid4
 import cv2
 from datetime import datetime, timedelta
-from tools import get_avg_color, euclidean_distance
 
-__author__ = 'jp'
+from tools import get_avg_color, euclidean_distance
 
 # Ejmplo simple de Kalman Filter
 # https://github.com/Itseez/opencv/blob/master/samples/python2/kalman.py
@@ -16,55 +14,47 @@ __author__ = 'jp'
 
 class Tracker:
 
-    tracker = None
-    initialized = False
-    estimateds = {}
     k_filters = []
     threshold_color = 30
     threshold_size = 1
     threshold_distance = 10
 
     def __init__(self):
-        self.tracker = cv2.KalmanFilter(2, 2, 0)
+        pass
 
     def apply(self, blobs, raw_image):
+        """
+        For every blob, detect the corresponded tracked object and update it
+        with the new information
+        :param blobs: List of new blobs detected
+        :param raw_image: The raw image captured
+        :return: A list of TrackInfo which journey is greater than 5
+        """
+
         for blob in blobs:
+
             # Busco el filtro correspondiente al blob
             average_color = get_avg_color(raw_image, blob.pt)
             size = blob.size
             matched_position = \
                 self.get_matched_kfilter(blob.pt, average_color, size)
 
-            # Si no hay filtro creado para este blob
+            # Si no hay filtro creado para este blob, entonces creo uno
             if matched_position == -1:
-                matched_position = self.add_new_tracking(
-                    blob.size, get_avg_color(raw_image, blob.pt), blob.pt)
+                matched_position = \
+                    self.add_new_tracking(blob.pt,
+                                          get_avg_color(raw_image, blob.pt),
+                                          blob.size)
 
             # Actualizo el estimador
             self.k_filters[matched_position]. \
-                update_info(new_point=blob.pt,
+                update_info(new_position=blob.pt,
                             color=get_avg_color(raw_image, blob.pt),
-                            size=blob.size, point=blob.pt)
-
-            # Guardo la estimacion para retornarla
-            info_id = self.k_filters[matched_position].id
-            # try:
-            #     self.estimateds[info_id].\
-            #         append(self.k_filters[matched_position].predict())
-            # except KeyError:
-            #     self.estimateds[info_id] = \
-            #         [self.k_filters[matched_position].predict()]
-
-        print "Num kfilters:: ", len(self.k_filters)
-        # print self.k_filters[0:10]
-        # if randint(1,25) == 2:
-        #     print self.k_filters
-        # if randint(1,25) == 2:
-        #     print self.estimateds
+                            size=blob.size)
 
         return [kf for kf in self.k_filters if len(kf.journey) > 5]
 
-    def add_new_tracking(self, size, color, point):
+    def add_new_tracking(self, point, color, size):
         """
         Add a new instance of KalmanFilter and the corresponding metadata
         to the control collection.
@@ -89,8 +79,9 @@ class Tracker:
 
             # Look for the best match
             distance = euclidean_distance(blob_center, track_info.last_point)
-            # if abs(track_info.size - size) < self.threshold_size and \
+
             if distance < self.threshold_distance:
+                # if abs(track_info.size - size) < self.threshold_size and \
                 # abs(track_info.color[0]-average_color[0]) < \
                 # self.threshold_color and \
                 # abs(track_info.color[1]-average_color[1]) < \
@@ -98,10 +89,11 @@ class Tracker:
                 # abs(track_info.color[2]-average_color[2]) < \
                 #     self.threshold_color:
 
-                print "MATCH! en ", number_trackinfo
                 return number_trackinfo
 
+        # Remove the old tracked objects
         map(lambda x: self.k_filters.remove(x), to_remove)
+
         return matched_filter
 
 
@@ -145,12 +137,11 @@ class TrackInfo:
         return "<TrackInfo color: %s, size: %s, last seen: %s, created: %s>" %\
                (self.color, self.size, self.last_update, self.created_datetime)
 
-    def predict(self, control=None):
-        if control:
-            prediction = self.kalman_filter.predict(control)
-        else:
-            prediction = self.kalman_filter.predict()
+    def predict(self):
 
+        prediction = self.kalman_filter.predict()
+
+        # Avoid the first 10 positions
         if self.number_updates > 10:
             self.journey.append(prediction)
 
@@ -159,11 +150,11 @@ class TrackInfo:
 
         return correction
 
-    def update_info(self, new_point, color, size, point):
+    def update_info(self, new_position, color, size):
         self.predict()
-        self.correct(np.array(new_point, np.float32))
+        self.correct(np.array(new_position, np.float32))
         self.color = color
         self.size = size
         self.last_update = datetime.now()
-        self.last_point = point
+        self.last_point = new_position
         self.number_updates += 1
