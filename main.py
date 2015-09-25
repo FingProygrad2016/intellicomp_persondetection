@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import cv2
 import time
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta
 from black_boxes.background_substraction import BackgroundSubtractorMOG2, \
     BackgroundSubtractorKNN
 from black_boxes.blob_detection import BlobDetector
+from black_boxes.communicator import Communicator
 from black_boxes.tracking import Tracker
 
 
@@ -34,6 +36,7 @@ def start_to_process():
     background_substractor = BackgroundSubtractorKNN()
     blobs_detector = BlobDetector()
     tracker = Tracker()
+    communicator = Communicator()
 
     loop_time = time.time()
 
@@ -65,6 +68,7 @@ def start_to_process():
         to_show = bg_sub
         blobs_points = blobs_detector.apply(bg_sub)
         trayectos = tracker.apply(blobs_points, frame)
+        communicator.apply(json.dumps([t.last_point for t in trayectos]))
 
         # Draw circles in each blob
         to_show = cv2.drawKeypoints(to_show, blobs_points,
