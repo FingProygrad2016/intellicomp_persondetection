@@ -67,8 +67,8 @@ def start_to_process():
         bg_sub = background_substractor.apply(frame)
         to_show = bg_sub
         blobs_points = blobs_detector.apply(bg_sub)
-        trayectos = tracker.apply(blobs_points, frame)
-        communicator.apply(json.dumps([t.last_point for t in trayectos]))
+        trayectos, info_to_send = tracker.apply(blobs_points, frame)
+        communicator.apply(info_to_send)
 
         # Draw circles in each blob
         to_show = cv2.drawKeypoints(to_show, blobs_points,
@@ -82,8 +82,9 @@ def start_to_process():
                     (255, 255, 0), 2)
 
         # Draw the journeys of the tracked persons
-        for journey in [t.journey for t in trayectos if
-                        t.last_update > datetime.now() - timedelta(seconds=2)]:
+        # for journey in [t.journey for t in trayectos if
+        #                 t.last_update > datetime.now() - timedelta(seconds=2)]:
+        for journey in trayectos:
             for num in range(max(0, len(journey) - 30), len(journey) - 1):
                 cv2.line(to_show, tuple(journey[num][0:2]),
                          tuple(journey[num+1][0:2]), (0, 155, 0), thickness=1)

@@ -1,3 +1,4 @@
+import json
 import pika
 from blinker import signal
 
@@ -31,7 +32,8 @@ class Communicator:
                                        expiration='60'))
 
     def apply(self, message):
-        dispatcher.send([self, message])
+        if message:
+            dispatcher.send([self, json.dumps(message)])
 
     def __delete__(self, instance):
         self.connection.close()

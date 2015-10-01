@@ -51,8 +51,15 @@ class Tracker:
                 update_info(new_position=blob.pt,
                             color=get_avg_color(raw_image, blob.pt),
                             size=blob.size)
+        # Prepare the return data
+        journeys = []
+        info_to_send = []
+        for kf in self.k_filters:
+            if len(kf.journey) > 5:
+                journeys.append(kf.journey)
+            info_to_send.append(kf.to_dict())
 
-        return [kf for kf in self.k_filters if len(kf.journey) > 5]
+        return journeys, info_to_send
 
     def add_new_tracking(self, point, color, size):
         """
@@ -158,3 +165,15 @@ class TrackInfo:
         self.last_update = datetime.now()
         self.last_point = new_position
         self.number_updates += 1
+
+    def to_dict(self):
+        return {
+            # "color": list(self.color),
+            # "size": self.size,
+            "created_timestamp":
+                self.created_datetime.isoformat(),
+            "id": self.id,
+            "last_update_timestamp":
+                self.last_update.isoformat(),
+            "last_position": self.last_point
+        }
