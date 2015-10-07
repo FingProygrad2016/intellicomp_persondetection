@@ -31,6 +31,8 @@ class Tracker:
         :return: A list of TrackInfo which journey is greater than 5
         """
 
+        info_to_send = {}
+
         for blob in blobs:
 
             # Busco el filtro correspondiente al blob
@@ -51,15 +53,19 @@ class Tracker:
                 update_info(new_position=blob.pt,
                             color=get_avg_color(raw_image, blob.pt),
                             size=blob.size)
+
+            info_to_send[self.k_filters[matched_position].id] = \
+                self.k_filters[matched_position]
+
         # Prepare the return data
         journeys = []
-        info_to_send = []
+        info_to_send = info_to_send.values()
         for kf in self.k_filters:
             if len(kf.journey) > 5:
                 journeys.append(kf.journey)
-            info_to_send.append(kf.to_dict())
+            # info_to_send.append(kf.to_dict())
 
-        return journeys, info_to_send
+        return journeys, [kf.to_dict() for kf in info_to_send]
 
     def add_new_tracking(self, point, color, size):
         """

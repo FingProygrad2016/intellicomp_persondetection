@@ -23,4 +23,21 @@ def euclidean_distance(point1, point2):
     :param point2: Tuple with the position of the point 2
     :return:
     """
+    # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
     return pow(abs(sum(map(lambda (x, y): (x-y)**2, zip(point1, point2)))), 0.5)
+
+
+def enum(**enums):
+    """
+    Function to create new Enumerates
+    (basically it creates a new Class 'Enum' without inheritence and with the
+      attributes passed in 'enums')
+
+    Example of use:
+        Colors = enum(RED='Red', BLUE='Blue', YELLOW='Yellow')
+        car1 = Car(color=Colors.RED)
+
+    :param enums: Values of the enumerate passed as a dict.
+    :return: A class called Enum with the attributes passed in enums.
+    """
+    return type('Enum', (), enums)

@@ -1,7 +1,12 @@
+import json
 import pika
+from black_boxes.pattern_recognition import PatternRecognition
 
 
-class Receiver:
+class Receiver(object):
+
+    pattern_recognition = PatternRecognition()
+
     def __init__(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(
             host='localhost'))
@@ -16,7 +21,9 @@ class Receiver:
 
     @staticmethod
     def proccess(ch, method, properties, body):
-        print body
+        # print body
+        for info in json.loads(body):
+            Receiver.pattern_recognition.apply(info)
 
     def __del__(self):
         self.connection.close()

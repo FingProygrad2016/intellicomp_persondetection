@@ -1,9 +1,68 @@
+from datetime import datetime
 import numpy as np
 
-__author__ = 'juan_andres'
+from tools import enum, euclidean_distance
+
+SpeedEventTypes = enum(STOPPED=0, WALKING=1, RUNNING=2)
+DirectionEventTypes = enum(ROTATION=0)
+
+# FIXME: Borrarme, soy lo mismo que se define arriba como enumerado
+movement_events = [{'type': 1, 'events': ['stopped', 'walking', 'running']},
+                   {'type': 2, 'events': ['rotation']}]
+
+EVENT_INFO_TYPE = enum(TIME=0, ANGLE=1)
+
+# FIXME: Borrarme, soy lo mismo que se define arriba como enumerado
+event_info_type = ('time', 'angle')
+
+"""
+LE = Lower or equal
+GE = Greater or equal
+AX = Approximate
+EQ = Equal
+NM = No matter
+"""
+Quantifiers = enum(LE=0, GE=1, AX=2, EQ=3, NM=4)
 
 
-class PatternRecognition:
+class Rule(object):
+    def __init__(self, id, name, events):
+        self.id = id
+        self.name = name
+        self.events = events
+
+
+class Event(object):
+    def __init__(self, quantifier, value):
+        self.quantifier = quantifier
+        self.value = value
+
+
+class EventSpeed(Event):
+    def __init__(self, type, quantifier, value):
+        self.type = type
+        self.info_type = "TIME"
+        super(EventSpeed, self).__init__(quantifier, value)
+
+
+class EventDirection(Event):
+    def __init__(self, type, quantifier, value):
+        self.type = "ROTATION"
+        self.info_type = "ANGULE"
+        super(EventDirection, self).__init__(quantifier, value)
+
+
+class Tracklet(object):
+    def __init__(self, id):
+        self.id = id
+        self.active_events = []
+        self.potential_movement_change_rules_to_reach = []
+        self.last_position = None
+        self.last_position_time = 0
+        self.average_direction = None
+
+
+class PatternRecognition(object):
 
     MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT = 15
     WEIGHT_FOR_NEW_DIRECTION_ANGLE = 0.2
@@ -12,241 +71,105 @@ class PatternRecognition:
     MIN_SPEED_FOR_RUNNING = 12
     QUANTIFIER_APPROXIMATION = 2
 
-    # events within each type are mutually exclusive
-    movement_events = [{'type': 1, 'events': ['stopped', 'walking', 'running']}, {'type': 2, 'events': ['rotation']}]
+    movement_change_rules = [
+        Rule(1, "walk_run",
+             events=[
+                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+             ]),
+        Rule(2, "walk_stop_run",
+             events=[
+                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 2),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+             ]),
+        Rule(2, "run_rotate_run",
+             events=[
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+                 EventDirection(DirectionEventTypes.ROTATION,
+                                Quantifiers.AX, 120),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+             ])
+    ]
 
-    event_info_type = ('time', 'angle')
-
-    quantifier = ('less_or_equal_than', 'more_or_equal_than', 'approximately', 'exactly', 'no_matters')
-
-    # TODO: PARA PENSAR:
-    # TODO: conviene hacer que los eventos principales sean del tipo 'movimiento', 'giro', etc
-    # TODO: y que la velocidad, el angulo y el tiempo sean info dentro del evento?
-    # TODO: conviene sacar el 'event_type' y 'event_id'? y poner todo en 'event_info'?
-    # TODO: si lo hago asi... como me doy cuenta de que tengo que cambiar de paso??
-    movement_change_rules = (
-        {
-            'id': 1,
-            'name': 'walk_run',
-            'steps': (
-                {
-                    'id': 1,
-                    'event_type': 1,
-                    'event_id': 2,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                    ]
-                },
-                {
-                    'id': 2,
-                    'event_type': 1,
-                    'event_id': 3,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                    ]
-                }
-            )
-        },
-        {
-            'id': 2,
-            'name': 'walk_stop_run',
-            'steps': (
-                {
-                    'id': 1,
-                    'event_type': 1,
-                    'event_id': 2,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                    ]
-                },
-                {
-                    'id': 2,
-                    'event_type': 1,
-                    'event_id': 1,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 2
-                        }
-                    ]
-                },
-                {
-                    'id': 3,
-                    'event_type': 1,
-                    'event_id': 3,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                    ]
-                }
-            )
-        },
-        {
-            'id': 3,
-            'name': 'run_rotate_run',
-            'steps': (
-                {
-                    'id': 1,
-                    'event_type': 1,
-                    'event_id': 3,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                     ]
-                },
-                {
-                    'id': 2,
-                    'event_type': 2,
-                    'event_id': 1,
-                    'event_info': [
-                        {
-                            'type_id': 2,
-                            'quantifier_id': 2,
-                            'value': 120
-                        }
-                    ]
-                },
-                {
-                    'id': 3,
-                    'event_type': 1,
-                    'event_id': 3,
-                    'event_info': [
-                        {
-                            'type_id': 1,
-                            'quantifier_id': 2,
-                            'value': 5
-                        }
-                    ]
-                }
-            )
-        }
-    )
-
-    # EXAMPLE OF tracklets_info
-    # tracklets_info = [
-    #     {
-    #         'id': 1,
-    #         'active_events': [{
-    #             'event_type': 1
-    #             'event_id': 1
-    #             'event_info': [
-    #                 {
-    #                     'type_id': 1,
-    #                     'value': 8
-    #                 }
-    #             ]
-    #         }],
-    #         'potential_movement_change_rules_to_reach': [
-    #             {
-    #                 'rule_id': 2,
-    #                 'step_id': 1
-    #             },
-    #             {
-    #                 'rule_id': 5,
-    #                 'step_id': 3
-    #             }
-    #         ],
-    #         'last_position': {
-    #             'x': 2,
-    #             'y': 5
-    #         },
-    #         'last_position_time': 125,
-    #         'average_direction': 20 #in grades (ie: 0 -> right; 180 -> left; 90 -> up; 270 -> down)
-    #     }
-    # ]
-
-    tracklets_info = []
-
-    def __init__(self, min_angle_to_consider_rotation=15, min_walking_speed=2, min_running_speed=12):
-        self.MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT = min_angle_to_consider_rotation
+    def __init__(self, min_angle_to_consider_rotation=15, min_walking_speed=2,
+                 min_running_speed=12):
+        self.tracklets_info = {}  # Collection of Tracklets
+        self.MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT = \
+            min_angle_to_consider_rotation
         self.MIN_SPEED_FOR_WALKING = min_walking_speed
         self.MIN_SPEED_FOR_RUNNING = min_running_speed
 
-    def apply(self, tracklet_id, new_position, new_position_time):
+    def apply(self, tracklet_raw_info):
+        """
+        This method is executed every time that data arrives from the first
+        phase with new tracking information.
+        :param tracklet_raw_info:
+        :return:
+        """
+        trackled_id = tracklet_raw_info['id']
 
-        (tracklet_info, is_new) = self.get_tracklet_info(tracklet_id)
+        tracklet_info = self.tracklets_info.get(trackled_id, None)
 
-        if is_new:
-            tracklet_info.last_position = new_position
-            tracklet_info.last_position_time = new_position_time
+        if not tracklet_info:
+            # It's a new tracklet ;)
+            self.tracklets_info[trackled_id] = Tracklet(trackled_id)
+            self.tracklets_info[trackled_id].last_position = \
+                tracklet_raw_info['last_position']
+            last_update_datetime = \
+                datetime.strptime(tracklet_raw_info['last_update_timestamp'],
+                                  "%Y-%m-%dT%H:%M:%S.%f")
+            self.tracklets_info[trackled_id].last_position_time = \
+                last_update_datetime
+
+            return
+
         else:
+            last_update_datetime = \
+                datetime.strptime(tracklet_raw_info['last_update_timestamp'],
+                                  "%Y-%m-%dT%H:%M:%S.%f")
 
-            (time, distance, angle) = self.calc_movements_info(tracklet_info, new_position, new_position_time)
+            (time, distance, angle) = self.calc_movements_info(
+                tracklet_info, tracklet_raw_info['last_position'],
+                last_update_datetime)
 
-            if time > 0:
-                current_events = self.calc_events(tracklet_info, time, distance, angle)
-                fired_rules = self.calc_rules(tracklet_info, time, current_events)
+            print "TIME: ", time, "DISTANCE:", distance, "ANGLE:", angle
 
-                if len(fired_rules) > 0:
-                    self.fire_alarms(tracklet_info, fired_rules)
+            # if time > 0:
+            #     current_events = \
+            #         self.calc_events(tracklet_info, time, distance, angle)
+            #     fired_rules = \
+            #         self.calc_rules(tracklet_info, time, current_events)
+            #
+            #     if len(fired_rules) > 0:
+            #         self.fire_alarms(tracklet_info, fired_rules)
 
                 # TODO!! FROM THIS POINT
                 # self.add_event_description(tracklet_id, current_events)
 
         # TODO: verify rules and fire alarms
 
-    # 1) search for and return the tracklet info with "id = tracklet_id" in the collection
-    # 2) if there is not a tracklet info with that id:
-    # it creates the info, appends it to the collection, and returns the created info
-    def get_tracklet_info(self, tracklet_id):
-        tracklet_info = {}
-
-        tracklet_exists = False
-
-        for item in self.tracklets_info:
-            if item.id == tracklet_id:
-                tracklet_info = item
-                tracklet_exists = True
-
-        if not tracklet_exists:
-            tracklet_info.id = tracklet_id
-            tracklet_info.active_events = [
-                {'event_type': 1, 'event_id': -1, 'event_info': [{'type_id': 1, 'value': 0}]},
-                {'event_type': 2, 'event_id': -1, 'event_info': [{'type_id': 2, 'value': 0}]}
-            ]
-            tracklet_info.potential_movement_change_rules_to_reach = []
-            tracklet_info.last_position = {'x': -1, 'y': -1}
-            tracklet_info.last_position_time = -1
-            tracklet_info.average_direction = -1
-            self.tracklets_info.append(tracklet_info)
-
-        return tracklet_info, tracklet_exists
-
     def calc_movements_info(self, tracklet_info, new_position, new_position_time):
         time = new_position_time - tracklet_info.last_position_time
 
-        (distance, angle) = self.calc_distance_and_angle_between_points(tracklet_info.last_position, new_position)
+        (distance, angle) = self.calc_distance_and_angle_between_points(
+            tracklet_info.last_position, new_position)
 
         return time, distance, angle
 
     @staticmethod
     def calc_distance_and_angle_between_points(point1, point2):
 
-        distance = (point2.x - point1.x)*(point2.x - point1.x) + (point2.y - point1.y)*(point2.y - point1.y)
+        distance = euclidean_distance(point1, point2)
 
         # sin(angle) = opposite / hypotenuse
-        sin_of_angle = abs(point2.y - point1.y) / distance
+        # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
+        if distance:
+            sin_of_angle = abs(point2[1] - point1[1]) / distance
 
-        angle = np.arcsin(sin_of_angle)
+            angle = np.arcsin(sin_of_angle)
+        else:
+            angle = None
 
         return distance, angle
 
