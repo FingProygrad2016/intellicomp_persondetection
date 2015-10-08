@@ -1,16 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 
 from tools import enum, euclidean_distance
 
-SpeedEventTypes = enum(STOPPED=0, WALKING=1, RUNNING=2)
-DirectionEventTypes = enum(ROTATION=0)
+SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
+DirectionEventTypes = enum(ROTATION="ROTATION")
 
 # FIXME: Borrarme, soy lo mismo que se define arriba como enumerado
 movement_events = [{'type': 1, 'events': ['stopped', 'walking', 'running']},
                    {'type': 2, 'events': ['rotation']}]
 
-EVENT_INFO_TYPE = enum(TIME=0, ANGLE=1)
+EVENT_INFO_TYPE = enum(TIME="TIME", ANGLE="ANGLE")
 
 # FIXME: Borrarme, soy lo mismo que se define arriba como enumerado
 event_info_type = ('time', 'angle')
@@ -22,7 +22,7 @@ AX = Approximate
 EQ = Equal
 NM = No matter
 """
-Quantifiers = enum(LE=0, GE=1, AX=2, EQ=3, NM=4)
+Quantifiers = enum(LE="LE", GE="GE", AX="AX", EQ="EQ", NM="NM")
 
 
 class Rule(object):
@@ -37,6 +37,9 @@ class Event(object):
         self.quantifier = quantifier
         self.value = value
 
+    def __repr__(self):
+        return "QUANTIFIER: %s VALUE: %s" % (str(self.value), self.quantifier)
+
 
 class EventSpeed(Event):
     def __init__(self, type, quantifier, value):
@@ -44,12 +47,22 @@ class EventSpeed(Event):
         self.info_type = EVENT_INFO_TYPE.TIME
         super(EventSpeed, self).__init__(quantifier, value)
 
+    def __repr__(self):
+        return \
+            "TYPE: %s INFO_TYPE: %s %s" % \
+            (self.type, self.info_type, super(EventSpeed, self).__repr__())
+
 
 class EventDirection(Event):
     def __init__(self, type, quantifier, value):
         self.type = DirectionEventTypes.ROTATION
         self.info_type = EVENT_INFO_TYPE.ANGLE
         super(EventDirection, self).__init__(quantifier, value)
+
+    def __repr__(self):
+        return \
+            "TYPE: %s INFO_TYPE: %s %s" % \
+            (self.type, self.info_type, super(EventDirection, self).__repr__())
 
 
 class Tracklet(object):
@@ -64,7 +77,7 @@ class Tracklet(object):
 
 class PatternRecognition(object):
 
-    MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT = 15
+    MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = 15
     WEIGHT_FOR_NEW_DIRECTION_ANGLE = 0.2
     MIN_DIRECTION_ANGLE_CHANGE_TO_FIRE_ALARM = 120
     MIN_SPEED_FOR_WALKING = 2
@@ -92,10 +105,10 @@ class PatternRecognition(object):
              ])
     ]
 
-    def __init__(self, min_angle_to_consider_rotation=15, min_walking_speed=2,
+    def __init__(self, min_angle_to_consider_rotation=90, min_walking_speed=2,
                  min_running_speed=12):
         self.tracklets_info = {}  # Collection of Tracklets
-        self.MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT = \
+        self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = \
             min_angle_to_consider_rotation
         self.MIN_SPEED_FOR_WALKING = min_walking_speed
         self.MIN_SPEED_FOR_RUNNING = min_running_speed
@@ -131,23 +144,26 @@ class PatternRecognition(object):
                 tracklet_info, tracklet_raw_info['last_position'],
                 last_update_datetime)
 
-            print "TIME: ", time, "DISTANCE:", distance, "ANGLE:", angle
+            # print "TIME:", time, "DISTANCE:", distance, "ANGLE:", angle
 
-            # if time > 0:
-            #     current_events = \
-            #         self.calc_events(tracklet_info, time, distance, angle)
+            if time > timedelta(seconds=0):
+                current_events = \
+                    self.calc_events(tracklet_info, time, distance, angle)
             #     fired_rules = \
             #         self.calc_rules(tracklet_info, time, current_events)
             #
             #     if len(fired_rules) > 0:
             #         self.fire_alarms(tracklet_info, fired_rules)
+                for event in current_events:
+                    print event
 
                 # TODO!! FROM THIS POINT
                 # self.add_event_description(tracklet_id, current_events)
 
         # TODO: verify rules and fire alarms
 
-    def calc_movements_info(self, tracklet_info, new_position, new_position_time):
+    def calc_movements_info(self, tracklet_info, new_position,
+                            new_position_time):
         time = new_position_time - tracklet_info.last_position_time
 
         (distance, angle) = self.calc_distance_and_angle_between_points(
@@ -175,27 +191,30 @@ class PatternRecognition(object):
 
         current_events = []
         current_events.extend(self.calc_direction_events(tracklet_info, angle))
-        current_events.extend(self.calc_speed_events(distance, time))
+        # current_events.extend(self.calc_speed_events(distance, time))
         return current_events
 
     def calc_direction_events(self, tracklet_info, angle):
         current_events = []
 
-        if tracklet_info.average_direction == -1:
+        if not tracklet_info.average_direction:
             tracklet_info.average_direction = angle
         else:
-            # calculate the difference between actual direction angle and new direction angle
+            # calculate the difference between actual direction angle and new
+            # direction angle
             min_diff_signed = tracklet_info.average_direction - angle
             min_diff_signed = (min_diff_signed + 180) % 360 - 180
             min_diff = abs(min_diff_signed)
 
-            if min_diff > self.MIN_DIRECTION_ANGLE_CHANGE_TO_CONSIDER_AS_ROTATION_EVENT:
-                current_events.append(
-                    {'event_type': 2, 'event_id': 1, 'event_info': [{'type_id': 2, 'value': min_diff}]}
-                )  # append 'rotation' event
+            if min_diff > self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION:
+                # Append ROTATION event
+                current_events.append(EventDirection(EVENT_INFO_TYPE.ANGLE,
+                                                     Quantifiers.AX, min_diff))
 
-            # new direction is added to average_direction, but with less weight to reduce noise
-            tracklet_info.average_direction += min_diff_signed * self.WEIGHT_FOR_NEW_DIRECTION_ANGLE
+            # new direction is added to average_direction, but with less
+            # weight to reduce noise
+            tracklet_info.average_direction += \
+                min_diff_signed * self.WEIGHT_FOR_NEW_DIRECTION_ANGLE
 
         return current_events
 
