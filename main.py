@@ -24,6 +24,7 @@ def start_to_process():
     except ValueError:
         FPS = 24.
     SEC_PER_FRAME = 1. / FPS
+    FPS_OVER_2 = (FPS / 2)
 
     # Getting width and height of captured images
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -68,7 +69,10 @@ def start_to_process():
         to_show = bg_sub
         blobs_points = blobs_detector.apply(bg_sub)
         trayectos, info_to_send = tracker.apply(blobs_points, frame)
-        communicator.apply(info_to_send)
+
+        if number_frame % FPS_OVER_2 == 0:
+            # Send info to the pattern recognition every half second
+            communicator.apply(info_to_send)
 
         # Draw circles in each blob
         to_show = cv2.drawKeypoints(to_show, blobs_points,

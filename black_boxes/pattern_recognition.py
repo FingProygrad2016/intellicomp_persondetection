@@ -29,7 +29,7 @@ class Rule(object):
     def __init__(self, id, name, events):
         self.id = id
         self.name = name
-        self.events = events
+        self.events = events  # Collection of events
 
 
 class Event(object):
@@ -41,14 +41,14 @@ class Event(object):
 class EventSpeed(Event):
     def __init__(self, type, quantifier, value):
         self.type = type
-        self.info_type = "TIME"
+        self.info_type = EVENT_INFO_TYPE.TIME
         super(EventSpeed, self).__init__(quantifier, value)
 
 
 class EventDirection(Event):
     def __init__(self, type, quantifier, value):
-        self.type = "ROTATION"
-        self.info_type = "ANGULE"
+        self.type = DirectionEventTypes.ROTATION
+        self.info_type = EVENT_INFO_TYPE.ANGLE
         super(EventDirection, self).__init__(quantifier, value)
 
 
@@ -75,20 +75,20 @@ class PatternRecognition(object):
         Rule(1, "walk_run",
              events=[
                  EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5),
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5)
              ]),
         Rule(2, "walk_stop_run",
              events=[
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 5),
                  EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 2),
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 5)
              ]),
         Rule(2, "run_rotate_run",
              events=[
                  EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
                  EventDirection(DirectionEventTypes.ROTATION,
                                 Quantifiers.AX, 120),
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5),
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5)
              ])
     ]
 
@@ -121,8 +121,6 @@ class PatternRecognition(object):
                                   "%Y-%m-%dT%H:%M:%S.%f")
             self.tracklets_info[trackled_id].last_position_time = \
                 last_update_datetime
-
-            return
 
         else:
             last_update_datetime = \
@@ -167,7 +165,7 @@ class PatternRecognition(object):
         if distance:
             sin_of_angle = abs(point2[1] - point1[1]) / distance
 
-            angle = np.arcsin(sin_of_angle)
+            angle = np.degrees(np.arcsin(sin_of_angle))
         else:
             angle = None
 
