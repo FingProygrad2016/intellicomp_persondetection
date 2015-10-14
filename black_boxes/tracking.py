@@ -63,8 +63,7 @@ class Tracker:
         journeys = []
         info_to_send = info_to_send.values()
         for kf in self.k_filters:
-            if len(kf.journey) > 5:
-                journeys.append(kf.journey)
+            journeys.append(kf.journey)
             # info_to_send.append(kf.to_dict())
 
         habp = HungarianAlgorithmBlobPosition(self.threshold_distance, blobs)
@@ -184,15 +183,22 @@ class TrackInfo:
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
 
+        self.journey.append(np.array(correction.copy()))
+
         return correction
 
     def update_info(self, new_position, color, size):
-        self.predict()
-        self.correct(np.array(new_position, np.float32))
-        self.color = color
-        self.size = size
-        self.last_update = datetime.now()
-        self.last_point = new_position
+        if (self.number_updates == 0):
+            arrayAux = np.array([[new_position[0]], [new_position[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
+            self.kalman_filter.statePost = arrayAux
+        else:
+            self.predict()
+            self.correct(np.array(new_position, np.float32))
+            self.color = color
+            self.size = size
+            self.last_update = datetime.now()
+            self.last_point = new_position
+
         self.number_updates += 1
 
     def to_dict(self):

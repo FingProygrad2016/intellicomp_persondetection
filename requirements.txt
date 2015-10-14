@@ -1,4 +1,8 @@
-numpy==1.8.2
+numpy==1.10.0.post2
 pika==0.10.0
 scipy==0.16.0
 blinker==1.4
+
+# Dependencias externas
+# rabbitmp-server==3.2.4
+# opencv3
