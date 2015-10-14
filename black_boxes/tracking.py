@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 from tools import get_avg_color, euclidean_distance
 
+from blob_assignment import HungarianAlgorithmBlobPosition
+
 # Ejmplo simple de Kalman Filter
 # https://github.com/Itseez/opencv/blob/master/samples/python2/kalman.py
 # https://github.com/simondlevy/OpenCV-Python-Hacks/blob/master/kalman_mousetracker.py
@@ -65,6 +67,9 @@ class Tracker:
                 journeys.append(kf.journey)
             # info_to_send.append(kf.to_dict())
 
+        habp = HungarianAlgorithmBlobPosition(self.threshold_distance, blobs)
+        costs = habp.apply(self.k_filters)
+
         return journeys, [kf.to_dict() for kf in info_to_send]
 
     def add_new_tracking(self, point, color, size):
@@ -84,6 +89,8 @@ class Tracker:
     def get_matched_kfilter(self, blob_center, average_color, size):
         matched_filter = -1
         to_remove = []
+        closest = []
+        candidate = (-1, 1000000)
         for number_trackinfo, track_info in enumerate(self.k_filters):
 
             # If TrackInfo is too old, remove it forever
@@ -94,6 +101,9 @@ class Tracker:
             distance = euclidean_distance(blob_center, track_info.last_point)
 
             if distance < self.threshold_distance:
+                closest.append((number_trackinfo, track_info))
+                if candidate[1] > distance:
+                    candidate = (number_trackinfo, distance)
                 # if abs(track_info.size - size) < self.threshold_size and \
                 # abs(track_info.color[0]-average_color[0]) < \
                 # self.threshold_color and \
@@ -102,7 +112,19 @@ class Tracker:
                 # abs(track_info.color[2]-average_color[2]) < \
                 #     self.threshold_color:
 
-                return number_trackinfo
+        if closest.__len__() > 0:
+            candidate2 = (-1, 1000000)
+            for track_info_with_number in closest:
+                previous = self.k_filters[track_info_with_number[0]].kalman_filter.statePre
+                prediction = self.k_filters[track_info_with_number[0]].kalman_filter.statePost
+                distance = euclidean_distance((prediction[0], prediction[1]), blob_center)
+                if (distance < 1) & (candidate2[1] > distance):
+                    candidate2 = (track_info_with_number[0], distance)
+            if candidate2[0] != -1:
+                number_trackinfo = candidate2[0]
+            else:
+                number_trackinfo = candidate[0]
+            return number_trackinfo
 
         # Remove the old tracked objects
         map(lambda x: self.k_filters.remove(x), to_remove)
@@ -124,7 +146,7 @@ class TrackInfo:
         #                                                  [0,1,0,0]],
         #                                                  np.float32)
         self.kalman_filter.measurementMatrix = \
-            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]],np.float32)
+            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]], np.float32)
         # self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],
         #                                                 [0,1,0,1],
         #                                                 [0,0,1,0],
@@ -155,6 +177,7 @@ class TrackInfo:
         prediction = self.kalman_filter.predict()
 
         # Avoid the first 10 positions
+        # FIXME: Guardar las predicciones desde la primera
         if self.number_updates > 10:
             self.journey.append(prediction)
 

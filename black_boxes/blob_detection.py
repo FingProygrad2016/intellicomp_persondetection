@@ -5,6 +5,7 @@ __author__ = 'jp'
 # Referencias en:
 # http://www.learnopencv.com/blob-detection-using-opencv-python-c/
 
+
 class BlobDetector:
 
     detector = None
