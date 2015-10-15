@@ -21,24 +21,36 @@ class HungarianAlgorithmBlobPosition:
 
     def getCosts(self, k_filters):
         # Matriz de costos
-        costs_matrix = numpy.zeros(shape=(self.blobs.__len__(), k_filters.__len__()))
 
-        for i in range(0, self.blobs.__len__()):
-            costs_row = numpy.zeros(shape=(k_filters.__len__()))
-            for j in range(0, k_filters.__len__()):
+        # the matrix width has to be larger or equal than height
+        columns_count = max(len(self.blobs), len(k_filters))
+
+        costs_matrix = numpy.zeros(shape=(len(self.blobs), columns_count))
+
+        for i in range(0, len(self.blobs)):
+            costs_row = numpy.zeros(shape=(columns_count))
+            for j in range(0, len(k_filters)):
                 prediction = k_filters[j].kalman_filter.statePost
                 costs_row[j] = euclidean_distance((prediction[0], prediction[1]), self.blobs[i].pt)
+            for j in range(len(k_filters), columns_count):
+                costs_row[j] = 100000
             costs_matrix[i] = costs_row
+
         return costs_matrix
 
     def apply(self, k_filters):
         result = []
-        m = Munkres()
 
-        costs = self.getCosts(k_filters)
-        if (costs.size > 0) & (costs.__len__() > 0):
-            indexes = m.compute(costs)
-            for row, column in indexes:
-                if costs[row][column] <= self.distance_threshold:
-                    result.append((row, column))
+        if len(k_filters) > 0 and len(self.blobs) > 0:
+            m = Munkres()
+
+            costs = self.getCosts(k_filters)
+            if (costs.size > 0) & (costs.__len__() > 0):
+                indexes = m.compute(costs.copy())
+                for row, column in indexes:
+                    if column < len(k_filters) and costs[row][column] <= self.distance_threshold:
+                        result.append((row, column))
+                    else:
+                        result.append((row, -1))
+
         return result
