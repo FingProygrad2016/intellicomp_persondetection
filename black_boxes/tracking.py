@@ -73,6 +73,8 @@ class Tracker:
         info_to_send = info_to_send.values()
         for kf in self.k_filters:
             journeys.append(kf.journey)
+            # prediction of next new position
+            kf.predict()
             # info_to_send.append(kf.to_dict())
 
 
@@ -208,8 +210,6 @@ class TrackInfo:
     def update_info(self, new_position, color, size):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
-        # prediction of next new position
-        self.predict()
         self.color = color
         self.size = size
         self.last_update = datetime.now()
