@@ -41,3 +41,19 @@ def enum(**enums):
     :return: A class called Enum with the attributes passed in enums.
     """
     return type('Enum', (), enums)
+
+
+def diff_in_milliseconds(time_start, time_end):
+    """
+    Calculates the difference between two datetime with milliseconds precision
+    :param datetime time_start:
+    :param datetime time_end:
+    :return: difference time_end - time_start in milliseconds
+    :rtype: int
+    """
+    diff = time_end - time_start
+    milliseconds = diff.days * 86400000  # 86400000 = 24 * 60 * 60 * 1000
+    milliseconds += diff.seconds * 1000
+    milliseconds += diff.microseconds / 1000  # microseconds to milliseconds
+
+    return milliseconds
