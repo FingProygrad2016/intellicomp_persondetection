@@ -163,7 +163,7 @@ class PatternRecognition(object):
              ]),
         Rule(3, "RUNNING",
              events=[
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 500)
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 1500)
              ]),
         Rule(3, "STOPPED",
              events=[
@@ -177,7 +177,7 @@ class PatternRecognition(object):
     ]
 
     def __init__(self, min_angle_to_consider_rotation=90, min_walking_speed=10,
-                 min_running_speed=100):
+                 min_running_speed=120):
         self.tracklets_info = {}  # Collection of Tracklets
         self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = \
             min_angle_to_consider_rotation
