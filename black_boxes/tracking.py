@@ -36,8 +36,11 @@ class Tracker:
         info_to_send = {}
         to_remove = []
 
+        for kf in self.k_filters:
+            kf.hasBeenAssigned = False
+
         habp = HungarianAlgorithmBlobPosition(self.threshold_distance, blobs)
-        costs = habp.apply(self.k_filters)
+        best_filters_per_blob = habp.apply(self.k_filters)
 
         for i in range(0, len(blobs)):
             blob = blobs[i]
@@ -50,8 +53,14 @@ class Tracker:
             # matched_position = \
             #    self.get_matched_kfilter(blob.pt, average_color, size)
 
-            if costs and costs[i][1] != -1:
-                matched_position = costs[i][1]
+            if best_filters_per_blob and best_filters_per_blob[i][1] != -1:
+                matched_position = best_filters_per_blob[i][1]
+
+                # Actualizo el estimador
+                self.k_filters[matched_position]. \
+                    update_info(new_position=blob.pt,
+                                color=get_avg_color(raw_image, blob.pt),
+                                size=blob.size)
             else:
                 # Si no hay filtro creado para este blob, entonces creo uno
                 matched_position = \
@@ -59,23 +68,8 @@ class Tracker:
                                           get_avg_color(raw_image, blob.pt),
                                           blob.size)
 
-            # Actualizo el estimador
-            self.k_filters[matched_position]. \
-                update_info(new_position=blob.pt,
-                            color=get_avg_color(raw_image, blob.pt),
-                            size=blob.size)
-
             info_to_send[self.k_filters[matched_position].id] = \
                 self.k_filters[matched_position]
-
-        # Prepare the return data
-        journeys = []
-        info_to_send = info_to_send.values()
-        for kf in self.k_filters:
-            journeys.append(kf.journey)
-            # prediction of next new position
-            kf.predict()
-            # info_to_send.append(kf.to_dict())
 
 
         for number_trackinfo, track_info in enumerate(self.k_filters):
@@ -85,6 +79,15 @@ class Tracker:
         # Remove the old tracked objects
         map(lambda x: self.k_filters.remove(x), to_remove)
 
+        # Prepare the return data
+        journeys = []
+        info_to_send = info_to_send.values()
+        for kf in self.k_filters:
+            journeys.append(kf.journey)
+            # prediction of next new position
+            if not kf.hasBeenAssigned:
+                kf.predict()
+            # info_to_send.append(kf.to_dict())
 
         return journeys, [kf.to_dict() for kf in info_to_send]
 
@@ -187,6 +190,8 @@ class TrackInfo:
         arrayAux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = arrayAux
 
+        self.hasBeenAssigned = True
+
         # prediction of next new position
         self.predict()
 
@@ -210,10 +215,13 @@ class TrackInfo:
     def update_info(self, new_position, color, size):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
+        self.predict()
         self.color = color
         self.size = size
         self.last_update = datetime.now()
         self.last_point = new_position
+
+        self.hasBeenAssigned = True
 
         self.number_updates += 1
 
