@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+import json
 import numpy as np
+from black_boxes.communicator import Communicator
 
 from tools import enum, euclidean_distance, diff_in_milliseconds
 
@@ -29,6 +31,11 @@ class Rule(object):
 
     def __repr__(self):
         return "RULE: %s" % self.name
+
+    def to_json(self):
+        return {
+            'name': self.name
+        }
 
 
 class Event(object):
@@ -132,42 +139,52 @@ class PatternRecognition(object):
     QUANTIFIER_APPROXIMATION = 2
 
     movement_change_rules = [
-        Rule(1, "walk_run",
+        # Rule(1, "walk_run",
+        #      events=[
+        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5000),
+        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
+        #      ]),
+        # Rule(2, "walk_stop_run",
+        #      events=[
+        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 5000),
+        #          EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 2000),
+        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 5000)
+        #      ]),
+        # Rule(2, "run_rotate_run",
+        #      events=[
+        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000),
+        #          EventDirection(DirectionEventTypes.ROTATION,
+        #                         Quantifiers.AX, 120),
+        #          # EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
+        #      ]),
+        Rule(3, "WALKING",
              events=[
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5000),
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
+                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 500)
              ]),
-        Rule(2, "walk_stop_run",
+        Rule(3, "RUNNING",
              events=[
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 5000),
-                 EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 2000),
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 5000)
+                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 500)
              ]),
-        Rule(2, "run_rotate_run",
+        Rule(3, "STOPPED",
              events=[
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000),
-                 EventDirection(DirectionEventTypes.ROTATION,
-                                Quantifiers.AX, 120),
-                 # EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
+                 EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.GE, 500)
              ]),
-        Rule(3, "walk_like_a_pig",
-             events=[
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 3000)
-             ]),
-        Rule(3, "tired_runner",
-             events=[
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 3000),
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 2000)
-             ])
+        # Rule(3, "tired_runner",
+        #      events=[
+        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 3000),
+        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 2000)
+        #      ])
     ]
 
     def __init__(self, min_angle_to_consider_rotation=90, min_walking_speed=10,
-                 min_running_speed=40):
+                 min_running_speed=100):
         self.tracklets_info = {}  # Collection of Tracklets
         self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = \
             min_angle_to_consider_rotation
         self.MIN_SPEED_FOR_WALKING = min_walking_speed
         self.MIN_SPEED_FOR_RUNNING = min_running_speed
+        self.communicator = Communicator(queue_name='warnings',
+                                         expiration_time=60)
 
     def apply(self, tracklet_raw_info):
         """
@@ -223,9 +240,16 @@ class PatternRecognition(object):
                 # ####    DEBUG PURPOUSE    #### #
                 # for event in current_events:
                 #     print "EVENT:", event, "TRACKLET ID:", trackled_id
+                if found_rules:
+                    self.communicator.apply(
+                        json.dumps({'rules': map(lambda x: x.name,
+                                                 found_rules),
+                                    'position':
+                                        tracklet_info.last_position,
+                                    'id': tracklet_info.id}))
 
-                for rule in found_rules:
-                    print "::" + str(rule), "TRACKLET ID:", trackled_id
+                    for rule in found_rules:
+                        print "::" + str(rule), "TRACKLET ID:", trackled_id
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -320,10 +344,14 @@ class PatternRecognition(object):
     def calc_rules(self, tracklet_info):
         found_rules = []
 
-        MIN_EVENTS_SPEED_AMOUNT = 6
-        MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
-        MIN_EVENTS_DIR_AMOUNT = 2
-        MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
+        # MIN_EVENTS_SPEED_AMOUNT = 6
+        # MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
+        # MIN_EVENTS_DIR_AMOUNT = 2
+        # MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
+        MIN_EVENTS_SPEED_AMOUNT = 1
+        MIN_EVENTS_SPEED_TIME = 0  # In milliseconds
+        MIN_EVENTS_DIR_AMOUNT = 1
+        MIN_EVENTS_DIR_TIME = 0  # In milliseconds
 
         last_speed_events = []
         last_dir_events = []
