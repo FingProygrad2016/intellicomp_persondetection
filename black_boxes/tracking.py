@@ -89,7 +89,7 @@ class Tracker:
                 kf.predict()
             # info_to_send.append(kf.to_dict())
 
-        return journeys, [kf.to_dict() for kf in info_to_send]
+        return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
     def add_new_tracking(self, point, color, size):
         """

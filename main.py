@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import time
 from datetime import datetime, timedelta
+import pika
 
 from black_boxes.background_substraction import BackgroundSubtractorMOG2, \
     BackgroundSubtractorKNN
@@ -39,6 +40,11 @@ def start_to_process():
     tracker = Tracker()
     communicator = Communicator()
 
+    # Warnings' receiver
+    connection = pika.BlockingConnection()
+    channel = connection.channel()
+    new_warn = []
+
     loop_time = time.time()
 
     number_frame = 1
@@ -71,22 +77,47 @@ def start_to_process():
             bg_sub = background_substractor.apply(frame)
             to_show = bg_sub
             blobs_points = blobs_detector.apply(bg_sub)
-            trayectos, info_to_send = tracker.apply(blobs_points, frame)
+            trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame)
 
             if number_frame % FPS_OVER_2 == 0:
                 # Send info to the pattern recognition every half second
                 communicator.apply(info_to_send)
 
             # Draw circles in each blob
-            to_show = cv2.drawKeypoints(to_show, blobs_points,
-                                        outImage=np.array([]),
-                                        color=(0, 0, 255),
-                                        flags=
-                                        cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+            to_show = cv2.drawKeypoints(
+                to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
+                flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
             # Write FPS in the frame to show
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                         (255, 255, 0), 2)
+
+            try:
+                while True:
+                    connection = pika.BlockingConnection()
+                    channel = connection.channel()
+                    warnings = channel.basic_get('warnings')
+                    if None in warnings:
+                        break
+                    else:
+                        new_warn = json.loads(json.loads(warnings[2]))
+                        print "NEW WARN", new_warn
+                        rules = str(new_warn['rules'][0])
+                        id_track = new_warn['id']
+                        tracklet = tracklets.get(id_track, None)
+                        if tracklet:
+                            tracklet.last_rule = rules
+
+
+            except pika.exceptions.ConnectionClosed:
+                pass
+
+            for tracklet in tracklets.values():
+                if getattr(tracklet, 'last_rule', None):
+                    cv2.putText(to_show, tracklet.last_rule,
+                                (int(tracklet.last_point[0]),
+                                 int(tracklet.last_point[1])),
+                                font, 0.3, (255, 0, 0), 1)
 
             # Draw the journeys of the tracked persons
             # for journey in [t.journey for t in trayectos if
