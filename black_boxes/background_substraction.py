@@ -34,14 +34,14 @@ class BackgroundSubtractorKNN:
 
     def __init__(self):
         self.subtractor = \
-            cv2.createBackgroundSubtractorKNN(history=250, dist2Threshold=350,
+            cv2.createBackgroundSubtractorKNN(history=100, dist2Threshold=350,
                                               detectShadows=False)
         self.subtractor.setkNNSamples(7)
         self.subtractor.setShadowThreshold(0.5)
 
     def apply(self, raw_image):
 
-        # Convierto imagen a escalas de grices
+        # Convierto imagen a escalas de grises
         bg = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
 
         # Aplico filtro Blur

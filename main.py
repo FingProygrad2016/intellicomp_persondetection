@@ -22,7 +22,7 @@ def start_to_process():
     try:
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
     except ValueError:
-        FPS = 24.
+        FPS = 7.
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 

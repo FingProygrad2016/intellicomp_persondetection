@@ -29,9 +29,9 @@ class BlobDetector:
         params.minCircularity = 0.01
         params.maxCircularity = 1.0
 
-        # # Filter by Convexity
+        # Filter by Convexity
         params.filterByConvexity = False
-        params.minConvexity = 0.01
+        params.minConvexity = 0.2
         params.maxConvexity = 1.0
 
         # Filter by Inertia
