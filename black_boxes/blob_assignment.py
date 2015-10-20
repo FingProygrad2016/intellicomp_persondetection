@@ -20,15 +20,14 @@ class HungarianAlgorithmBlobPosition:
         self.blobs = blobs
 
     def getCosts(self, k_filters):
-        # Matriz de costos
 
-        # the matrix width has to be larger or equal than height
+        # the costs matrix width has to be larger or equal than height
         columns_count = max(len(self.blobs), len(k_filters))
 
         costs_matrix = numpy.zeros(shape=(len(self.blobs), columns_count))
 
         for i in range(0, len(self.blobs)):
-            costs_row = numpy.zeros(shape=(columns_count))
+            costs_row = numpy.zeros(shape=columns_count)
             for j in range(0, len(k_filters)):
                 prediction = k_filters[j].kalman_filter.statePost
                 costs_row[j] = euclidean_distance((prediction[0], prediction[1]), self.blobs[i].pt)
