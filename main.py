@@ -126,6 +126,7 @@ def start_to_process():
                 journey_data = journey[0]
                 journey_color = journey[1]
                 journey_id    = journey[2]
+                rectangle_points = journey[3]
                 for num in range(max(0, len(journey_data) - 30), len(journey_data) - 1):
                     cv2.line(to_show, tuple(journey_data[num][0:2]),
                              tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
@@ -133,14 +134,15 @@ def start_to_process():
                              tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
                 cv2.putText(frame, str(journey_id), (int(journey_data[len(journey_data) - 1][0][0]),
                                  int(journey_data[len(journey_data) - 1][1][0])), font, 0.3, journey_color, 1)
+                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color)
 
             # Draw rectangles for detected blobs
-            for blob in blobs_points:
-                xt = int(round(blob.pt[0] - (blob.size / 4)))
-                yt = int(round(blob.pt[1] - (blob.size / 2)))
-                xb = int(round(blob.pt[0] + (blob.size / 4)))
-                yb = int(round(blob.pt[1] + (blob.size / 2)))
-                cv2.rectangle(frame, (xt, yt), (xb, yb), (0, 0, 255))
+            #for blob in blobs_points:
+            #    xt = int(round(blob.pt[0] - (blob.size / 4)))
+            #    yt = int(round(blob.pt[1] - (blob.size / 2)))
+            #    xb = int(round(blob.pt[0] + (blob.size / 4)))
+            #    yb = int(round(blob.pt[1] + (blob.size / 2)))
+            #    cv2.rectangle(frame, (xt, yt), (xb, yb), (0, 0, 255))
 
             # Resize the frames
             to_show = cv2.resize(to_show, (w*3, h*3))

@@ -19,7 +19,7 @@ class HungarianAlgorithmBlobPosition:
         self.distance_threshold = distance_threshold
         self.blobs = blobs
 
-    def getCosts(self, k_filters):
+    def get_costs(self, k_filters):
 
         # the costs matrix width has to be larger or equal than height
         columns_count = max(len(self.blobs), len(k_filters))
@@ -43,7 +43,7 @@ class HungarianAlgorithmBlobPosition:
         if len(k_filters) > 0 and len(self.blobs) > 0:
             m = Munkres()
 
-            costs = self.getCosts(k_filters)
+            costs = self.get_costs(k_filters)
             if (costs.size > 0) & (costs.__len__() > 0):
                 indexes = m.compute(costs.copy())
                 for row, column in indexes:
