@@ -123,11 +123,16 @@ def start_to_process():
             # for journey in [t.journey for t in trayectos if
             #                 t.last_update > datetime.now() - timedelta(seconds=2)]:
             for journey in trayectos:
-                for num in range(max(0, len(journey) - 30), len(journey) - 1):
-                    cv2.line(to_show, tuple(journey[num][0:2]),
-                             tuple(journey[num+1][0:2]), (0, 155, 0), thickness=1)
-                    cv2.line(frame, tuple(journey[num][0:2]),
-                             tuple(journey[num+1][0:2]), (0, 155, 0), thickness=1)
+                journey_data = journey[0]
+                journey_color = journey[1]
+                journey_id    = journey[2]
+                for num in range(max(0, len(journey_data) - 30), len(journey_data) - 1):
+                    cv2.line(to_show, tuple(journey_data[num][0:2]),
+                             tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
+                    cv2.line(frame, tuple(journey_data[num][0:2]),
+                             tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
+                cv2.putText(frame, str(journey_id), (int(journey_data[len(journey_data) - 1][0][0]),
+                                 int(journey_data[len(journey_data) - 1][1][0])), font, 0.3, journey_color, 1)
 
             # Draw rectangles for detected blobs
             for blob in blobs_points:
