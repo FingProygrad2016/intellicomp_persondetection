@@ -132,9 +132,12 @@ def start_to_process():
                              tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
                     cv2.line(frame, tuple(journey_data[num][0:2]),
                              tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
-                cv2.putText(frame, str(journey_id), (int(journey_data[len(journey_data) - 1][0][0]),
-                                 int(journey_data[len(journey_data) - 1][1][0])), font, 0.3, journey_color, 1)
                 cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color)
+                last_journey_point = (int(journey_data[len(journey_data) - 1][0][0]),
+                                 int(journey_data[len(journey_data) - 1][1][0]))
+                cv2.rectangle(frame, (last_journey_point[0], last_journey_point[1] - 7),
+                              (last_journey_point[0] + 12, last_journey_point[1] + 1) , (255, 255, 255), -1)
+                cv2.putText(frame, str(journey_id), last_journey_point, font, 0.3, journey_color, 1)
 
             # Draw rectangles for detected blobs
             #for blob in blobs_points:
