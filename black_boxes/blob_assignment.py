@@ -53,3 +53,48 @@ class HungarianAlgorithmBlobPosition:
                         result.append((row, -1))
 
         return result
+
+
+class HungarianAlgorithmBlobSize:
+
+    size_threshold = -1
+    blobs = []
+
+    def __init__(self, size_threshold, blobs):
+        self.size_threshold = size_threshold
+        self.blobs = blobs
+
+    def get_costs(self, k_filters):
+
+        # the costs matrix width has to be larger or equal than height
+        columns_count = max(len(self.blobs), len(k_filters))
+
+        costs_matrix = numpy.zeros(shape=(len(self.blobs), columns_count))
+
+        for i in range(0, len(self.blobs)):
+            costs_row = numpy.zeros(shape=columns_count)
+            for j in range(0, len(k_filters)):
+                size = k_filters[j].size
+                costs_row[j] = abs(self.blobs[i].size - size)
+            for j in range(len(k_filters), columns_count):
+                costs_row[j] = 100000
+            costs_matrix[i] = costs_row
+
+        return costs_matrix
+
+    def apply(self, k_filters):
+        result = []
+
+        if len(k_filters) > 0 and len(self.blobs) > 0:
+            m = Munkres()
+
+            costs = self.get_costs(k_filters)
+            if (costs.size > 0) & (costs.__len__() > 0):
+                indexes = m.compute(costs.copy())
+                for row, column in indexes:
+                    if column < len(k_filters) and costs[row][column] <= self.size_threshold:
+                        result.append((row, column))
+                    else:
+                        result.append((row, -1))
+
+        return result

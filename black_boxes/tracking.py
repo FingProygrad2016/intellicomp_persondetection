@@ -6,7 +6,7 @@ import random
 
 from tools import get_avg_color
 
-from blob_assignment import HungarianAlgorithmBlobPosition
+from blob_assignment import HungarianAlgorithmBlobPosition, HungarianAlgorithmBlobSize
 
 # Ejmplo simple de Kalman Filter
 # https://github.com/Itseez/opencv/blob/master/samples/python2/kalman.py
@@ -19,7 +19,7 @@ class Tracker:
 
     k_filters = []
     threshold_color = 30
-    threshold_size = 1
+    threshold_size = 10
     threshold_distance = 30
     tracklets_short_id = 1
 
@@ -41,6 +41,7 @@ class Tracker:
         for kf in self.k_filters:
             kf.hasBeenAssigned = False
 
+        # Apply hungarian algorith for blob position
         habp = HungarianAlgorithmBlobPosition(self.threshold_distance, blobs)
         best_filters_per_blob = habp.apply(self.k_filters)
 
