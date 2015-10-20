@@ -2,6 +2,7 @@ import numpy as np
 from uuid import uuid4
 import cv2
 from datetime import datetime, timedelta
+import random
 
 from tools import get_avg_color, euclidean_distance
 
@@ -20,6 +21,7 @@ class Tracker:
     threshold_color = 30
     threshold_size = 1
     threshold_distance = 30
+    tracklets_short_id = 1
 
     def __init__(self):
         pass
@@ -83,11 +85,12 @@ class Tracker:
         journeys = []
         info_to_send = info_to_send.values()
         for kf in self.k_filters:
-            journeys.append(kf.journey)
-            # prediction of next new position
-            if not kf.hasBeenAssigned:
-                kf.predict()
-            # info_to_send.append(kf.to_dict())
+            if len(kf.journey) > 5:
+                journeys.append((kf.journey, kf.journey_color, kf.short_id))
+                # prediction of next new position
+                if not kf.hasBeenAssigned:
+                    kf.predict()
+                # info_to_send.append(kf.to_dict())
 
         return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
@@ -100,8 +103,10 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(color, size, point)
+        track_info = TrackInfo(color, size, point, self.tracklets_short_id)
         self.k_filters.append(track_info)
+
+        self.tracklets_short_id += 1
 
         return len(self.k_filters) - 1
 
@@ -153,11 +158,12 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point):
+    def __init__(self, color, size, point, short_id):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
         self.id = uuid4().hex
+        self.short_id = short_id
         self.last_update = self.created_datetime
         self.last_point = point
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
@@ -185,6 +191,7 @@ class TrackInfo:
                                                        [0, 0, 0, 0, 0, 1]],
                                                       np.float32) * 0.0001
         self.journey = []
+        self.journey_color = (random.randint(0,255), random.randint(0,255), random.randint(0,255)) # (0, 155, 0)
         self.number_updates = 0
 
         arrayAux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
