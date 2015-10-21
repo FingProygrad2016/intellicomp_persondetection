@@ -51,10 +51,23 @@ def start_to_process():
     _fps = "%.2f" % FPS
     previous_fps = FPS
 
+
+    read_time = 0
+    bs_time = 0
+    bd_time = 0
+    t_time = 0
+    pr_time = 0
+    tp_time = 0
+    rs_time = 0
+    wk_time = 0
+    tt_time = 0
+
     hasMoreImages = True
 
     # Start the main loop
     while hasMoreImages:
+
+        t_total = time.time()
 
         # FPS calculation
         if number_frame > 10:
@@ -68,16 +81,28 @@ def start_to_process():
             loop_time = time.time()
             _fps = "%.2f" % fps
 
+
+        t0 = time.time()
         # Get a new frame
         hasMoreImages, frame = cap.read()
         number_frame += 1
+        read_time += time.time() - t0
 
         if hasMoreImages:
             # Black boxes process
+            t0 = time.time()
             bg_sub = background_substractor.apply(frame)
             to_show = bg_sub
+            bs_time += time.time() - t0
+            t0 = time.time()
             blobs_points = blobs_detector.apply(bg_sub)
+            bd_time += time.time() - t0
+            t0 = time.time()
             trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame)
+            t_time += time.time() - t0
+
+
+            t0 = time.time()
 
             if number_frame % FPS_OVER_2 == 0:
                 # Send info to the pattern recognition every half second
@@ -108,9 +133,13 @@ def start_to_process():
                         if tracklet:
                             tracklet.last_rule = rules
 
-
             except pika.exceptions.ConnectionClosed:
                 pass
+
+            pr_time += time.time() - t0
+
+
+            t0 = time.time()
 
             for tracklet in tracklets.values():
                 if getattr(tracklet, 'last_rule', None):
@@ -127,26 +156,25 @@ def start_to_process():
                 journey_color = journey[1]
                 journey_id    = journey[2]
                 rectangle_points = journey[3]
-                for num in range(max(0, len(journey_data) - 30), len(journey_data) - 1):
-                    cv2.line(to_show, tuple(journey_data[num][0:2]),
-                             tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
-                    cv2.line(frame, tuple(journey_data[num][0:2]),
-                             tuple(journey_data[num+1][0:2]), journey_color, thickness=1)
+
+                journey_data_len = len(journey_data)
+
+                for num in range(max(0, journey_data_len - 30), journey_data_len - 1):
+                    tuple1 = tuple(journey_data[num][0:2])
+                    tuple2 = tuple(journey_data[num+1][0:2])
+                    cv2.line(to_show, tuple1, tuple2, journey_color, thickness=1)
+                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
                 cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color)
-                last_journey_point = (int(journey_data[len(journey_data) - 1][0][0]),
-                                 int(journey_data[len(journey_data) - 1][1][0]))
+
+                last_data = journey_data[journey_data_len - 1]
+                last_journey_point = (int(last_data[0][0]), int(last_data[1][0]))
                 cv2.rectangle(frame, (last_journey_point[0], last_journey_point[1] - 7),
                               (last_journey_point[0] + 12, last_journey_point[1] + 1) , (255, 255, 255), -1)
                 cv2.putText(frame, str(journey_id), last_journey_point, font, 0.3, journey_color, 1)
 
-            # Draw rectangles for detected blobs
-            #for blob in blobs_points:
-            #    xt = int(round(blob.pt[0] - (blob.size / 4)))
-            #    yt = int(round(blob.pt[1] - (blob.size / 2)))
-            #    xb = int(round(blob.pt[0] + (blob.size / 4)))
-            #    yb = int(round(blob.pt[1] + (blob.size / 2)))
-            #    cv2.rectangle(frame, (xt, yt), (xb, yb), (0, 0, 255))
+            tp_time += time.time() - t0
 
+            t0 = time.time()
             # Resize the frames
             to_show = cv2.resize(to_show, (w*3, h*3))
             frame = cv2.resize(frame, (w*3, h*3))
@@ -157,8 +185,37 @@ def start_to_process():
             cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
 
+            rs_time += time.time() - t0
+
+            t0 = time.time()
+
             if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
                 break
+
+            wk_time += time.time() - t0
+
+            tt_time += time.time() - t_total
+
+
+    print "Average times::::"
+    read_time = read_time / number_frame
+    print "Read time " + str(read_time)
+    bs_time = bs_time / number_frame
+    print "Background subtraction time " + str(bs_time)
+    bd_time = bd_time / number_frame
+    print "Blob detector time " + str(bd_time)
+    t_time = t_time / number_frame
+    print "Tracker time " + str(t_time)
+    pr_time = pr_time / number_frame
+    print "Communication with pattern recognition time " + str(pr_time)
+    tp_time = tp_time / number_frame
+    print "Text and paths time " + str(tp_time)
+    rs_time = rs_time / number_frame
+    print "Image resize and show time " + str(rs_time)
+    wk_time = wk_time / number_frame
+    print "cv2.waitKey time " + str(wk_time)
+    tt_time = tt_time / number_frame
+    print "Total time " + str(tt_time)
 
 
 if __name__ == '__main__':
