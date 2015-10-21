@@ -36,7 +36,7 @@ def start_to_process():
 
     # background_substractor = BackgroundSubtractorMOG2()
     background_substractor = BackgroundSubtractorKNN()
-    blobs_detector = BlobDetector()
+    blobs_detector = BlobDetector(100, 1000)
     tracker = Tracker()
     communicator = Communicator()
 

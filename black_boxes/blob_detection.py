@@ -1,5 +1,7 @@
 import cv2
 
+from tools import euclidean_distance
+
 __author__ = 'jp'
 
 # Referencias en:
@@ -9,8 +11,12 @@ __author__ = 'jp'
 class BlobDetector:
 
     detector = None
+    small_blobs_size_threshold = -1
+    small_blobs_size_distance_threshold = -1
+    small_blobs = []
+    big_blobs = []
 
-    def __init__(self):
+    def __init__(self, small_blobs_size_threshold, small_blobs_size_distance_threshold):
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
 
@@ -21,8 +27,8 @@ class BlobDetector:
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 50
-        params.maxArea = 2100
+        params.minArea = 1
+        params.maxArea = 5000
 
         # Filter by Circularity
         params.filterByCircularity = False
@@ -45,6 +51,50 @@ class BlobDetector:
         params.blobColor = 255
 
         self.detector = cv2.SimpleBlobDetector_create(params)
+        self.small_blobs_size_threshold = small_blobs_size_threshold
+        self.small_blobs_size_distance_threshold = small_blobs_size_distance_threshold
+
+    # Try to identify small blobs with big blobs
+    def identify_small_blobs(self):
+        result = []
+        small_blob_to_exclude = []
+
+        for smallBlobIndex, smallBlob in enumerate(self.small_blobs):
+            candidate = (None, 100000)
+            for bigBlobIndex, bigBlob in enumerate(self.big_blobs):
+                dist = euclidean_distance(smallBlob.pt, bigBlob.pt)
+                if (dist < self.small_blobs_size_distance_threshold) and (dist < candidate[1]):
+                    candidate = (bigBlobIndex, dist - (bigBlob.size / 2))
+            if candidate[0]:
+                self.big_blobs[candidate[0]].size += candidate[1]
+                # FIXME:ponderar la distancia del medio (centro de masa)
+                x_new = (self.big_blobs[candidate[0]].pt[0] + smallBlob.pt[0]) / 2
+                y_new = (self.big_blobs[candidate[0]].pt[1] + smallBlob.pt[1]) / 2
+                self.big_blobs[candidate[0]].pt = (x_new, y_new)
+                small_blob_to_exclude.append(smallBlob)
+
+        for blob in small_blob_to_exclude:
+            self.small_blobs.remove(blob)
+
+        for smallBlob in self.small_blobs:
+            result.append(smallBlob)
+
+        for bigBlob in self.big_blobs:
+            result.append(bigBlob)
+
+        return result
 
     def apply(self, background):
-        return self.detector.detect(background)
+        blobs = self.detector.detect(background)
+
+        self.big_blobs = []
+        self.small_blobs = []
+
+        for blob in blobs:
+            if blob.size > self.small_blobs_size_threshold:
+                self.big_blobs.append(blob)
+            else:
+                self.small_blobs.append(blob)
+
+        result = self.identify_small_blobs()
+        return result
