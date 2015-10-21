@@ -4,7 +4,7 @@ import cv2
 from datetime import datetime, timedelta
 import random
 
-from tools import get_avg_color
+from tools import get_avg_color, euclidean_distance
 
 from blob_assignment import HungarianAlgorithmBlobPosition, HungarianAlgorithmBlobSize
 
@@ -19,7 +19,7 @@ class Tracker:
 
     k_filters = []
     threshold_color = 30
-    threshold_size = 10
+    threshold_size = 1
     threshold_distance = 30
     tracklets_short_id = 1
 
@@ -70,23 +70,26 @@ class Tracker:
             info_to_send[self.k_filters[matched_position].id] = \
                 self.k_filters[matched_position]
 
-        for number_trackinfo, track_info in enumerate(self.k_filters):
-            # If TrackInfo is too old, remove it forever
-            if track_info.last_update < datetime.now() - timedelta(seconds=2):
-                to_remove.append(track_info)
-        # Remove the old tracked objects
-        map(lambda x: self.k_filters.remove(x), to_remove)
-
         # Prepare the return data
         journeys = []
         info_to_send = info_to_send.values()
-        for kf in self.k_filters:
-            if len(kf.journey) > 5:
-                journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle))
-                # prediction of next new position
-                if not kf.hasBeenAssigned:
-                    kf.predict()
+        for kf in self.k_filters: # number_trackinfo, track_info in enumerate(self.k_filters):
+            # prediction of next new position
+            if not kf.hasBeenAssigned:
+                nearest_blob = self.search_nearest_blob(kf, blobs)
+                if nearest_blob <> -1:
+                    kf.update_time()
+                kf.predict()
+            # If TrackInfo is too old, remove it forever
+            if kf.last_update < datetime.now() - timedelta(seconds=2):
+                to_remove.append(kf)
+            else:
+                if len(kf.journey) > 5:
+                    journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle))
                 # info_to_send.append(kf.to_dict())
+
+        # Remove the old tracked objects
+        map(lambda x: self.k_filters.remove(x), to_remove)
 
         return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
@@ -105,6 +108,21 @@ class Tracker:
         self.tracklets_short_id += 1
 
         return len(self.k_filters) - 1
+
+    def search_nearest_blob(self, track_info, blobs):
+        min_distance = 100000
+        nearest_blob = -1
+        for i in range(0, len(blobs)):
+            prediction = track_info.kalman_filter.statePost
+            distance = euclidean_distance((prediction[0], prediction[1]), blobs[i].pt)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_blob = i
+
+        if min_distance <= self.threshold_distance:
+            return nearest_blob
+        else:
+            return -1
 
 
 class TrackInfo:
@@ -176,6 +194,9 @@ class TrackInfo:
         self.journey.append(np.array(correction.copy()))
 
         return correction
+
+    def update_time(self):
+        self.last_update = datetime.now()
 
     def update_info(self, new_position, color, size, blob):
         # correction with the known new position
