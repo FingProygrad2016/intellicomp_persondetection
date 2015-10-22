@@ -1,4 +1,5 @@
 import json
+from os import popen
 import numpy as np
 import cv2
 import time
@@ -16,6 +17,9 @@ def start_to_process():
 
     # Instance of VideoCapture to capture webcam(0) images
     # cap = cv2.VideoCapture(0)
+    popen("v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0,"
+          "white_balance_temperature=inactive,exposure_absolute=inactive,"
+          "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
     cap = cv2.VideoCapture('Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
@@ -36,7 +40,7 @@ def start_to_process():
 
     # background_substractor = BackgroundSubtractorMOG2()
     background_substractor = BackgroundSubtractorKNN()
-    blobs_detector = BlobDetector(100, 1000)
+    blobs_detector = BlobDetector(10, 10)
     tracker = Tracker()
     communicator = Communicator()
 
@@ -50,7 +54,6 @@ def start_to_process():
     number_frame = 1
     _fps = "%.2f" % FPS
     previous_fps = FPS
-
 
     read_time = 0
     bs_time = 0
@@ -81,7 +84,6 @@ def start_to_process():
             loop_time = time.time()
             _fps = "%.2f" % fps
 
-
         t0 = time.time()
         # Get a new frame
         hasMoreImages, frame = cap.read()
@@ -101,7 +103,6 @@ def start_to_process():
             trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame)
             t_time += time.time() - t0
 
-
             t0 = time.time()
 
             if number_frame % FPS_OVER_2 == 0:
@@ -109,9 +110,9 @@ def start_to_process():
                 communicator.apply(info_to_send)
 
             # Draw circles in each blob
-            #to_show = cv2.drawKeypoints(
-            #    to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
-            #    flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+            to_show = cv2.drawKeypoints(
+               to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
+               flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
             # Write FPS in the frame to show
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
