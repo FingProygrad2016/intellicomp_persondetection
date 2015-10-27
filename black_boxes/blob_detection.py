@@ -24,12 +24,12 @@ class BlobDetector:
         # Change thresholds
         params.minThreshold = 5
         # params.thresholdStep = 5
-        params.maxThreshold = 80
+        params.maxThreshold = 30
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 5000
-        params.maxArea = 50000
+        params.minArea = 5
+        params.maxArea = 5000
 
         # Filter by Circularity
         params.filterByCircularity = False

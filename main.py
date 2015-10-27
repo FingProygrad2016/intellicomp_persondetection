@@ -17,10 +17,10 @@ def start_to_process():
 
     # Instance of VideoCapture to capture webcam(0) images
     # cap = cv2.VideoCapture(0)
-    popen("v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0,"
-          "white_balance_temperature=inactive,exposure_absolute=inactive,"
-          "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
-    cap = cv2.VideoCapture(1) # 'Videos/Video_003.avi')
+    # popen("v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0,"
+    #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
+    #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
+    cap = cv2.VideoCapture('Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
@@ -28,7 +28,7 @@ def start_to_process():
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
     except ValueError:
         FPS = 7.
-    FPS = 30
+
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 
@@ -36,6 +36,8 @@ def start_to_process():
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print ("Width: ", w, "Height: ", h)
+
+    size_mult_3 = (w*3, h*3)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -88,9 +90,6 @@ def start_to_process():
         t0 = time.time()
         # Get a new frame
         hasMoreImages, frame = cap.read()
-
-        frame = cv2.resize(frame, (640, 360))
-
         number_frame += 1
         read_time += time.time() - t0
 
@@ -167,9 +166,9 @@ def start_to_process():
                 for num in range(max(0, journey_data_len - 30), journey_data_len - 1):
                     tuple1 = tuple(journey_data[num][0:2])
                     tuple2 = tuple(journey_data[num+1][0:2])
-                    cv2.line(to_show, tuple1, tuple2, journey_color, thickness=2)
-                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=2)
-                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color, thickness=2)
+                    cv2.line(to_show, tuple1, tuple2, journey_color, thickness=1)
+                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
+                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color, thickness=1)
 
                 last_data = journey_data[journey_data_len - 1]
                 last_journey_point = (int(last_data[0][0]), int(last_data[1][0]))
@@ -181,13 +180,13 @@ def start_to_process():
 
             t0 = time.time()
             # Resize the frames
-            # to_show = cv2.resize(to_show, (w*3, h*3))
-            # frame = cv2.resize(frame, (w*3, h*3))
-            # bg_sub = cv2.resize(bg_sub, (w*3, h*3))
+            to_show = cv2.resize(to_show, size_mult_3)
+            frame = cv2.resize(frame, size_mult_3)
+            bg_sub = cv2.resize(bg_sub, size_mult_3)
 
             # Display the frames
             cv2.imshow('result', to_show)
-            # cv2.imshow('background subtraction', bg_sub)
+            cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
 
             rs_time += time.time() - t0

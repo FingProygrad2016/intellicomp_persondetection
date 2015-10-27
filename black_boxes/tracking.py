@@ -21,7 +21,7 @@ class Tracker:
     k_filters = []
     threshold_color = 30
     threshold_size = 1
-    threshold_distance = 100
+    threshold_distance = 30
     tracklets_short_id = 1
 
     def __init__(self):
