@@ -1,6 +1,6 @@
 import json
 import pika
-from black_boxes.pattern_recognition import PatternRecognition
+from pattern_recognition import PatternRecognition
 
 
 class Receiver(object):
@@ -30,6 +30,6 @@ class Receiver(object):
 
 
 if __name__ == "__main__":
-    print "Listening..."
+    print ("Listening...")
     Receiver().apply()
-    print "END."
+    print ("END.")

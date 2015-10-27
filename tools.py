@@ -24,7 +24,7 @@ def euclidean_distance(point1, point2):
     :return:
     """
     # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
-    return pow(abs(sum(map(lambda (x, y): (x-y)**2, zip(point1, point2)))), 0.5)
+    return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2, zip(point1, point2)))), 0.5)
 
 
 def enum(**enums):

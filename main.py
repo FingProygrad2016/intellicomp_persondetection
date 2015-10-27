@@ -20,7 +20,7 @@ def start_to_process():
     popen("v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0,"
           "white_balance_temperature=inactive,exposure_absolute=inactive,"
           "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
-    cap = cv2.VideoCapture('Videos/Video_003.avi')
+    cap = cv2.VideoCapture(1) # 'Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
@@ -28,13 +28,14 @@ def start_to_process():
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
     except ValueError:
         FPS = 7.
+    FPS = 30
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 
     # Getting width and height of captured images
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print "Width: ", w, "Height: ", h
+    print ("Width: ", w, "Height: ", h)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -87,6 +88,9 @@ def start_to_process():
         t0 = time.time()
         # Get a new frame
         hasMoreImages, frame = cap.read()
+
+        frame = cv2.resize(frame, (640, 360))
+
         number_frame += 1
         read_time += time.time() - t0
 
@@ -127,7 +131,7 @@ def start_to_process():
                         break
                     else:
                         new_warn = json.loads(json.loads(warnings[2]))
-                        print "NEW WARN", new_warn
+                        print ("NEW WARN", new_warn)
                         rules = str(new_warn['rules'][0])
                         id_track = new_warn['id']
                         tracklet = tracklets.get(id_track, None)
@@ -163,9 +167,9 @@ def start_to_process():
                 for num in range(max(0, journey_data_len - 30), journey_data_len - 1):
                     tuple1 = tuple(journey_data[num][0:2])
                     tuple2 = tuple(journey_data[num+1][0:2])
-                    cv2.line(to_show, tuple1, tuple2, journey_color, thickness=1)
-                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
-                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color)
+                    cv2.line(to_show, tuple1, tuple2, journey_color, thickness=2)
+                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=2)
+                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1], journey_color, thickness=2)
 
                 last_data = journey_data[journey_data_len - 1]
                 last_journey_point = (int(last_data[0][0]), int(last_data[1][0]))
@@ -177,13 +181,13 @@ def start_to_process():
 
             t0 = time.time()
             # Resize the frames
-            to_show = cv2.resize(to_show, (w*3, h*3))
-            frame = cv2.resize(frame, (w*3, h*3))
-            bg_sub = cv2.resize(bg_sub, (w*3, h*3))
+            # to_show = cv2.resize(to_show, (w*3, h*3))
+            # frame = cv2.resize(frame, (w*3, h*3))
+            # bg_sub = cv2.resize(bg_sub, (w*3, h*3))
 
             # Display the frames
             cv2.imshow('result', to_show)
-            cv2.imshow('background subtraction', bg_sub)
+            # cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
 
             rs_time += time.time() - t0
@@ -198,28 +202,28 @@ def start_to_process():
             tt_time += time.time() - t_total
 
 
-    print "Average times::::"
+    print ("Average times::::")
     read_time = read_time / number_frame
-    print "Read time " + str(read_time)
+    print ("Read time " + str(read_time))
     bs_time = bs_time / number_frame
-    print "Background subtraction time " + str(bs_time)
+    print ("Background subtraction time " + str(bs_time))
     bd_time = bd_time / number_frame
-    print "Blob detector time " + str(bd_time)
+    print ("Blob detector time " + str(bd_time))
     t_time = t_time / number_frame
-    print "Tracker time " + str(t_time)
+    print ("Tracker time " + str(t_time))
     pr_time = pr_time / number_frame
-    print "Communication with pattern recognition time " + str(pr_time)
+    print ("Communication with pattern recognition time " + str(pr_time))
     tp_time = tp_time / number_frame
-    print "Text and paths time " + str(tp_time)
+    print ("Text and paths time " + str(tp_time))
     rs_time = rs_time / number_frame
-    print "Image resize and show time " + str(rs_time)
+    print ("Image resize and show time " + str(rs_time))
     wk_time = wk_time / number_frame
-    print "cv2.waitKey time " + str(wk_time)
+    print ("cv2.waitKey time " + str(wk_time))
     tt_time = tt_time / number_frame
-    print "Total time " + str(tt_time)
+    print ("Total time " + str(tt_time))
 
 
 if __name__ == '__main__':
-    print 'Start to process images...'
+    print ('Start to process images...')
     start_to_process()
-    print 'END.'
+    print ('END.')
