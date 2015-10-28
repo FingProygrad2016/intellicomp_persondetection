@@ -1,9 +1,12 @@
 numpy==1.10.0.post2
 pika==0.10.0
-scipy==0.16.0
+#scipy==0.16.0
 blinker==1.4
 munkres==1.0.7
 
-# Dependencias externas
+# Dependencias externas, se instalan desde aptitude en Ubuntu
 # rabbitmp-server==3.2.4
 # opencv3
+# http://www.pyimagesearch.com/2015/07/20/install-opencv-3-0-and-python-3-4-on-ubuntu/
+
+# python3-dev  (para la instalacion de numpy)
