@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 import json
-import numpy as np
-from black_boxes.communicator import Communicator
 
+import numpy as np
+
+from communicator import Communicator
 from tools import enum, euclidean_distance, diff_in_milliseconds
 
 SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
@@ -249,7 +250,7 @@ class PatternRecognition(object):
                                     'id': tracklet_info.id}))
 
                     for rule in found_rules:
-                        print "::" + str(rule), "TRACKLET ID:", trackled_id
+                        print ("::" + str(rule), "TRACKLET ID:", trackled_id)
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -374,7 +375,7 @@ class PatternRecognition(object):
             else:
                 break
 
-        print "last_speed_events", last_speed_events, "last_dir_events", last_dir_events
+        print ("last_speed_events", last_speed_events, "last_dir_events", last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:

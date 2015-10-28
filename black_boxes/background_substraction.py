@@ -35,8 +35,8 @@ class BackgroundSubtractorKNN:
     def __init__(self):
         self.subtractor = \
             cv2.createBackgroundSubtractorKNN(history=100, dist2Threshold=350,
-                                              detectShadows=False)
-        self.subtractor.setkNNSamples(7)
+                                              detectShadows=True)
+        self.subtractor.setkNNSamples(10)
         self.subtractor.setShadowThreshold(0.5)
 
     def apply(self, raw_image):

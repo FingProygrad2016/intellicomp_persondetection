@@ -1,12 +1,13 @@
-import numpy as np
 from uuid import uuid4
-import cv2
 from datetime import datetime, timedelta
 import random
 
-from tools import get_avg_color, euclidean_distance
+import numpy as np
+import cv2
 
-from blob_assignment import HungarianAlgorithmBlobPosition, HungarianAlgorithmBlobSize
+from tools import get_avg_color, euclidean_distance
+from black_boxes.blob_assignment import HungarianAlgorithmBlobPosition
+
 
 # Ejmplo simple de Kalman Filter
 # https://github.com/Itseez/opencv/blob/master/samples/python2/kalman.py
@@ -77,16 +78,15 @@ class Tracker:
             # prediction of next new position
             if not kf.hasBeenAssigned:
                 nearest_blob = self.search_nearest_blob(kf, blobs)
-                if nearest_blob <> -1:
+                if nearest_blob != -1:
                     kf.update_time()
                 kf.predict()
             # If TrackInfo is too old, remove it forever
-            if kf.last_update < datetime.now() - timedelta(seconds=2):
+            if kf.last_update < datetime.now() - timedelta(seconds=1.5):
                 to_remove.append(kf)
             else:
-                if len(kf.journey) > 5:
-                    journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle))
-                # info_to_send.append(kf.to_dict())
+                # if len(kf.journey) > 5:
+                journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle))
 
         # Remove the old tracked objects
         map(lambda x: self.k_filters.remove(x), to_remove)
