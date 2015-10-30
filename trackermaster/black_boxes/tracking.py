@@ -191,7 +191,6 @@ class TrackInfo:
 
         self.prediction = self.kalman_filter.predict()
 
-
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
 

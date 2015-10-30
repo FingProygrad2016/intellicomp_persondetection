@@ -19,6 +19,7 @@ Quantifiers = enum(LE="LE", GE="GE", AX="AX", EQ="EQ", NM="NM")
 
 
 class Event(object):
+
     def __init__(self, quantifier, value, time_end, duration):
         self.quantifier = quantifier
         self.value = value
@@ -35,6 +36,10 @@ class Event(object):
         return "%s TO %s TIME_START: %s DURATION: %s" % \
                (self.quantifier, str(self.value), self.time_start,
                 diff_in_milliseconds(self.time_start, self.last_update))
+
+    @property
+    def duration(self):
+        return diff_in_milliseconds(self.time_start, self.last_update)
 
     def satisfies(self, event_rule):
         if self.type == event_rule.type and \
