@@ -54,8 +54,8 @@ class Tracker:
             average_color = get_avg_color(raw_image, blob.pt)
             size = blob.size
 
-            if best_filters_per_blob and best_filters_per_blob[i][1] != -1:
-                matched_position = best_filters_per_blob[i][1]
+            if len(best_filters_per_blob) > 0 and best_filters_per_blob[i] != -1:
+                matched_position = best_filters_per_blob[i]
 
                 # Actualizo el estimador
                 self.k_filters[matched_position]. \

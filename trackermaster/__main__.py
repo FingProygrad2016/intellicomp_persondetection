@@ -25,7 +25,7 @@ def start_to_process():
     # popen("v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0,"
     #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
-    cap = cv2.VideoCapture('Videos/Video_003.avi')
+    cap = cv2.VideoCapture('../Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
