@@ -108,7 +108,8 @@ def start_to_process():
             blobs_points = blobs_detector.apply(bg_sub)
             bd_time += time.time() - t0
             t0 = time.time()
-            trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame)
+            trayectos, info_to_send, tracklets = tracker.apply(blobs_points,
+                                                               frame)
             t_time += time.time() - t0
 
             t0 = time.time()
@@ -136,7 +137,7 @@ def start_to_process():
                     else:
                         warnings = warnings[2].decode()
                         new_warn = json.loads(json.loads(warnings))
-                        print ("NEW WARN", new_warn)
+                        print("NEW WARN", new_warn)
                         rules = str(new_warn['rules'][0])
                         id_track = new_warn['id']
                         tracklet = tracklets.get(id_track, None)
@@ -147,7 +148,6 @@ def start_to_process():
                 pass
 
             pr_time += time.time() - t0
-
 
             t0 = time.time()
 

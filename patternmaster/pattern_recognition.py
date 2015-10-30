@@ -1,133 +1,17 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 
 import numpy as np
 
+from patternmaster.event import EventDirection, EventSpeed, EVENT_INFO_TYPE, \
+    Quantifiers, SpeedEventTypes
+from patternmaster.rule import load_system_rules
+from patternmaster.tracklet import Tracklet
 from utils.communicator import Communicator
-from utils.tools import enum, euclidean_distance, diff_in_milliseconds
-
-SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
-DirectionEventTypes = enum(ROTATION="ROTATION")
+from utils.tools import euclidean_distance, diff_in_milliseconds
 
 
-EVENT_INFO_TYPE = enum(TIME="TIME", ANGLE="ANGLE")
-
-
-"""
-LE = Lower or equal
-GE = Greater or equal
-AX = Approximate
-EQ = Equal
-NM = No matter
-"""
-Quantifiers = enum(LE="LE", GE="GE", AX="AX", EQ="EQ", NM="NM")
 AP_TOLERANCE = 1500
-
-
-class Rule(object):
-    def __init__(self, id, name, events):
-        self.id = id
-        self.name = name
-        self.events = events  # Collection of events
-
-    def __repr__(self):
-        return "RULE: %s" % self.name
-
-    def to_json(self):
-        return {
-            'name': self.name
-        }
-
-
-class Event(object):
-    def __init__(self, quantifier, value, time_end, duration):
-        self.quantifier = quantifier
-        self.value = value
-        if time_end:
-            self.time_start = time_end - timedelta(microseconds=duration*1000)
-        else:
-            self.time_start = None
-        if time_end:
-            self.last_update = time_end
-        else:
-            self.last_update = None
-
-    def __repr__(self):
-        return "%s TO %s TIME_START: %s DURATION: %s" % \
-               (self.quantifier, str(self.value), self.time_start,
-                diff_in_milliseconds(self.time_start, self.last_update))
-
-    def satisfies(self, event_rule):
-        if self.type == event_rule.type and \
-                self.info_type == event_rule.info_type:
-            if event_rule.quantifier == Quantifiers.LE:
-                return self.value <= event_rule.value
-            elif event_rule.quantifier == Quantifiers.GE:
-                return self.value >= event_rule.value
-            elif event_rule.quantifier == Quantifiers.AX:
-                return np.isclose(self.value, event_rule.value,
-                                  atol=AP_TOLERANCE)
-            elif event_rule.quantifier == Quantifiers.EQ:
-                return self.value == event_rule.value
-            elif event_rule.quantifier == Quantifiers.NM:
-                return True
-
-        return False
-
-
-class EventSpeed(Event):
-    def __init__(self, type, quantifier, value, time_end=None, duration=0):
-        self.type = type
-        self.info_type = EVENT_INFO_TYPE.TIME
-        super(EventSpeed, self).__init__(quantifier, value, time_end, duration)
-
-    def __repr__(self):
-        return \
-            "%s->%s %s" % \
-            (self.type, self.info_type, super(EventSpeed, self).__repr__())
-
-
-class EventDirection(Event):
-    def __init__(self, type, quantifier, value, time_end=None, duration=0):
-        self.type = DirectionEventTypes.ROTATION
-        self.info_type = EVENT_INFO_TYPE.ANGLE
-        super(EventDirection, self).__init__(quantifier, value, time_end,
-                                             duration)
-
-    def __repr__(self):
-        return \
-            "%s->%s %s" % \
-            (self.type, self.info_type, super(EventDirection, self).__repr__())
-
-
-class Tracklet(object):
-    def __init__(self, identifier):
-        self.id = identifier
-        self.active_speed_events = []
-        self.active_direction_events = []
-        self.potential_movement_change_rules_to_reach = []
-        self.last_position = None
-        self.last_position_time = 0
-        self.average_direction = None
-
-    def add_new_events(self, new_events):
-        """
-        Add new events to the events collections. Zip themes if is necessary.
-        :param new_events:
-        :return:
-        """
-        for event in new_events:
-            if isinstance(event, EventSpeed):
-                if self.active_speed_events and \
-                        self.active_speed_events[-1].type == event.type and \
-                        self.active_speed_events[-1].info_type == \
-                        event.info_type:
-                    self.active_speed_events[-1].value += event.value
-                    self.active_speed_events[-1].last_update = event.last_update
-                else:
-                    self.active_speed_events.append(event)
-            elif isinstance(event, EventDirection):
-                self.active_direction_events.append(event)
 
 
 class PatternRecognition(object):
@@ -139,43 +23,7 @@ class PatternRecognition(object):
     MIN_SPEED_FOR_RUNNING = 12
     QUANTIFIER_APPROXIMATION = 2
 
-    movement_change_rules = [
-        # Rule(1, "walk_run",
-        #      events=[
-        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.AX, 5000),
-        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
-        #      ]),
-        # Rule(2, "walk_stop_run",
-        #      events=[
-        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 5000),
-        #          EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 2000),
-        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 5000)
-        #      ]),
-        # Rule(2, "run_rotate_run",
-        #      events=[
-        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000),
-        #          EventDirection(DirectionEventTypes.ROTATION,
-        #                         Quantifiers.AX, 120),
-        #          # EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.AX, 5000)
-        #      ]),
-        Rule(3, "WALKING",
-             events=[
-                 EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 500)
-             ]),
-        Rule(3, "RUNNING",
-             events=[
-                 EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 1500)
-             ]),
-        Rule(3, "STOPPED",
-             events=[
-                 EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.GE, 500)
-             ]),
-        # Rule(3, "tired_runner",
-        #      events=[
-        #          EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 3000),
-        #          EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 2000)
-        #      ])
-    ]
+    movement_change_rules = load_system_rules()
 
     def __init__(self, min_angle_to_consider_rotation=90, min_walking_speed=10,
                  min_running_speed=120):
@@ -373,7 +221,8 @@ class PatternRecognition(object):
             else:
                 break
 
-        print ("last_speed_events", last_speed_events, "last_dir_events", last_dir_events)
+        print ("last_speed_events", last_speed_events, "last_dir_events",
+               last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
