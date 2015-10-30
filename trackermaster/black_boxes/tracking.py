@@ -87,10 +87,11 @@ class Tracker:
                 to_remove.append(kf)
             else:
                 # if len(kf.journey) > 5:
-                journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle))
+                journeys.append((kf.journey, kf.journey_color, kf.short_id, kf.rectangle, kf.prediction))
 
         # Remove the old tracked objects
-        map(lambda x: self.k_filters.remove(x), to_remove)
+        for x in to_remove:
+            self.k_filters.remove(x)
 
         return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
