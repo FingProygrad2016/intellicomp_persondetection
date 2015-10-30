@@ -1,9 +1,8 @@
 import numpy
 from munkres import Munkres
 
-from tools import euclidean_distance
+from utils.tools import euclidean_distance
 
-__author__ = 'ismael'
 
 # Referencias en:
 # https://pypi.python.org/pypi/munkres/

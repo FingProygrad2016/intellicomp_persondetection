@@ -3,8 +3,8 @@ import json
 
 import numpy as np
 
-from communicator import Communicator
-from tools import enum, euclidean_distance, diff_in_milliseconds
+from utils.communicator import Communicator
+from utils.tools import enum, euclidean_distance, diff_in_milliseconds
 
 SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
 DirectionEventTypes = enum(ROTATION="ROTATION")

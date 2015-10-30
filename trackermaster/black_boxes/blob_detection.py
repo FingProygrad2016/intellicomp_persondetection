@@ -1,6 +1,6 @@
 import cv2
 
-from tools import euclidean_distance
+from utils.tools import euclidean_distance
 
 __author__ = 'jp'
 

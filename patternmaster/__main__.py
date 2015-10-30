@@ -1,6 +1,13 @@
+import sys
+import os
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
+
 import json
 import pika
-from pattern_recognition import PatternRecognition
+
+from patternmaster.pattern_recognition import PatternRecognition
 
 
 class Receiver(object):
@@ -22,7 +29,7 @@ class Receiver(object):
     @staticmethod
     def proccess(ch, method, properties, body):
         # print body
-        for info in json.loads(body):
+        for info in json.loads(str(body)):
             Receiver.pattern_recognition.apply(info)
 
     def __del__(self):

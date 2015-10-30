@@ -5,8 +5,9 @@ import random
 import numpy as np
 import cv2
 
-from tools import get_avg_color, euclidean_distance
-from black_boxes.blob_assignment import HungarianAlgorithmBlobPosition
+from utils.tools import get_avg_color, euclidean_distance
+from trackermaster.black_boxes.blob_assignment import \
+    HungarianAlgorithmBlobPosition
 
 
 # Ejmplo simple de Kalman Filter

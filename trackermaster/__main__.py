@@ -1,16 +1,21 @@
+import sys
+import os
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
+
 import json
-from os import popen
+import time
+
 import numpy as np
 import cv2
-import time
-from datetime import datetime, timedelta
 import pika
 
-from black_boxes.background_substraction import BackgroundSubtractorMOG2, \
+from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
-from black_boxes.blob_detection import BlobDetector
-from black_boxes.communicator import Communicator
-from black_boxes.tracking import Tracker
+from trackermaster.black_boxes.blob_detection import BlobDetector
+from utils.communicator import Communicator
+from trackermaster.black_boxes.tracking import Tracker
 
 
 def start_to_process():
@@ -202,29 +207,28 @@ def start_to_process():
 
             tt_time += time.time() - t_total
 
-
-    print ("Average times::::")
+    print("Average times::::")
     read_time = read_time / number_frame
-    print ("Read time " + str(read_time))
+    print("Read time " + str(read_time))
     bs_time = bs_time / number_frame
-    print ("Background subtraction time " + str(bs_time))
+    print("Background subtraction time " + str(bs_time))
     bd_time = bd_time / number_frame
-    print ("Blob detector time " + str(bd_time))
+    print("Blob detector time " + str(bd_time))
     t_time = t_time / number_frame
-    print ("Tracker time " + str(t_time))
+    print("Tracker time " + str(t_time))
     pr_time = pr_time / number_frame
-    print ("Communication with pattern recognition time " + str(pr_time))
+    print("Communication with pattern recognition time " + str(pr_time))
     tp_time = tp_time / number_frame
-    print ("Text and paths time " + str(tp_time))
+    print("Text and paths time " + str(tp_time))
     rs_time = rs_time / number_frame
-    print ("Image resize and show time " + str(rs_time))
+    print("Image resize and show time " + str(rs_time))
     wk_time = wk_time / number_frame
-    print ("cv2.waitKey time " + str(wk_time))
+    print("cv2.waitKey time " + str(wk_time))
     tt_time = tt_time / number_frame
-    print ("Total time " + str(tt_time))
+    print("Total time " + str(tt_time))
 
 
 if __name__ == '__main__':
-    print ('Start to process images...')
+    print('Start to process images...')
     start_to_process()
-    print ('END.')
+    print('END.')

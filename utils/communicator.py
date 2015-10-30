@@ -35,7 +35,7 @@ class Communicator:
 
     def apply(self, message):
         if message:
-            dispatcher.send([self, json.dumps(message)])
+            dispatcher.send([self, json.dumps(str(message))])
 
     def __delete__(self, instance):
         self.connection.close()
