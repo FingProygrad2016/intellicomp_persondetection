@@ -160,6 +160,7 @@ def start_to_process():
                 journey_color = journey[1]
                 journey_id    = journey[2]
                 rectangle_points = journey[3]
+                prediction = journey[4]
 
                 journey_data_len = len(journey_data)
 
@@ -175,6 +176,7 @@ def start_to_process():
                 cv2.rectangle(frame, (last_journey_point[0], last_journey_point[1] - 7),
                               (last_journey_point[0] + 12, last_journey_point[1] + 1) , (255, 255, 255), -1)
                 cv2.putText(frame, str(journey_id), last_journey_point, font, 0.3, journey_color, 1)
+                cv2.circle(frame, (prediction[0], prediction[1]), 3, journey_color, -1)
 
             tp_time += time.time() - t0
 

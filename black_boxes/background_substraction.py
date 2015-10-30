@@ -51,6 +51,12 @@ class BackgroundSubtractorKNN:
         # previamente cargados
         fgMaskKNN = self.subtractor.apply(bg, -1)
 
+        # create NumPy arrays from the boundaries
+        # white = np.array([255], dtype = "uint8")
+
+        # find the colors within the specified boundaries
+        # fgMaskKNN = cv2.inRange(fgMaskKNN, white, white)
+
         # Erosiono y dilato el resultado para eliminar el ruido
         erode_dilate = \
             cv2.erode(fgMaskKNN, np.ones((3, 3), np.uint8), iterations=1)

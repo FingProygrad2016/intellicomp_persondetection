@@ -153,8 +153,8 @@ class TrackInfo:
         #                                                 [0,0,1,0],
         #                                                 [0,0,0,1]],np.float32)
         self.kalman_filter.transitionMatrix = \
-            np.array([[1, 0, 1, 0, 10.5, 0],
-                      [0, 1, 0, 1, 0, 10.5],
+            np.array([[1, 0, 1, 0, 0.5, 0],
+                      [0, 1, 0, 1, 0, 0.5],
                       [0, 0, 1, 0, 1, 0],
                       [0, 0, 0, 1, 0, 1],
                       [0, 0, 0, 0, 1, 0],
@@ -186,7 +186,8 @@ class TrackInfo:
 
     def predict(self):
 
-        prediction = self.kalman_filter.predict()
+        self.prediction = self.kalman_filter.predict()
+
 
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
