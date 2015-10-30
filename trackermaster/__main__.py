@@ -134,7 +134,8 @@ def start_to_process():
                     if None in warnings:
                         break
                     else:
-                        new_warn = json.loads(json.loads(warnings[2]))
+                        warnings = warnings[2].decode()
+                        new_warn = json.loads(json.loads(warnings))
                         print ("NEW WARN", new_warn)
                         rules = str(new_warn['rules'][0])
                         id_track = new_warn['id']
@@ -163,7 +164,7 @@ def start_to_process():
             for journey in trayectos:
                 journey_data = journey[0]
                 journey_color = journey[1]
-                journey_id    = journey[2]
+                journey_id = journey[2]
                 rectangle_points = journey[3]
                 prediction = journey[4]
 

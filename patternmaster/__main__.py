@@ -28,8 +28,8 @@ class Receiver(object):
 
     @staticmethod
     def proccess(ch, method, properties, body):
-        # print body
-        for info in json.loads(str(body)):
+        tracklets = json.loads(body.decode())
+        for info in tracklets:
             Receiver.pattern_recognition.apply(info)
 
     def __del__(self):
@@ -37,6 +37,6 @@ class Receiver(object):
 
 
 if __name__ == "__main__":
-    print ("Listening...")
+    print("Listening...")
     Receiver().apply()
-    print ("END.")
+    print("END.")

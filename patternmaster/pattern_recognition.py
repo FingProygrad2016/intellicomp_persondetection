@@ -194,7 +194,6 @@ class PatternRecognition(object):
         :param tracklet_raw_info:
         :return:
         """
-
         trackled_id = tracklet_raw_info['id']
         tracklet_info = self.tracklets_info.get(trackled_id, None)
 
@@ -243,8 +242,7 @@ class PatternRecognition(object):
                 #     print "EVENT:", event, "TRACKLET ID:", trackled_id
                 if found_rules:
                     self.communicator.apply(
-                        json.dumps({'rules': map(lambda x: x.name,
-                                                 found_rules),
+                        json.dumps({'rules': [r.name for r in found_rules],
                                     'position':
                                         tracklet_info.last_position,
                                     'id': tracklet_info.id}))
