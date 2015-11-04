@@ -247,10 +247,10 @@ class PatternRecognition(object):
         """
         if not last_events:
             return True, 0
-        last_events_iter = iter(last_events)
+        last_events_iter = iter(reversed(last_events))
         try:
             distance = 0
-            for rule_event in rule_events:
+            for rule_event in reversed(rule_events):
                 last_event = next(last_events_iter)
                 while not last_event.satisfies(rule_event):
                     distance += last_event.duration

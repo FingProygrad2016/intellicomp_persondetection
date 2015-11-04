@@ -1,4 +1,6 @@
 from datetime import timedelta
+import numpy as np
+
 from utils.tools import diff_in_milliseconds, enum
 
 SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
@@ -24,7 +26,7 @@ class Event(object):
         self.quantifier = quantifier
         self.value = value
         if time_end:
-            self.time_start = time_end - timedelta(microseconds=duration*1000)
+            self.time_start = time_end - timedelta(milliseconds=duration)
         else:
             self.time_start = None
         if time_end:
@@ -49,6 +51,7 @@ class Event(object):
             elif event_rule.quantifier == Quantifiers.GE:
                 return self.value >= event_rule.value
             elif event_rule.quantifier == Quantifiers.AX:
+                from patternmaster.pattern_recognition import AP_TOLERANCE
                 return np.isclose(self.value, event_rule.value,
                                   atol=AP_TOLERANCE)
             elif event_rule.quantifier == Quantifiers.EQ:
