@@ -192,10 +192,6 @@ class PatternRecognition(object):
         MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
         MIN_EVENTS_DIR_AMOUNT = 2
         MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
-        # MIN_EVENTS_SPEED_AMOUNT = 1
-        # MIN_EVENTS_SPEED_TIME = 0  # In milliseconds
-        # MIN_EVENTS_DIR_AMOUNT = 1
-        # MIN_EVENTS_DIR_TIME = 0  # In milliseconds
 
         last_speed_events = []
         last_dir_events = []
@@ -238,22 +234,27 @@ class PatternRecognition(object):
     @staticmethod
     def check_ruleevents_in_activeevents(rule_events, last_events):
         """
-        Checks if the secuence of rule's events are contained in last_events
+        Checks if the sequence of rule's events are contained in last_events,
         in the same order as defined in the rule.
-        BE CAREFUL: Same order doesn't mean contiguously.
+        BE CAREFUL: Same order doesn't mean contiguously. Non contiguously
+        rule's events will have a distance greater than zero.
         :param rule_events:
         :param last_events:
         :return:
         """
         if not last_events:
             return True, 0
+        firsts = True
         last_events_iter = iter(reversed(last_events))
         try:
             distance = 0
-            for rule_event in reversed(rule_events):
+            for pos, rule_event in enumerate(reversed(rule_events)):
+                if pos > 0:
+                    firsts = False
                 last_event = next(last_events_iter)
                 while not last_event.satisfies(rule_event):
-                    distance += last_event.duration
+                    if not firsts:
+                        distance += last_event.duration
                     last_event = next(last_events_iter)
             else:
                 return True, distance
