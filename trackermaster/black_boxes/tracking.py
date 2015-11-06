@@ -7,7 +7,7 @@ import cv2
 
 from utils.tools import get_avg_color, euclidean_distance
 from trackermaster.black_boxes.blob_assignment import \
-    HungarianAlgorithmBlobPosition
+    HungarianAlgorithm
 
 
 # Ejmplo simple de Kalman Filter
@@ -26,7 +26,18 @@ class Tracker:
     tracklets_short_id = 1
 
     def __init__(self):
-        pass
+        def position_distance_function(blob, k_filter):
+            prediction = k_filter.kalman_filter.statePost
+            return euclidean_distance((prediction[0], prediction[1]), blob.pt)
+
+        # Hungarian Algorithm for blob position
+        self.habp = HungarianAlgorithm(position_distance_function, self.threshold_distance, 100000)
+
+        def blob_size_distance_function(blob, k_filter):
+            return abs(blob.size - k_filter.size)
+
+        # Hungarian Algorithm for blob size
+        self.habs = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, 100000)
 
     def apply(self, blobs, raw_image):
         """
@@ -43,9 +54,8 @@ class Tracker:
         for kf in self.k_filters:
             kf.hasBeenAssigned = False
 
-        # Apply hungarian algorith for blob position
-        habp = HungarianAlgorithmBlobPosition(self.threshold_distance, blobs)
-        best_filters_per_blob = habp.apply(self.k_filters)
+        # Apply hungarian algorithm for blob position
+        best_filters_per_blob = self.habp.apply(blobs, self.k_filters)
 
         for i in range(0, len(blobs)):
             blob = blobs[i]
