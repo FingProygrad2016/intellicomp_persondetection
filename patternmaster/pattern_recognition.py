@@ -80,6 +80,7 @@ class PatternRecognition(object):
 
                 # Update the last_updated_time for the current tracklet
                 tracklet_info.last_position_time = last_update_datetime
+                tracklet_info.last_position = tracklet_raw_info['last_position']
 
                 # Considering the new events and the recent events' history,
                 # check if any rule matches
@@ -156,7 +157,7 @@ class PatternRecognition(object):
     def calc_speed_events(self, distance, last_update, time_lapse):
         current_events = []
 
-        speed = distance / (time_lapse / 1000.0)  # Pixels per milliseconds??o.O
+        speed = distance / (time_lapse / 1000.0)  # Measure in Pixels/Second
 
         if speed < self.MIN_SPEED_FOR_WALKING:
             # Append 'STOPPED' event

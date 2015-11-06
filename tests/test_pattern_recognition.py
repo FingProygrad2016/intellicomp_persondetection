@@ -129,6 +129,92 @@ class PatternRecognitionTestCase(unittest.TestCase):
             pr.check_ruleevents_in_activeevents(rule_events, last_events)
         self.assertFalse(satisfy)
 
+    def test_primitives_recognition(self):
+        pattern_recognition = PatternRecognition(
+            min_angle_to_consider_rotation=45, min_walking_speed=10,
+            min_running_speed=50)
+        # remove the fire_alarms logic
+        pattern_recognition.fire_alarms = null_function
+
+        timestamp = datetime.now()
+        tracklet = {'id': '123123',
+                    'last_position': (0, 0),
+                    'last_update_timestamp': timestamp.isoformat()}
+
+        self.assertDictEqual({}, pattern_recognition.tracklets_info)
+
+        pattern_recognition.apply(tracklet)
+
+        tcklts = pattern_recognition.tracklets_info
+        self.assertEqual(1, len(tcklts))
+        self.assertIn('123123', tcklts)
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_speed_events))
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+
+        # 'Send' new data
+        tracklet['last_position'] = (0, 0)
+        timestamp += timedelta(seconds=1)
+        tracklet['last_update_timestamp'] = timestamp.isoformat()
+        pattern_recognition.apply(tracklet)
+
+        tcklts = pattern_recognition.tracklets_info
+        self.assertEqual(1, len(tcklts))
+        self.assertIn('123123', tcklts)
+        self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
+        self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
+
+        # 'Send' new data
+        tracklet['last_position'] = (5, 5)
+        timestamp += timedelta(seconds=1)
+        tracklet['last_update_timestamp'] = timestamp.isoformat()
+        pattern_recognition.apply(tracklet)
+
+        tcklts = pattern_recognition.tracklets_info
+        self.assertEqual(1, len(tcklts))
+        self.assertIn('123123', tcklts)
+        self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
+        self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
+
+        # 'Send' new data
+        tracklet['last_position'] = (10, 10)
+        timestamp += timedelta(seconds=1)
+        tracklet['last_update_timestamp'] = timestamp.isoformat()
+        pattern_recognition.apply(tracklet)
+
+        tcklts = pattern_recognition.tracklets_info
+        self.assertEqual(1, len(tcklts))
+        self.assertIn('123123', tcklts)
+        self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
+        self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
+
+        # 'Send' new data
+        tracklet['last_position'] = (0, 0)
+        timestamp += timedelta(seconds=1)
+        tracklet['last_update_timestamp'] = timestamp.isoformat()
+        pattern_recognition.apply(tracklet)
+
+        tcklts = pattern_recognition.tracklets_info
+        self.assertEqual(1, len(tcklts))
+        self.assertIn('123123', tcklts)
+        self.assertEqual(2, len(tcklts[tracklet['id']].active_speed_events))
+        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
+        self.assertEqual(SpeedEventTypes.WALKING, last_speed_event.type)
+
+
+def null_function(*null_args1, **null_args2):
+    """
+    Used to remove the logic of a method
+    :return:
+    """
+    pass
+
 
 if __name__ == '__main__':
     unittest.main()
