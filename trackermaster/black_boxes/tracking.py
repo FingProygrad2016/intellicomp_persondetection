@@ -25,21 +25,27 @@ class Tracker:
     threshold_distance = 30
     tracklets_short_id = 1
 
-    def __init__(self):
+    def __init__(self, seconds_per_frame):
+        self.last_frame = 0
+        self.seconds_per_frame = seconds_per_frame
+
+        # calculate the amount of valid frames to be without an update
+        self.valid_frames_without_update = 1.5 / self.seconds_per_frame
+
         def position_distance_function(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
             return euclidean_distance((prediction[0], prediction[1]), blob.pt)
 
         # Hungarian Algorithm for blob position
-        self.habp = HungarianAlgorithm(position_distance_function, self.threshold_distance, 100000)
+        self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance, 100000)
 
         def blob_size_distance_function(blob, k_filter):
             return abs(blob.size - k_filter.size)
 
         # Hungarian Algorithm for blob size
-        self.habs = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, 100000)
+        self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, 100000)
 
-    def apply(self, blobs, raw_image):
+    def apply(self, blobs, raw_image, frame_number):
         """
         For every blob, detect the corresponded tracked object and update it
         with the new information
@@ -50,12 +56,14 @@ class Tracker:
 
         info_to_send = {}
         to_remove = []
+        # elapsed_time = (frame_number - self.last_frame) * self.seconds_per_frame
+        self.last_frame = frame_number
 
         for kf in self.k_filters:
             kf.hasBeenAssigned = False
 
         # Apply hungarian algorithm for blob position
-        best_filters_per_blob = self.habp.apply(blobs, self.k_filters)
+        best_filters_per_blob = self.hung_alg_blob_pos.apply(blobs, self.k_filters)
 
         for i in range(0, len(blobs)):
             blob = blobs[i]
@@ -71,13 +79,13 @@ class Tracker:
                 self.k_filters[matched_position]. \
                     update_info(new_position=blob.pt,
                                 color=get_avg_color(raw_image, blob.pt),
-                                size=blob.size, blob=blob)
+                                size=blob.size, blob=blob, last_frame_update=frame_number)
             else:
                 # Si no hay filtro creado para este blob, entonces creo uno
                 matched_position = \
                     self.add_new_tracking(blob.pt,
                                           get_avg_color(raw_image, blob.pt),
-                                          blob.size, blob)
+                                          blob.size, blob, frame_number)
 
             info_to_send[self.k_filters[matched_position].id] = \
                 self.k_filters[matched_position]
@@ -90,10 +98,10 @@ class Tracker:
             if not kf.hasBeenAssigned:
                 nearest_blob = self.search_nearest_blob(kf, blobs)
                 if nearest_blob != -1:
-                    kf.update_time()
+                    kf.update_last_frame(frame_number)
                 kf.predict()
             # If TrackInfo is too old, remove it forever
-            if kf.last_update < datetime.now() - timedelta(seconds=1.5):
+            if self.last_frame - kf.last_frame_update > self.valid_frames_without_update:
                 to_remove.append(kf)
             else:
                 # if len(kf.journey) > 5:
@@ -106,7 +114,7 @@ class Tracker:
 
         return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
-    def add_new_tracking(self, point, color, size, blob):
+    def add_new_tracking(self, point, color, size, blob, frame_number):
         """
         Add a new instance of KalmanFilter and the corresponding metadata
         to the control collection.
@@ -115,7 +123,7 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob)
+        track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob, frame_number)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1
@@ -140,12 +148,13 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob):
+    def __init__(self, color, size, point, short_id, blob, frame_number):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
         self.id = uuid4().hex
         self.short_id = short_id
+        self.last_frame_update = frame_number
         self.last_update = self.created_datetime
         self.last_point = point
 
@@ -171,7 +180,7 @@ class TrackInfo:
                       [0, 0, 1, 0, 1, 0],
                       [0, 0, 0, 1, 0, 1],
                       [0, 0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 0, 1]],np.float32)
+                      [0, 0, 0, 0, 0, 1]], np.float32)
         self.kalman_filter.processNoiseCov = np.array([[1, 0, 0, 0, 0, 0],
                                                        [0, 1, 0, 0, 0, 0],
                                                        [0, 0, 1, 0, 0, 0],
@@ -180,18 +189,18 @@ class TrackInfo:
                                                        [0, 0, 0, 0, 0, 1]],
                                                       np.float32) * 0.0001
         self.journey = []
-        self.journey_color = (random.randint(0,255), random.randint(0,255), random.randint(0,255)) # (0, 155, 0)
+        self.journey_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         self.number_updates = 0
 
-        arrayAux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
-        self.kalman_filter.statePost = arrayAux
+        array_aux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
+        self.kalman_filter.statePost = array_aux
 
         self.hasBeenAssigned = True
 
         # prediction of next new position
         self.predict()
 
-        self.journey.append(np.array(arrayAux.copy()))
+        self.journey.append(np.array(array_aux.copy()))
 
     def __repr__(self):
         return "<TrackInfo color: %s, size: %s, last seen: %s, created: %s>" %\
@@ -208,15 +217,17 @@ class TrackInfo:
 
         return correction
 
-    def update_time(self):
+    def update_last_frame(self, last_frame_update):
+        self.last_frame_update = last_frame_update
         self.last_update = datetime.now()
 
-    def update_info(self, new_position, color, size, blob):
+    def update_info(self, new_position, color, size, blob, last_frame_update):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
         self.predict()
         self.color = color
         self.size = size
+        self.last_frame_update = last_frame_update
         self.last_update = datetime.now()
         self.last_point = new_position
 

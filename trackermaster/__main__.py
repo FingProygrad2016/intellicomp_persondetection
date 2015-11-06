@@ -49,7 +49,7 @@ def start_to_process():
     # background_substractor = BackgroundSubtractorMOG2()
     background_substractor = BackgroundSubtractorKNN()
     blobs_detector = BlobDetector(10, 10)
-    tracker = Tracker()
+    tracker = Tracker(SEC_PER_FRAME)
     communicator = Communicator()
 
     # Warnings' receiver
@@ -109,7 +109,8 @@ def start_to_process():
             bd_time += time.time() - t0
             t0 = time.time()
             trayectos, info_to_send, tracklets = tracker.apply(blobs_points,
-                                                               frame)
+                                                               frame,
+                                                               number_frame)
             t_time += time.time() - t0
 
             t0 = time.time()
