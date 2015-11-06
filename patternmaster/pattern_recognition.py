@@ -46,7 +46,8 @@ class PatternRecognition(object):
         tracklet_info = self.tracklets_info.get(trackled_id, None)
 
         if not tracklet_info:
-            # It's a new tracklet ;)
+            # It's a new tracklet ;) we need to create a Tracklet instance
+
             self.tracklets_info[trackled_id] = Tracklet(trackled_id)
             self.tracklets_info[trackled_id].last_position = \
                 tracklet_raw_info['last_position']
@@ -57,6 +58,8 @@ class PatternRecognition(object):
                 last_update_datetime
 
         else:
+            # It's new data to an existent Tracklet info
+
             last_update_datetime = \
                 datetime.strptime(tracklet_raw_info['last_update_timestamp'],
                                   "%Y-%m-%dT%H:%M:%S.%f")
@@ -65,8 +68,9 @@ class PatternRecognition(object):
                 last_update_datetime)
 
             if time_lapse > 0:
+                # If there a time lapse to process
 
-                # Process looking for new events
+                # Look for new events
                 current_events = \
                     self.calc_events(tracklet_info, last_update_datetime,
                                      time_lapse, distance, angle)
@@ -79,24 +83,11 @@ class PatternRecognition(object):
 
                 # Considering the new events and the recent events' history,
                 # check if any rule matches
-                found_rules = \
-                    self.calc_rules(tracklet_info)
+                found_rules = self.calc_rules(tracklet_info)
 
-                # if found_rules:
-                #     self.fire_alarms(tracklet_info, found_rules)
-
-                # ####    DEBUG PURPOUSE    #### #
-                # for event in current_events:
-                #     print "EVENT:", event, "TRACKLET ID:", trackled_id
+                # If Rules were matched, warn about it
                 if found_rules:
-                    self.communicator.apply(
-                        json.dumps({'rules': [r.name for r in found_rules],
-                                    'position':
-                                        tracklet_info.last_position,
-                                    'id': tracklet_info.id}))
-
-                    for rule in found_rules:
-                        print ("::" + str(rule), "TRACKLET ID:", trackled_id)
+                    self.fire_alarms(tracklet_info, found_rules)
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -189,16 +180,18 @@ class PatternRecognition(object):
         return current_events
 
     def calc_rules(self, tracklet_info):
+        """
+
+        :param tracklet_info:
+        :return: a list of tuples with the distance and the rule that was
+        satisfied
+        """
         found_rules = []
 
-        # MIN_EVENTS_SPEED_AMOUNT = 6
-        # MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
-        # MIN_EVENTS_DIR_AMOUNT = 2
-        # MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
-        MIN_EVENTS_SPEED_AMOUNT = 1
-        MIN_EVENTS_SPEED_TIME = 0  # In milliseconds
-        MIN_EVENTS_DIR_AMOUNT = 1
-        MIN_EVENTS_DIR_TIME = 0  # In milliseconds
+        MIN_EVENTS_SPEED_AMOUNT = 6
+        MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
+        MIN_EVENTS_DIR_AMOUNT = 2
+        MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
 
         last_speed_events = []
         last_dir_events = []
@@ -221,35 +214,62 @@ class PatternRecognition(object):
             else:
                 break
 
-        print ("last_speed_events", last_speed_events, "last_dir_events",
-               last_dir_events)
+        print("last_speed_events", last_speed_events, "last_dir_events",
+              last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
-            if self.check_events_in_activeevents(
-                    rule.events, last_speed_events) and \
-                    self.check_events_in_activeevents(
-                        rule.events, last_dir_events):
-                found_rules.append(rule)
+            satisfies_speed_events, dist1 = \
+                self.check_ruleevents_in_activeevents(
+                    rule.events, last_speed_events)
+            satisfies_dir_events, dist2 = \
+                self.check_ruleevents_in_activeevents(
+                    rule.events, last_dir_events)
+
+            if satisfies_speed_events and satisfies_dir_events:
+                found_rules.append((dist1 + dist2, rule))
 
         return found_rules
 
     @staticmethod
-    def check_events_in_activeevents(rule_events, last_events):
+    def check_ruleevents_in_activeevents(rule_events, last_events):
+        """
+        Checks if the sequence of rule's events are contained in last_events,
+        in the same order as defined in the rule.
+        BE CAREFUL: Same order doesn't mean contiguously. Non contiguously
+        rule's events will have a distance greater than zero.
+        :param rule_events:
+        :param last_events:
+        :return:
+        """
         if not last_events:
-            return True
-        last_events_iter = iter(last_events)
+            return True, 0
+        firsts = True
+        last_events_iter = iter(reversed(last_events))
         try:
-            for rule_event in rule_events:
-                while not next(last_events_iter).satisfies(rule_event):
-                    pass
+            distance = 0
+            for pos, rule_event in enumerate(reversed(rule_events)):
+                if pos > 0:
+                    firsts = False
+                last_event = next(last_events_iter)
+                while not last_event.satisfies(rule_event):
+                    if not firsts:
+                        distance += last_event.duration
+                    last_event = next(last_events_iter)
             else:
-                return True
+                return True, distance
         except StopIteration:
             pass
 
-        return False
+        return False, None
 
-    def fire_alarms(self, tracklet_info, fired_rules):
-        # TODO: fire alarms
-        return len(fired_rules)
+    def fire_alarms(self, tracklet_info, found_rules):
+
+        self.communicator.apply(
+            json.dumps({'rules': [(r[0], r[1].name) for r in found_rules],
+                        'position':
+                            tracklet_info.last_position,
+                        'id': tracklet_info.id}))
+
+        for rule in found_rules:
+            print ("::" + str(rule), "TRACKLET ID:", tracklet_info.id)

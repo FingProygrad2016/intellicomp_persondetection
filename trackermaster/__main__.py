@@ -116,7 +116,7 @@ def start_to_process():
 
             if number_frame % FPS_OVER_2 == 0:
                 # Send info to the pattern recognition every half second
-                communicator.apply(info_to_send)
+                communicator.apply(json.dumps(info_to_send))
 
             # Draw circles in each blob
             to_show = cv2.drawKeypoints(
@@ -136,7 +136,7 @@ def start_to_process():
                         break
                     else:
                         warnings = warnings[2].decode()
-                        new_warn = json.loads(json.loads(warnings))
+                        new_warn = json.loads(warnings)
                         print("NEW WARN", new_warn)
                         rules = str(new_warn['rules'][0])
                         id_track = new_warn['id']

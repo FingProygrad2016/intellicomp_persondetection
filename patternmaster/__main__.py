@@ -10,7 +10,7 @@ import pika
 from patternmaster.pattern_recognition import PatternRecognition
 
 
-class Receiver(object):
+class PatternMaster(object):
 
     pattern_recognition = PatternRecognition()
 
@@ -30,7 +30,7 @@ class Receiver(object):
     def proccess(ch, method, properties, body):
         tracklets = json.loads(body.decode())
         for info in tracklets:
-            Receiver.pattern_recognition.apply(info)
+            PatternMaster.pattern_recognition.apply(info)
 
     def __del__(self):
         self.connection.close()
@@ -38,5 +38,5 @@ class Receiver(object):
 
 if __name__ == "__main__":
     print("Listening...")
-    Receiver().apply()
+    PatternMaster().apply()
     print("END.")
