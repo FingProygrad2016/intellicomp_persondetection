@@ -3,6 +3,7 @@ import unittest
 from patternmaster.event import Quantifiers, SpeedEventTypes, EventSpeed
 
 from patternmaster.pattern_recognition import PatternRecognition
+from patternmaster.rule import Rule
 
 
 class PatternRecognitionTestCase(unittest.TestCase):
@@ -206,6 +207,129 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
         last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
         self.assertEqual(SpeedEventTypes.WALKING, last_speed_event.type)
+
+    def test_pattern_recognition(self):
+
+        pattern_recognition = PatternRecognition(
+            min_angle_to_consider_rotation=45, min_walking_speed=10,
+            min_running_speed=50)
+        # remove the fire_alarms logic
+        pattern_recognition.rules = []
+
+        # I want to check if the next rule is recognised
+        pattern_recognition.movement_change_rules = [
+            Rule(1, "walk_stop_run",
+                 events=[
+                     EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 500),
+                     EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.AX, 500),
+                     EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 1000)
+                 ]),
+            Rule(2, "walk_run",
+                 events=[
+                     EventSpeed(SpeedEventTypes.WALKING, Quantifiers.GE, 5000),
+                     EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 1000)
+                 ]),
+            Rule(3, "stopped_like_an_idiot",
+                 events=[
+                     EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.GE, 30000)
+                 ]),
+            Rule(4, "usain_bolt",
+                 events=[
+                     EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.GE, 30000)
+                 ])
+        ]
+
+        timestamp = datetime.now()
+
+        # NOTHING - 0 sec
+        tracklet = {'id': '456789',
+                    'last_position': (0, 0),
+                    'last_update_timestamp': timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # WALKING - 1 sec
+        timestamp += timedelta(seconds=1)
+        tracklet = {'id': '456789',
+                    'last_position': (15, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # WALKING - 2 sec
+        timestamp += timedelta(seconds=1)
+        tracklet = {'id': '456789',
+                    'last_position': (26, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # STOPPED - 200 msec
+        timestamp += timedelta(milliseconds=200)
+        tracklet = {'id': '456789',
+                    'last_position': (25, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # STOPPED - 400 msec
+        timestamp += timedelta(milliseconds=200)
+        tracklet = {'id': '456789',
+                    'last_position': (26, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # RUNNING - 500 msec
+        timestamp += timedelta(milliseconds=500)
+        tracklet = {'id': '456789',
+                    'last_position': (100, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
+                             last_found_rules, [])
+
+        # RUNNING - 1300 msec -> RULE SATISFIED
+        timestamp += timedelta(milliseconds=800)
+        tracklet = {'id': '456789',
+                    'last_position': (150, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertEqual(1, len(pattern_recognition.tracklets_info['456789'].
+                                last_found_rules))
+        self.assertEqual('walk_stop_run',
+                         pattern_recognition.tracklets_info['456789'].
+                         last_found_rules[0][1].name)
+        # Check distance
+        self.assertEqual(0, pattern_recognition.tracklets_info['456789'].
+                         last_found_rules[0][0])
+
+        # RUNNING - 2100 msec -> RULE SATISFIED since 1000 msec ago
+        timestamp += timedelta(seconds=1)
+        tracklet = {'id': '456789',
+                    'last_position': (250, 0),
+                    'last_update_timestamp':
+                        timestamp.isoformat()}
+        pattern_recognition.apply(tracklet)
+        self.assertEqual(1, len(pattern_recognition.tracklets_info['456789'].
+                                last_found_rules))
+        self.assertEqual('walk_stop_run',
+                         pattern_recognition.tracklets_info['456789'].
+                         last_found_rules[0][1].name)
+        # Check distance
+        self.assertEqual(0, pattern_recognition.tracklets_info['456789'].
+                         last_found_rules[0][0])
 
 
 def null_function(*null_args1, **null_args2):

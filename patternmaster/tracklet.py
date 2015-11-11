@@ -10,6 +10,7 @@ class Tracklet(object):
         self.last_position = None
         self.last_position_time = 0
         self.average_direction = None
+        self.last_found_rules = []
 
     def add_new_events(self, new_events):
         """

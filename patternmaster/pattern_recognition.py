@@ -88,6 +88,7 @@ class PatternRecognition(object):
 
                 # If Rules were matched, warn about it
                 if found_rules:
+                    tracklet_info.last_found_rules = found_rules
                     self.fire_alarms(tracklet_info, found_rules)
 
     def calc_movements_info(self, tracklet_info, new_position,
