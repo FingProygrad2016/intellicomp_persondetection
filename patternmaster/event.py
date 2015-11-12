@@ -1,23 +1,31 @@
 from datetime import timedelta
 import numpy as np
+from enum import Enum
 
-from utils.tools import diff_in_milliseconds, enum
-
-SpeedEventTypes = enum(STOPPED="STOPPED", WALKING="WALKING", RUNNING="RUNNING")
-DirectionEventTypes = enum(ROTATION="ROTATION")
+from utils.tools import diff_in_milliseconds
 
 
-EVENT_INFO_TYPE = enum(TIME="TIME", ANGLE="ANGLE")
+class SpeedEventTypes(Enum):
+    STOPPED = "STOPPED"
+    WALKING = "WALKING"
+    RUNNING = "RUNNING"
 
 
-"""
-LE = Lower or equal
-GE = Greater or equal
-AX = Approximate
-EQ = Equal
-NM = No matter
-"""
-Quantifiers = enum(LE="LE", GE="GE", AX="AX", EQ="EQ", NM="NM")
+class DirectionEventTypes(Enum):
+    ROTATION = "ROTATION"
+
+
+class EventInfoType(Enum):
+    TIME = "TIME"
+    ANGLE = "ANGLE"
+
+
+class Quantifiers(Enum):
+    LE = "LE"  # LE = Lower or equal
+    GE = "GE"  # GE = Greater or equal
+    AX = "AX"  # AX = Approximate
+    EQ = "EQ"  # EQ = Equal
+    NM = "NM"  # NM = No matter
 
 
 class Event(object):
@@ -65,7 +73,7 @@ class Event(object):
 class EventSpeed(Event):
     def __init__(self, type, quantifier, value, time_end=None, duration=0):
         self.type = type
-        self.info_type = EVENT_INFO_TYPE.TIME
+        self.info_type = EventInfoType.TIME
         super(EventSpeed, self).__init__(quantifier, value, time_end, duration)
 
     def __repr__(self):
@@ -77,7 +85,7 @@ class EventSpeed(Event):
 class EventDirection(Event):
     def __init__(self, type, quantifier, value, time_end=None, duration=0):
         self.type = DirectionEventTypes.ROTATION
-        self.info_type = EVENT_INFO_TYPE.ANGLE
+        self.info_type = EventInfoType.ANGLE
         super(EventDirection, self).__init__(quantifier, value, time_end,
                                              duration)
 

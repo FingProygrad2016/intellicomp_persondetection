@@ -3,7 +3,7 @@ import json
 
 import numpy as np
 
-from patternmaster.event import EventDirection, EventSpeed, EVENT_INFO_TYPE, \
+from patternmaster.event import EventDirection, EventSpeed, EventInfoType, \
     Quantifiers, SpeedEventTypes
 from patternmaster.rule import load_system_rules
 from patternmaster.tracklet import Tracklet
@@ -142,7 +142,7 @@ class PatternRecognition(object):
 
             if min_diff > self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION:
                 # Append ROTATION event
-                current_events.append(EventDirection(EVENT_INFO_TYPE.ANGLE,
+                current_events.append(EventDirection(EventInfoType.ANGLE,
                                                      Quantifiers.AX,
                                                      round(min_diff),
                                                      time_end=last_update,

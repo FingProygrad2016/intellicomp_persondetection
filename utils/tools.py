@@ -5,6 +5,7 @@ Modulo que contiene funciones de ayuda generales
 MAX_HEIGHT = 480
 MAX_WIDTH = 640
 
+
 def get_avg_color(raw_image, point, square_half_width=2):
     """
     Returns the average color in the square with center x and y.
@@ -27,22 +28,6 @@ def euclidean_distance(point1, point2):
     """
     # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
     return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2, zip(point1, point2)))), 0.5)
-
-
-def enum(**enums):
-    """
-    Function to create new Enumerates
-    (basically it creates a new Class 'Enum' without inheritence and with the
-      attributes passed in 'enums')
-
-    Example of use:
-        Colors = enum(RED='Red', BLUE='Blue', YELLOW='Yellow')
-        car1 = Car(color=Colors.RED)
-
-    :param enums: Values of the enumerate passed as a dict.
-    :return: A class called Enum with the attributes passed in enums.
-    """
-    return type('Enum', (), enums)
 
 
 def diff_in_milliseconds(time_start, time_end):
