@@ -2,6 +2,8 @@
 Modulo que contiene funciones de ayuda generales
 """
 
+MAX_HEIGHT = 480
+MAX_WIDTH = 640
 
 def get_avg_color(raw_image, point, square_half_width=2):
     """
@@ -57,3 +59,23 @@ def diff_in_milliseconds(time_start, time_end):
     milliseconds += diff.microseconds / 1000  # microseconds to milliseconds
 
     return milliseconds
+
+
+def find_resolution_multiplier(w, h):
+    """
+    Find a resolution divisor to get manageable resolution and then get the
+    original back to show.
+    :param w: real width
+    :param h: real height
+    :return: a float number
+    """
+
+    if w > MAX_WIDTH or h > MAX_HEIGHT:
+        mult_w = w / MAX_WIDTH
+        mult_h = h / MAX_HEIGHT
+        if mult_w > mult_h:
+            return mult_w
+        else:
+            return mult_h
+    else:
+        return 1

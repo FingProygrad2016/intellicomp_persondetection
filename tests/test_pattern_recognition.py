@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import unittest
-from patternmaster.event import Quantifiers, SpeedEventTypes, EventSpeed
 
+from patternmaster.event import Quantifiers, SpeedEventTypes, EventSpeed
 from patternmaster.pattern_recognition import PatternRecognition
 from patternmaster.rule import Rule
 
