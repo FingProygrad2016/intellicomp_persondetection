@@ -3,8 +3,6 @@ import cv2
 from utils.tools import euclidean_distance
 from trackermaster.config import config
 
-__author__ = 'jp'
-
 # Referencias en:
 # http://www.learnopencv.com/blob-detection-using-opencv-python-c/
 
@@ -12,8 +10,6 @@ __author__ = 'jp'
 class BlobDetector:
 
     detector = None
-    small_blobs_size_threshold = -1
-    small_blobs_size_distance_threshold = -1
     small_blobs = []
     big_blobs = []
 
@@ -129,5 +125,3 @@ class BlobDetector:
             return result
         else:
             return self.big_blobs
-
-        # return blobs

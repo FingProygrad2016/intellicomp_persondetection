@@ -119,10 +119,17 @@ def start_to_process():
             # Black boxes process
             t0 = time.time()
             bg_sub = background_subtractor.apply(frame)
-            to_show = bg_sub
+            to_show = np.copy(bg_sub)
             bg_sub_time += time.time() - t0
             t0 = time.time()
             blobs_points = blobs_detector.apply(bg_sub)
+
+            # Bounding boxes for each blob
+            im2, contours, hierarchy = cv2.findContours(bg_sub, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            bounding_boxes = []
+            for contour in contours:
+                bounding_boxes.append(cv2.boundingRect(contour))
+
             blob_det_time += time.time() - t0
             t0 = time.time()
             trayectos, info_to_send, tracklets = \
@@ -220,6 +227,10 @@ def start_to_process():
                             0.3, journey_color, 1)
                 cv2.circle(frame, (prediction[0], prediction[1]), 3,
                            journey_color, -1)
+
+            # Draw bounding boxes
+            for (x, y, w, h) in bounding_boxes:
+                frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
 
             show_info_time += time.time() - t0
 
