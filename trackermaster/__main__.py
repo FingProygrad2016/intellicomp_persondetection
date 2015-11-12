@@ -56,8 +56,10 @@ def start_to_process():
     background_subtractor = \
         BackgroundSubtractorKNN(history=100, dist_2_threshold=350, n_samples=5, knn_samples=5,
                                 detect_shadows=False, shadow_threshold=0.5)
-    blobs_detector = BlobDetector(threshold=[5, 30, 10], filter_by_area=[True, 50, 5000],
-                                  filter_by_circularity=[False, 0.01, 1.0],
+
+    blobs_detector = BlobDetector(threshold=[1, 100, 10], min_dist_between_blobs=3, filter_by_color=[True, 255],
+                                  filter_by_area=[True, 50, 5000], filter_by_circularity=[False, 0.01, 1.0],
+                                  filter_by_convexity=[False, 0.2, 1.0], filter_by_inertia=[False, 0, 1],
                                   small_blobs_size_threshold=10, small_blobs_size_distance_threshold=10)
     tracker = Tracker(SEC_PER_FRAME)
     communicator = Communicator()
@@ -117,9 +119,7 @@ def start_to_process():
             blobs_points = blobs_detector.apply(bg_sub)
             blob_det_time += time.time() - t0
             t0 = time.time()
-            trayectos, info_to_send, tracklets = tracker.apply(blobs_points,
-                                                               frame,
-                                                               number_frame)
+            trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame, number_frame)
             t_time += time.time() - t0
 
             t0 = time.time()

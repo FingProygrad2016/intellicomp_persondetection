@@ -3,7 +3,7 @@ import configparser
 
 def read_conf():
     configuration = configparser.ConfigParser()
-    conf_file_path = 'trackermaster/trackermaster.conf'
+    conf_file_path = 'trackermaster.conf'
     read_conf_files = configuration.read(conf_file_path)
 
     if not read_conf_files:

@@ -16,7 +16,8 @@ class BlobDetector:
     small_blobs = []
     big_blobs = []
 
-    def __init__(self, threshold, filter_by_area, filter_by_circularity, small_blobs_size_threshold, small_blobs_size_distance_threshold):
+    def __init__(self, threshold, min_dist_between_blobs, filter_by_color, filter_by_area, filter_by_circularity,
+                 filter_by_convexity, filter_by_inertia, small_blobs_size_threshold, small_blobs_size_distance_threshold):
 
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
@@ -25,6 +26,13 @@ class BlobDetector:
         params.minThreshold = threshold[0]
         params.maxThreshold = threshold[1]
         params.thresholdStep = threshold[2]
+
+        # Minimum distance between blobs
+        params.minDistBetweenBlobs = min_dist_between_blobs
+
+        # Filter by Color
+        params.filterByColor = filter_by_color[0]
+        params.blobColor = filter_by_color[1]
 
         # Filter by Area.
         params.filterByArea = filter_by_area[0]
@@ -37,19 +45,14 @@ class BlobDetector:
         params.maxCircularity = filter_by_circularity[2]
 
         # Filter by Convexity
-        params.filterByConvexity = False
-        params.minConvexity = 0.2
-        params.maxConvexity = 1.0
+        params.filterByConvexity = filter_by_convexity[0]
+        params.minConvexity = filter_by_convexity[1]
+        params.maxConvexity = filter_by_convexity[2]
 
         # Filter by Inertia
-        params.filterByInertia = False
-        params.minInertiaRatio = 0
-        params.maxInertiaRatio = 1
-
-        params.minDistBetweenBlobs = 3
-
-        params.filterByColor = True
-        params.blobColor = 255
+        params.filterByInertia = filter_by_inertia[0]
+        params.minInertiaRatio = filter_by_inertia[1]
+        params.maxInertiaRatio = filter_by_inertia[2]
 
         self.detector = cv2.SimpleBlobDetector_create(params)
         self.small_blobs_size_threshold = small_blobs_size_threshold
