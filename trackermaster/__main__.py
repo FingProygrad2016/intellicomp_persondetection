@@ -62,11 +62,6 @@ def start_to_process():
     tracker = Tracker(SEC_PER_FRAME)
     communicator = Communicator()
 
-    # Warnings' receiver
-    connection = pika.BlockingConnection()
-    channel = connection.channel()
-    new_warn = []
-
     loop_time = time.time()
 
     number_frame = 1
@@ -142,6 +137,7 @@ def start_to_process():
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                         (255, 255, 0), 2)
 
+            # ### Warnings' receiver ###
             try:
                 while True:
                     connection = pika.BlockingConnection()
@@ -158,9 +154,9 @@ def start_to_process():
                         tracklet = tracklets.get(id_track, None)
                         if tracklet:
                             tracklet.last_rule = rules
-
             except pika.exceptions.ConnectionClosed:
                 pass
+            # # END ### Warnings' receiver ###
 
             pattern_recogn_time += time.time() - t0
 

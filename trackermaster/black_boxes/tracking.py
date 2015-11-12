@@ -8,7 +8,7 @@ import cv2
 from utils.tools import get_avg_color, euclidean_distance
 from trackermaster.black_boxes.blob_assignment import \
     HungarianAlgorithm
-
+from trackermaster.config import config
 
 # Ejmplo simple de Kalman Filter
 # https://github.com/Itseez/opencv/blob/master/samples/python2/kalman.py
@@ -16,13 +16,16 @@ from trackermaster.black_boxes.blob_assignment import \
 # Metodo para reconocer a que blob hacemos referencia (por color y tamano):
 # http://airccse.org/journal/sipij/papers/2211sipij01.pdf
 
+INFINITE_DISTSTANCE = config.getint('INFINITE_DISTSTANCE')
+
 
 class Tracker:
 
     k_filters = []
-    threshold_color = 15
-    threshold_size = 1
-    threshold_distance = 30
+    threshold_color = config.getint('THRESHOLD_COLOR')
+    threshold_size = config.getint('THRESHOLD_SIZE')
+    threshold_distance = config.getint('THRESHOLD_DISTANCE')
+
     tracklets_short_id = 1
 
     def __init__(self, seconds_per_frame):
@@ -37,19 +40,19 @@ class Tracker:
             return euclidean_distance((prediction[0], prediction[1]), blob.pt)
 
         # Hungarian Algorithm for blob position
-        self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance, 100000)
+        self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance, INFINITE_DISTSTANCE)
 
         def blob_size_distance_function(blob, k_filter):
             return abs(blob.size - k_filter.size)
 
         # Hungarian Algorithm for blob size
-        self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, 100000)
+        self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, INFINITE_DISTSTANCE)
 
         def blob_color_distance_function(color, k_filter):
             return euclidean_distance(color, k_filter.color)
 
         # Hungarian Algorithm for blob color
-        self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color, 100000)
+        self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color, INFINITE_DISTSTANCE)
 
     def apply(self, blobs, raw_image, frame_number):
         """
@@ -146,7 +149,7 @@ class Tracker:
         return len(self.k_filters) - 1
 
     def search_nearest_blob(self, track_info, blobs):
-        min_distance = 100000
+        min_distance = INFINITE_DISTSTANCE
         nearest_blob = -1
         for i in range(0, len(blobs)):
             prediction = track_info.kalman_filter.statePost

@@ -9,7 +9,7 @@ from munkres import Munkres
 
 class HungarianAlgorithm:
 
-    def __init__(self, cost_function, threshold, infinite=100000):
+    def __init__(self, cost_function, threshold, infinite):
         self.threshold = threshold
         self.infinite = infinite
         self.cost_function = cost_function
