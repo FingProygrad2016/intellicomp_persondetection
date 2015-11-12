@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 
+from trackermaster.config import config
+
 
 class BackgroundSubtractorMOG2:
     subtractor = None
@@ -32,38 +34,46 @@ class BackgroundSubtractorMOG2:
 
 class BackgroundSubtractorKNN:
 
-    def __init__(self, history, dist_2_threshold, n_samples, knn_samples, detect_shadows, shadow_threshold):
+    # Configuration parameters
+    history = config.getint('HISTORY')
+    dist_2_threshold = config.getint('DIST_2_THRESHOLD')
+    n_samples = config.getint('N_SAMPLES')
+    knn_samples = config.getint('KNN_SAMPLES')
+    detect_shadows = config.getboolean('DETECT_SHADOWS')
+    shadow_threshold = config.getfloat('SHADOW_THRESHOLD')
+
+    def __init__(self):
 
         self.subtractor = cv2.createBackgroundSubtractorKNN()
 
         # Sets the number of last frames that affect the background model.
-        self.subtractor.setHistory(history)
+        self.subtractor.setHistory(self.history)
 
         # Sets the threshold on the squared distance between the pixel and the sample. \
         # The threshold on the squared distance between the pixel and the sample to decide \
         # whether a pixel is close to a data sample.
-        self.subtractor.setDist2Threshold(dist_2_threshold)
+        self.subtractor.setDist2Threshold(self.dist_2_threshold)
 
         # Sets the shadow detection flag. \
         # If true, the algorithm detects shadows and marks them.
-        self.subtractor.setDetectShadows(detect_shadows)
+        self.subtractor.setDetectShadows(self.detect_shadows)
 
         # Sets the number of neighbours, the k in kNN. \
         # K is the number of samples that need to be within dist2Threshold in order \
         # to decide that that pixel is matching the kNN background model.
         # Sets the k in the kNN. How many nearest neighbors need to match.
-        self.subtractor.setkNNSamples(knn_samples)
+        self.subtractor.setkNNSamples(self.knn_samples)
 
         # Sets the shadow threshold. A shadow is detected if pixel is a darker version \
         # of the background. The shadow threshold (Tau in the paper) is a threshold defining \
         # how much darker the shadow can be. Tau= 0.5 means that if a pixel is more than twice \
         # darker then it is not shadow. See Prati, Mikic, Trivedi and Cucchiarra, \
         # Detecting Moving Shadows...*, IEEE PAMI,2003.
-        self.subtractor.setShadowThreshold(shadow_threshold)
+        self.subtractor.setShadowThreshold(self.shadow_threshold)
 
         # Sets the number of data samples in the background model. \
         # The model needs to be reinitialized to reserve memory.
-        self.subtractor.setNSamples(n_samples)
+        self.subtractor.setNSamples(self.n_samples)
 
     def apply(self, raw_image):
 
