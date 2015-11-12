@@ -179,6 +179,7 @@ def start_to_process():
                 journey_id = journey[2]
                 rectangle_points = journey[3]
                 prediction = journey[4]
+                has_big_blob = journey[5]
 
                 journey_data_len = len(journey_data)
 
@@ -189,8 +190,12 @@ def start_to_process():
                     cv2.line(to_show, tuple1, tuple2, journey_color,
                              thickness=1)
                     cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
+                if has_big_blob:
+                    thickness = 2
+                else:
+                    thickness = 1
                 cv2.rectangle(frame, rectangle_points[0], rectangle_points[1],
-                              journey_color, thickness=1)
+                              journey_color, thickness=thickness)
 
                 last_data = journey_data[journey_data_len - 1]
                 last_journey_point = \

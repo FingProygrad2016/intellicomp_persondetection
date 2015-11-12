@@ -67,24 +67,28 @@ class HungarianAlgorithm:
     def apply(self, rows_data, columns_data):
         assigned_row = []
 
-        if len(columns_data) > 0 and len(rows_data) > 0:
-            m = Munkres()
+        if len(rows_data) > 0:
+            if len(columns_data) > 0:
+                m = Munkres()
 
-            costs, assigned_row, valid_columns_amount, columns_relation = \
-                self.get_costs_generic(rows_data, columns_data)
+                costs, assigned_row, valid_columns_amount, columns_relation = \
+                    self.get_costs_generic(rows_data, columns_data)
 
-            if costs.shape[0] > 0 and costs.shape[1]:
-                indexes = m.compute(costs.copy())
+                if costs.shape[0] > 0 and costs.shape[1]:
+                    indexes = m.compute(costs.copy())
 
-                j = 0
-                for i in range(0, len(assigned_row)):
-                    if assigned_row[i] == 0:
-                        column = indexes[j][1]
-                        if column < valid_columns_amount and costs[j][column] <= self.threshold:
-                            assigned_row[i] = columns_relation[column][1]
-                        else:
-                            assigned_row[i] = -1
+                    j = 0
+                    for i in range(0, len(assigned_row)):
+                        if assigned_row[i] == 0:
+                            column = indexes[j][1]
+                            if column < valid_columns_amount and costs[j][column] <= self.threshold:
+                                assigned_row[i] = columns_relation[column][1]
+                            else:
+                                assigned_row[i] = -1
 
-                        j += 1
+                            j += 1
+            else:
+                assigned_row = numpy.empty(shape=len(rows_data), dtype=int)
+                assigned_row.fill(-1)
 
         return assigned_row

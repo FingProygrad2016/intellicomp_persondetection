@@ -20,7 +20,7 @@ from trackermaster.black_boxes.blob_assignment import \
 class Tracker:
 
     k_filters = []
-    threshold_color = 30
+    threshold_color = 15
     threshold_size = 1
     threshold_distance = 30
     tracklets_short_id = 1
@@ -45,6 +45,12 @@ class Tracker:
         # Hungarian Algorithm for blob size
         self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size, 100000)
 
+        def blob_color_distance_function(color, k_filter):
+            return euclidean_distance(color, k_filter.color)
+
+        # Hungarian Algorithm for blob color
+        self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color, 100000)
+
     def apply(self, blobs, raw_image, frame_number):
         """
         For every blob, detect the corresponded tracked object and update it
@@ -62,30 +68,35 @@ class Tracker:
         for kf in self.k_filters:
             kf.hasBeenAssigned = False
 
+        average_colors = []
+        for blob in blobs:
+            # Obtengo el color promedio del blob
+            average_colors.append(get_avg_color(raw_image, blob.pt))
+
         # Apply hungarian algorithm for blob position
-        best_filters_per_blob = self.hung_alg_blob_pos.apply(blobs, self.k_filters)
+        best_filters_per_blob_pos = self.hung_alg_blob_pos.apply(blobs, self.k_filters)
+        best_filters_per_blob_color = self.hung_alg_blob_color.apply(average_colors, self.k_filters)
 
         for i in range(0, len(blobs)):
             blob = blobs[i]
 
-            # Busco el filtro correspondiente al blob
-            average_color = get_avg_color(raw_image, blob.pt)
             size = blob.size
 
-            if len(best_filters_per_blob) > 0 and best_filters_per_blob[i] != -1:
-                matched_position = best_filters_per_blob[i]
+            if best_filters_per_blob_pos[i] != -1:
+                matched_position = best_filters_per_blob_pos[i]
 
                 # Actualizo el estimador
                 self.k_filters[matched_position]. \
                     update_info(new_position=blob.pt,
-                                color=get_avg_color(raw_image, blob.pt),
+                                color=average_colors[i],
                                 size=blob.size, blob=blob, last_frame_update=frame_number)
             else:
                 # Si no hay filtro creado para este blob, entonces creo uno
                 matched_position = \
                     self.add_new_tracking(blob.pt,
-                                          get_avg_color(raw_image, blob.pt),
+                                          average_colors[i],
                                           blob.size, blob, frame_number)
+                best_filters_per_blob_pos[i] = matched_position
 
             info_to_send[self.k_filters[matched_position].id] = \
                 self.k_filters[matched_position]
@@ -98,19 +109,23 @@ class Tracker:
             if not kf.hasBeenAssigned:
                 nearest_blob = self.search_nearest_blob(kf, blobs)
                 if nearest_blob != -1:
+                    kf.has_big_blob = True
+                    self.k_filters[best_filters_per_blob_pos[nearest_blob]].has_big_blob = True
                     kf.update_last_frame(frame_number)
+                else:
+                    kf.has_big_blob = False
                 kf.predict()
             # If TrackInfo is too old, remove it forever
             if self.last_frame - kf.last_frame_update > self.valid_frames_without_update:
                 to_remove.append(kf)
-            else:
-                # if len(kf.journey) > 5:
-                journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                                 kf.rectangle, kf.prediction))
 
         # Remove the old tracked objects
         for x in to_remove:
             self.k_filters.remove(x)
+
+        for kf in self.k_filters:
+            journeys.append((kf.journey, kf.journey_color, kf.short_id,
+                             kf.rectangle, kf.prediction, kf.has_big_blob))
 
         return journeys, [kf.to_dict() for kf in info_to_send], {k.id: k for k in self.k_filters}
 
@@ -157,6 +172,7 @@ class TrackInfo:
         self.last_frame_update = frame_number
         self.last_update = self.created_datetime
         self.last_point = point
+        self.has_big_blob = False
 
         xt = int(round(blob.pt[0] - (blob.size / 4)))
         yt = int(round(blob.pt[1] - (blob.size / 2)))
@@ -239,6 +255,7 @@ class TrackInfo:
         self.rectangle = ((xt, yt), (xb, yb))
 
         self.hasBeenAssigned = True
+        self.has_big_blob = False
 
         self.number_updates += 1
 
