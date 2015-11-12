@@ -16,25 +16,25 @@ class BlobDetector:
     small_blobs = []
     big_blobs = []
 
-    def __init__(self, small_blobs_size_threshold,
-                 small_blobs_size_distance_threshold):
+    def __init__(self, threshold, filter_by_area, filter_by_circularity, small_blobs_size_threshold, small_blobs_size_distance_threshold):
+
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
 
         # Change thresholds
-        params.minThreshold = 5
-        # params.thresholdStep = 5
-        params.maxThreshold = 30
+        params.minThreshold = threshold[0]
+        params.maxThreshold = threshold[1]
+        params.thresholdStep = threshold[2]
 
         # Filter by Area.
-        params.filterByArea = True
-        params.minArea = 50
-        params.maxArea = 5000
+        params.filterByArea = filter_by_area[0]
+        params.minArea = filter_by_area[1]
+        params.maxArea = filter_by_area[2]
 
         # Filter by Circularity
-        params.filterByCircularity = False
-        params.minCircularity = 0.01
-        params.maxCircularity = 1.0
+        params.filterByCircularity = filter_by_circularity[0]
+        params.minCircularity = filter_by_circularity[1]
+        params.maxCircularity = filter_by_circularity[2]
 
         # Filter by Convexity
         params.filterByConvexity = False

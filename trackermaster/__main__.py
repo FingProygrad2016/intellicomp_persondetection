@@ -56,7 +56,9 @@ def start_to_process():
     background_subtractor = \
         BackgroundSubtractorKNN(history=100, dist_2_threshold=350, n_samples=5, knn_samples=5,
                                 detect_shadows=False, shadow_threshold=0.5)
-    blobs_detector = BlobDetector(10, 10)
+    blobs_detector = BlobDetector(threshold=[5, 30, 10], filter_by_area=[True, 50, 5000],
+                                  filter_by_circularity=[False, 0.01, 1.0],
+                                  small_blobs_size_threshold=10, small_blobs_size_distance_threshold=10)
     tracker = Tracker(SEC_PER_FRAME)
     communicator = Communicator()
 
