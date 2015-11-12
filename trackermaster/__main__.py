@@ -1,23 +1,21 @@
 import sys
 import os
-from utils.tools import find_resolution_multiplier
-
-path = os.path.dirname(sys.modules[__name__].__file__)
-path = os.path.join(path, '..')
-sys.path.insert(0, path)
-
-import json
-import time
-
 import numpy as np
 import cv2
+import json
+import time
 import pika
 
+from utils.tools import find_resolution_multiplier
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from utils.communicator import Communicator
 from trackermaster.black_boxes.tracking import Tracker
+
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
 
 
 def start_to_process():
@@ -55,8 +53,9 @@ def start_to_process():
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    # background_substractor = BackgroundSubtractorMOG2()
-    background_substractor = BackgroundSubtractorKNN()
+    background_subtractor = \
+        BackgroundSubtractorKNN(history=100, dist_2_threshold=350, n_samples=5, knn_samples=5,
+                                detect_shadows=False, shadow_threshold=0.5)
     blobs_detector = BlobDetector(10, 10)
     tracker = Tracker(SEC_PER_FRAME)
     communicator = Communicator()
@@ -114,7 +113,7 @@ def start_to_process():
 
             # Black boxes process
             t0 = time.time()
-            bg_sub = background_substractor.apply(frame)
+            bg_sub = background_subtractor.apply(frame)
             to_show = bg_sub
             bg_sub_time += time.time() - t0
             t0 = time.time()

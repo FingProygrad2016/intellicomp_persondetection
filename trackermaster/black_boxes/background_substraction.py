@@ -20,10 +20,10 @@ class BackgroundSubtractorMOG2:
         bg = self.subtractor.apply(bg, 0.3, 0.05)
 
         # Erosiono y dilato el resultado para eliminar el ruido
-        bg = cv2.erode(bg, np.ones((2,2),np.uint8), iterations=3)
-        bg = cv2.dilate(bg, np.ones((4,1),np.uint8), iterations=1)
-        bg = cv2.dilate(bg, np.ones((4,2),np.uint8), iterations=1)
-        bg = cv2.dilate(bg, np.ones((2,3),np.uint8), iterations=1)
+        bg = cv2.erode(bg, np.ones((2, 2), np.uint8), iterations=3)
+        bg = cv2.dilate(bg, np.ones((4, 1), np.uint8), iterations=1)
+        bg = cv2.dilate(bg, np.ones((4, 2), np.uint8), iterations=1)
+        bg = cv2.dilate(bg, np.ones((2, 3), np.uint8), iterations=1)
         # bg = cv2.morphologyEx(src=bg, op=cv2.MORPH_CLOSE,
         #                       kernel=np.ones((1,1),np.uint8), iterations=2)
 
@@ -32,12 +32,38 @@ class BackgroundSubtractorMOG2:
 
 class BackgroundSubtractorKNN:
 
-    def __init__(self):
-        self.subtractor = \
-            cv2.createBackgroundSubtractorKNN(history=100, dist2Threshold=350,
-                                              detectShadows=True)
-        self.subtractor.setkNNSamples(10)
-        self.subtractor.setShadowThreshold(0.5)
+    def __init__(self, history, dist_2_threshold, n_samples, knn_samples, detect_shadows, shadow_threshold):
+
+        self.subtractor = cv2.createBackgroundSubtractorKNN()
+
+        # Sets the number of last frames that affect the background model.
+        self.subtractor.setHistory(history)
+
+        # Sets the threshold on the squared distance between the pixel and the sample. \
+        # The threshold on the squared distance between the pixel and the sample to decide \
+        # whether a pixel is close to a data sample.
+        self.subtractor.setDist2Threshold(dist_2_threshold)
+
+        # Sets the shadow detection flag. \
+        # If true, the algorithm detects shadows and marks them.
+        self.subtractor.setDetectShadows(detect_shadows)
+
+        # Sets the number of neighbours, the k in kNN. \
+        # K is the number of samples that need to be within dist2Threshold in order \
+        # to decide that that pixel is matching the kNN background model.
+        # Sets the k in the kNN. How many nearest neighbors need to match.
+        self.subtractor.setkNNSamples(knn_samples)
+
+        # Sets the shadow threshold. A shadow is detected if pixel is a darker version \
+        # of the background. The shadow threshold (Tau in the paper) is a threshold defining \
+        # how much darker the shadow can be. Tau= 0.5 means that if a pixel is more than twice \
+        # darker then it is not shadow. See Prati, Mikic, Trivedi and Cucchiarra, \
+        # Detecting Moving Shadows...*, IEEE PAMI,2003.
+        self.subtractor.setShadowThreshold(shadow_threshold)
+
+        # Sets the number of data samples in the background model. \
+        # The model needs to be reinitialized to reserve memory.
+        self.subtractor.setNSamples(n_samples)
 
     def apply(self, raw_image):
 
