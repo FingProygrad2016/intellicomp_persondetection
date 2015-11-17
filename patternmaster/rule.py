@@ -2,6 +2,7 @@ import csv
 
 from patternmaster.event import EventSpeed, SpeedEventTypes, Quantifiers, \
     EventDirection
+from patternmaster.config import config
 
 
 class Rule(object):
@@ -23,7 +24,8 @@ def load_system_rules():
 
     rules = []
 
-    with open('patterns_definition.dat', newline='') as data_csv:
+    with open(config.get('PATTERNS_DEFINITION_FILE_PATH'),
+              newline='') as data_csv:
         pattern_definitions = csv.reader(data_csv, delimiter=',', quotechar='"')
 
         for line, pattern_def in enumerate(pattern_definitions):

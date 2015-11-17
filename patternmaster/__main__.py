@@ -8,18 +8,22 @@ import json
 import pika
 
 from patternmaster.pattern_recognition import PatternRecognition
+from patternmaster.config import config
 
 
 class PatternMaster(object):
 
-    pattern_recognition = PatternRecognition()
+    pattern_recognition = \
+        PatternRecognition(config.getint('MIN_ANGLE_ROTATION'),
+                           config.getint('MIN_WALKING_SPEED'),
+                           config.getint('MIN_RUNNING_SPEED'))
 
     def __init__(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host='localhost'))
+            host=config.get('TRACK_INFO_QUEUE_HOSTADDRESS')))
         self.channel = self.connection.channel()
 
-        self.channel.queue_declare(queue='track_info')
+        self.channel.queue_declare(queue=config.get('TRACK_INFO_QUEUE_NAME'))
 
     def apply(self):
         self.channel.basic_consume(self.proccess, queue='track_info',

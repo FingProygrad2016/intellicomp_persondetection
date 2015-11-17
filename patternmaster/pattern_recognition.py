@@ -9,31 +9,28 @@ from patternmaster.rule import load_system_rules
 from patternmaster.tracklet import Tracklet
 from utils.communicator import Communicator
 from utils.tools import euclidean_distance, diff_in_milliseconds
+from patternmaster.config import config
 
 
-AP_TOLERANCE = 1500
+AP_TOLERANCE = config.getint('APROX_TOLERANCE')
+WEIGHT_FOR_NEW_DIRECTION_ANGLE = config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
 
 
 class PatternRecognition(object):
 
-    MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = 15
-    WEIGHT_FOR_NEW_DIRECTION_ANGLE = 0.2
-    MIN_DIRECTION_ANGLE_CHANGE_TO_FIRE_ALARM = 120
-    MIN_SPEED_FOR_WALKING = 2
-    MIN_SPEED_FOR_RUNNING = 12
-    QUANTIFIER_APPROXIMATION = 2
-
     movement_change_rules = load_system_rules()
 
-    def __init__(self, min_angle_to_consider_rotation=90, min_walking_speed=10,
+    def __init__(self, min_angle_rotation=90, min_walking_speed=10,
                  min_running_speed=120):
         self.tracklets_info = {}  # Collection of Tracklets
-        self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION = \
-            min_angle_to_consider_rotation
-        self.MIN_SPEED_FOR_WALKING = min_walking_speed
-        self.MIN_SPEED_FOR_RUNNING = min_running_speed
-        self.communicator = Communicator(queue_name='warnings',
-                                         expiration_time=60)
+        self.min_angle_rotation = min_angle_rotation
+        self.min_walking_speed = min_walking_speed
+        self.min_running_speed = min_running_speed
+        self.communicator = \
+            Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
+                         expiration_time=config.
+                         getint('WARNINGS_EXPIRATION_TIME'),
+                         host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'))
 
     def apply(self, tracklet_raw_info):
         """
@@ -140,7 +137,7 @@ class PatternRecognition(object):
             min_diff_signed = (min_diff_signed + 180) % 360 - 180
             min_diff = abs(min_diff_signed)
 
-            if min_diff > self.MIN_ANGLE_CHANGE_CONSIDER_AS_ROTATION:
+            if min_diff > self.min_angle_rotation:
                 # Append ROTATION event
                 current_events.append(EventDirection(EventInfoType.ANGLE,
                                                      Quantifiers.AX,
@@ -151,7 +148,7 @@ class PatternRecognition(object):
             # new direction is added to average_direction, but with less
             # weight to reduce noise
             tracklet_info.average_direction += \
-                min_diff_signed * self.WEIGHT_FOR_NEW_DIRECTION_ANGLE
+                min_diff_signed * WEIGHT_FOR_NEW_DIRECTION_ANGLE
 
         return current_events
 
@@ -160,13 +157,13 @@ class PatternRecognition(object):
 
         speed = distance / (time_lapse / 1000.0)  # Measure in Pixels/Second
 
-        if speed < self.MIN_SPEED_FOR_WALKING:
+        if speed < self.min_walking_speed:
             # Append 'STOPPED' event
             current_events.append(EventSpeed(SpeedEventTypes.STOPPED,
                                              Quantifiers.EQ, time_lapse,
                                              time_end=last_update,
                                              duration=time_lapse))
-        elif speed < self.MIN_SPEED_FOR_RUNNING:
+        elif speed < self.min_running_speed:
             # Append 'WALKING' event
             current_events.append(EventSpeed(SpeedEventTypes.WALKING,
                                              Quantifiers.EQ, time_lapse,
@@ -190,10 +187,13 @@ class PatternRecognition(object):
         """
         found_rules = []
 
-        MIN_EVENTS_SPEED_AMOUNT = 6
-        MIN_EVENTS_SPEED_TIME = 30000  # In milliseconds
-        MIN_EVENTS_DIR_AMOUNT = 2
-        MIN_EVENTS_DIR_TIME = 30000  # In milliseconds
+        # FIXME: Pasarlos a atributos de la instancia del PatternRecognition
+        # para evitar leer la config cada vez (y además definir estas variables
+        # en cada ejecucion del metodo)
+        MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
+        MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
+        MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
+        MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
 
         last_speed_events = []
         last_dir_events = []

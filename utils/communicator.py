@@ -2,7 +2,6 @@ import json
 import pika
 from blinker import signal
 
-HOST_ADDRESS = 'localhost'
 
 # Mas info sobre RabbitMQ (implementacionde AMQP) en:
 # http://www.rabbitmq.com/amqp-0-9-1-reference.html
@@ -17,12 +16,13 @@ def real_send(args):
 
 class Communicator:
 
-    def __init__(self, queue_name='track_info', expiration_time=60):
+    def __init__(self, queue_name='track_info', expiration_time=60,
+                 host_address='localhost'):
         self.queue_name = queue_name
         self.expiration_time = str(expiration_time)
         self.connection = \
             pika.BlockingConnection(pika.ConnectionParameters(
-                host=HOST_ADDRESS))
+                host=host_address))
         self.channel = self.connection.channel()
 
         self.channel.queue_declare(queue=queue_name)

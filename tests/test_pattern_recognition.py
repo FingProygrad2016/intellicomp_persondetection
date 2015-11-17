@@ -132,7 +132,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
 
     def test_primitives_recognition(self):
         pattern_recognition = PatternRecognition(
-            min_angle_to_consider_rotation=45, min_walking_speed=10,
+            min_angle_rotation=45, min_walking_speed=10,
             min_running_speed=50)
         # remove the fire_alarms logic
         pattern_recognition.fire_alarms = null_function
@@ -211,7 +211,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
     def test_pattern_recognition(self):
 
         pattern_recognition = PatternRecognition(
-            min_angle_to_consider_rotation=45, min_walking_speed=10,
+            min_angle_rotation=45, min_walking_speed=10,
             min_running_speed=50)
         # remove the fire_alarms logic
         pattern_recognition.rules = []
