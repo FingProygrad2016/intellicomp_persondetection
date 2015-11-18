@@ -15,6 +15,11 @@ from patternmaster.config import config
 AP_TOLERANCE = config.getint('APROX_TOLERANCE')
 WEIGHT_FOR_NEW_DIRECTION_ANGLE = config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
 
+MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
+MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
+MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
+MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
+
 
 class PatternRecognition(object):
 
@@ -186,14 +191,6 @@ class PatternRecognition(object):
         satisfied
         """
         found_rules = []
-
-        # FIXME: Pasarlos a atributos de la instancia del PatternRecognition
-        # para evitar leer la config cada vez (y además definir estas variables
-        # en cada ejecucion del metodo)
-        MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
-        MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
-        MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
-        MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
 
         last_speed_events = []
         last_dir_events = []
