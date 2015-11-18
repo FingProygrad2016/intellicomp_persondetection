@@ -1,7 +1,7 @@
 import csv
 
 from patternmaster.event import EventSpeed, SpeedEventTypes, Quantifiers, \
-    EventDirection
+    EventDirection, DirectionEventTypes
 from patternmaster.config import config
 
 
@@ -48,20 +48,23 @@ def load_system_rules():
                                 'Rule loader fails in line ' + str(line) + '. ' +
                                 'Info type or/and quantifier is/are not valid.')
                         event_class = EventSpeed
+                        type_enum = SpeedEventTypes
                     elif event_type == 'DIRECTION':
                         event_class = EventDirection
+                        type_enum = DirectionEventTypes
                     else:
                         raise Exception(
                             'Rule loader fails in line ' + str(line) + '. ' +
                             'Event type is not valid.')
 
-                    events.append(event_class(event_info_type, event_quantifier,
-                                              event_value))
+                    events.append(event_class(type_enum[event_info_type],
+                                              Quantifiers[event_quantifier],
+                                              float(event_value)))
                 rules.append(Rule(line, rule_name, events=events))
             except IndexError:
-                Exception('Rule loader fails in line ' + str(line) + '. ' +
+                raise Exception('Rule loader fails in line ' + str(line) + '. ' +
                           'Min. amount of attributes is 5.')
             except Exception as e:
-                Exception('Rule loader fails in line ' + str(line) + '. ' + e)
+                raise Exception('Rule loader fails in line ' + str(line) + '. ' + e.args[0])
 
     return rules
