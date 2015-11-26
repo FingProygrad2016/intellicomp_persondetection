@@ -1,9 +1,12 @@
 import configparser
+import os
+import inspect
 
 
 def read_conf():
     configuration = configparser.ConfigParser()
-    conf_file_path = 'trackermaster.conf'
+    conf_file_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    conf_file_path += '/trackermaster.conf'
     read_conf_files = configuration.read(conf_file_path)
 
     if not read_conf_files:

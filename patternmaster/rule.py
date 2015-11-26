@@ -1,4 +1,6 @@
 import csv
+import os
+import inspect
 
 from patternmaster.event import EventSpeed, SpeedEventTypes, Quantifiers, \
     EventDirection, DirectionEventTypes
@@ -24,7 +26,9 @@ def load_system_rules():
 
     rules = []
 
-    with open(config.get('PATTERNS_DEFINITION_FILE_PATH'),
+    conf_file_path = os.path.dirname(
+        os.path.abspath(inspect.getfile(inspect.currentframe())))
+    with open(conf_file_path + config.get('PATTERNS_DEFINITION_FILE_PATH'),
               newline='') as data_csv:
         pattern_definitions = csv.reader(data_csv, delimiter=',', quotechar='"')
 
