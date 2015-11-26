@@ -91,7 +91,8 @@ class PatternRecognition(object):
                 # If Rules were matched, warn about it
                 if found_rules:
                     tracklet_info.last_found_rules = found_rules
-                    self.fire_alarms(tracklet_info, found_rules)
+                    tracklet_info.last_time_found_rules = last_update_datetime
+                    self.fire_alarms(tracklet_info)
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -262,13 +263,15 @@ class PatternRecognition(object):
 
         return False, None
 
-    def fire_alarms(self, tracklet_info, found_rules):
+    def fire_alarms(self, tracklet_info):
 
         self.communicator.apply(
-            json.dumps({'rules': [(r[0], r[1].name) for r in found_rules],
+            json.dumps({'rules': [(r[0], r[1].name) for r in
+                                  tracklet_info.last_found_rules],
                         'position':
                             tracklet_info.last_position,
-                        'id': tracklet_info.id}))
+                        'id': tracklet_info.id,
+                        'timestamp': str(tracklet_info.last_time_found_rules)}))
 
-        for rule in found_rules:
-            print ("::" + str(rule), "TRACKLET ID:", tracklet_info.id)
+        for rule in tracklet_info.last_found_rules:
+            print("::" + str(rule), "TRACKLET ID:", tracklet_info.id)

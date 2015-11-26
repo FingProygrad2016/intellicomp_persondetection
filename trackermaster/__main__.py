@@ -1,3 +1,5 @@
+from datetime import datetime
+import inspect
 import sys
 import os
 import numpy as np
@@ -30,7 +32,9 @@ def start_to_process():
 
     # cap = cv2.VideoCapture('Videos/mvd_hd.mp4')
 
-    cap = cv2.VideoCapture('../Videos/Video_003.avi')
+    videos_path = conf_file_path = os.path.dirname(
+        os.path.abspath(inspect.getfile(inspect.currentframe())))
+    cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
@@ -144,11 +148,12 @@ def start_to_process():
                         warnings = warnings[2].decode()
                         new_warn = json.loads(warnings)
                         print("NEW WARN", new_warn)
-                        rules = str(new_warn['rules'][0])
+                        rules = str(new_warn['rules'][-1][1])
                         id_track = new_warn['id']
                         tracklet = tracklets.get(id_track, None)
                         if tracklet:
                             tracklet.last_rule = rules
+                            tracklet.last_rule_time = datetime.now()
             except pika.exceptions.ConnectionClosed:
                 pass
             # # END ### Warnings' receiver ###
@@ -159,10 +164,16 @@ def start_to_process():
 
             for tracklet in tracklets.values():
                 if getattr(tracklet, 'last_rule', None):
-                    cv2.putText(to_show, tracklet.last_rule,
-                                (int(tracklet.last_point[0]),
-                                 int(tracklet.last_point[1])),
-                                font, 0.3, (255, 0, 0), 1)
+                    time_pass = datetime.now() - \
+                                getattr(tracklet, 'last_rule_time')
+                    if time_pass.seconds < 9:
+                        cv2.putText(to_show, tracklet.last_rule,
+                                    (int(tracklet.last_point[0]),
+                                     int(tracklet.last_point[1])),
+                                    font, 0.3 -
+                                    (time_pass.seconds/30), (255, 0, 0), 1)
+                    else:
+                        tracklet.last_rule = None
 
             # Draw the journeys of the tracked persons
             for journey in trayectos:
@@ -207,6 +218,7 @@ def start_to_process():
             t0 = time.time()
 
             # Display the frames
+            to_show = cv2.resize(to_show, (work_w*3, work_h*3))
             cv2.imshow('result', to_show)
             cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
