@@ -1,6 +1,7 @@
 from datetime import timedelta
 import numpy as np
 from enum import Enum
+from patternmaster.config import config
 
 from utils.tools import diff_in_milliseconds
 
@@ -29,6 +30,8 @@ class Quantifiers(Enum):
 
 
 class Event(object):
+
+    AP_TOLERANCE = config.getint('APROX_TOLERANCE')
 
     def __init__(self, quantifier, value, time_end, duration):
         self.quantifier = quantifier
@@ -59,9 +62,8 @@ class Event(object):
             elif event_rule.quantifier == Quantifiers.GE:
                 return self.value >= event_rule.value
             elif event_rule.quantifier == Quantifiers.AX:
-                from patternmaster.pattern_recognition import AP_TOLERANCE
                 return np.isclose(self.value, event_rule.value,
-                                  atol=AP_TOLERANCE)
+                                  atol=self.AP_TOLERANCE)
             elif event_rule.quantifier == Quantifiers.EQ:
                 return self.value == event_rule.value
             elif event_rule.quantifier == Quantifiers.NM:

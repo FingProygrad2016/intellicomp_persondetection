@@ -118,7 +118,8 @@ def start_to_process():
             blobs_points = blobs_detector.apply(bg_sub)
             blob_det_time += time.time() - t0
             t0 = time.time()
-            trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame, number_frame)
+            trayectos, info_to_send, tracklets = \
+                tracker.apply(blobs_points, frame, number_frame)
             t_time += time.time() - t0
 
             t0 = time.time()

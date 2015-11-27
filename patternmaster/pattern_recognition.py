@@ -12,16 +12,14 @@ from utils.tools import euclidean_distance, diff_in_milliseconds
 from patternmaster.config import config
 
 
-AP_TOLERANCE = config.getint('APROX_TOLERANCE')
-WEIGHT_FOR_NEW_DIRECTION_ANGLE = config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
-
-MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
-MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
-MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
-MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
-
-
 class PatternRecognition(object):
+
+    WEIGHT_FOR_NEW_DIRECTION_ANGLE = \
+        config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
+    MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
+    MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
+    MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
+    MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
 
     movement_change_rules = load_system_rules()
 
@@ -89,7 +87,9 @@ class PatternRecognition(object):
                 found_rules = self.calc_rules(tracklet_info)
 
                 # If Rules were matched, warn about it
+                tracklet_info.last_found_rules = []
                 if found_rules:
+                    found_rules.sort(key=lambda x: x[2], reverse=True)
                     tracklet_info.last_found_rules = found_rules
                     tracklet_info.last_time_found_rules = last_update_datetime
                     self.fire_alarms(tracklet_info)
@@ -154,7 +154,7 @@ class PatternRecognition(object):
             # new direction is added to average_direction, but with less
             # weight to reduce noise
             tracklet_info.average_direction += \
-                min_diff_signed * WEIGHT_FOR_NEW_DIRECTION_ANGLE
+                min_diff_signed * self.WEIGHT_FOR_NEW_DIRECTION_ANGLE
 
         return current_events
 
@@ -199,8 +199,8 @@ class PatternRecognition(object):
         for event in reversed(tracklet_info.active_speed_events):
             if diff_in_milliseconds(
                     event.last_update, tracklet_info.last_position_time) < \
-                    MIN_EVENTS_SPEED_TIME or \
-                    len(last_speed_events) < MIN_EVENTS_SPEED_AMOUNT:
+                    self.MIN_EVENTS_SPEED_TIME or \
+                    len(last_speed_events) < self.MIN_EVENTS_SPEED_AMOUNT:
                 last_speed_events.insert(0, event)
             else:
                 break
@@ -208,26 +208,27 @@ class PatternRecognition(object):
         for event in reversed(tracklet_info.active_direction_events):
             if diff_in_milliseconds(
                     event.last_update, tracklet_info.last_position_time) < \
-                    MIN_EVENTS_DIR_TIME or \
-                    len(last_dir_events) < MIN_EVENTS_DIR_AMOUNT:
+                    self.MIN_EVENTS_DIR_TIME or \
+                    len(last_dir_events) < self.MIN_EVENTS_DIR_AMOUNT:
                 last_dir_events.insert(0, event)
             else:
                 break
 
-        print("last_speed_events", last_speed_events, "last_dir_events",
-              last_dir_events)
+        print("ID:", tracklet_info.id[:5], "SPEED-EVENTS",
+              last_speed_events, "DIR-EVENTS", last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
-            satisfies_speed_events, dist1 = \
+            satisfies_speed_events, dist1, time_from_start1= \
                 self.check_ruleevents_in_activeevents(
                     rule.events, last_speed_events)
-            satisfies_dir_events, dist2 = \
+            satisfies_dir_events, dist2, time_from_start2 = \
                 self.check_ruleevents_in_activeevents(
                     rule.events, last_dir_events)
 
-            if satisfies_speed_events and satisfies_dir_events:
-                found_rules.append((dist1 + dist2, rule))
+            if satisfies_speed_events or satisfies_dir_events:
+                found_rules.append((dist1 + dist2, rule,
+                                    min(time_from_start1, time_from_start2)))
 
         return found_rules
 
@@ -243,11 +244,12 @@ class PatternRecognition(object):
         :return:
         """
         if not last_events:
-            return True, 0
+            return False, 0, 9999999999
         firsts = True
         last_events_iter = iter(reversed(last_events))
         try:
             distance = 0
+            time_from_start = 0
             for pos, rule_event in enumerate(reversed(rule_events)):
                 if pos > 0:
                     firsts = False
@@ -255,13 +257,17 @@ class PatternRecognition(object):
                 while not last_event.satisfies(rule_event):
                     if not firsts:
                         distance += last_event.duration
+                    else:
+                        time_from_start += last_event.duration
                     last_event = next(last_events_iter)
             else:
-                return True, distance
+                return True, distance, time_from_start
         except StopIteration:
             pass
 
-        return False, None
+        # FIXME: si no hay eventos de tal tipo en la rule, la distancia no
+        # deberia ser cero ya que del otro tipo puede cuplir
+        return False, 0, 9999999999
 
     def fire_alarms(self, tracklet_info):
 
@@ -274,4 +280,4 @@ class PatternRecognition(object):
                         'timestamp': str(tracklet_info.last_time_found_rules)}))
 
         for rule in tracklet_info.last_found_rules:
-            print("::" + str(rule), "TRACKLET ID:", tracklet_info.id)
+            print(":: ID:", tracklet_info.id[:5], str(rule))
