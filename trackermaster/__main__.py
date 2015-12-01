@@ -24,17 +24,24 @@ def start_to_process():
 
     # Instance of VideoCapture to capture webcam(0) images
 
+    # WebCam
     # cap = cv2.VideoCapture(0)
     # popen("v4l2-ctl -d /dev/video1 --set-ctrl "
     #       "white_balance_temperature_auto=0,"
     #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
 
-    # cap = cv2.VideoCapture('Videos/mvd_hd.mp4')
-
+    # Videos de muestra
     videos_path = conf_file_path = os.path.dirname(
         os.path.abspath(inspect.getfile(inspect.currentframe())))
     cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
+    # Palacio Legislativo
+    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_byhzppsn,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfYnloenBwc24lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTUzMzUmcmFuZG9tPW1qc2cwdnJHakYmYy1pcD0xOTAuNjQuNDkuMjcsMGI3OGU0NmQ5YjkyNTA0ZTZlYTY2ZDBlYTc1Yzk4OTI4YmZlOTczNmY4ZjQxM2QxMTc0MzYxNDBhOTBjOGRmZA==/hls/var1320000/playlist.m3u8')
+    # Mercado del Puerto
+    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTQ1OTkmcmFuZG9tPTZjaFFUTmk3MDMmYy1pcD0xOTAuNjQuNDkuMjcsM2IzNWZkNjQ4ODU5YTczZGVhNTA3OWVjZTFjMjNlMTFiOWQxMjJhZGIwNmRkYjFlNzIwNWY4ODYzNzU0ODU5MA==/hls/var3300000/playlist.m3u8')
+    # Plaza del Entrevero
+    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_3iwgu26m,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfM2l3Z3UyNm0lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTU2MDcmcmFuZG9tPUFoNzJOVExHSXUmYy1pcD0xOTAuNjQuNDkuMjcsODI0NjhkZTM2NDNiMDQ5YjUyZmI3ZDNlNzUxY2M5NjRlOTMwMjFiM2UxNzUwMDRmZGI0ZWZhMWM4NTJlMjZlOQ==/hls/var3300000/playlist.m3u8')
+
     # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
