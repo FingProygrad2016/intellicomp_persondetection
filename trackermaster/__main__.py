@@ -7,6 +7,9 @@ import cv2
 import json
 import time
 import pika
+from hashlib import sha1
+from datetime import datetime as dt
+from trackermaster.config import config
 
 from utils.tools import find_resolution_multiplier
 from trackermaster.black_boxes.background_substraction import \
@@ -20,7 +23,8 @@ path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
 
-def start_to_process():
+def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
+                 source=None):
 
     # Instance of VideoCapture to capture webcam(0) images
 
@@ -30,11 +34,13 @@ def start_to_process():
     #       "white_balance_temperature_auto=0,"
     #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
-
-    # Videos de muestra
-    videos_path = conf_file_path = os.path.dirname(
-        os.path.abspath(inspect.getfile(inspect.currentframe())))
-    cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
+    if source:
+        cap = cv2.VideoCapture(source)
+    else:
+        # Videos de muestra
+        videos_path = os.path.dirname(
+            os.path.abspath(inspect.getfile(inspect.currentframe())))
+        cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
     # Palacio Legislativo
     # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_byhzppsn,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfYnloenBwc24lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTUzMzUmcmFuZG9tPW1qc2cwdnJHakYmYy1pcD0xOTAuNjQuNDkuMjcsMGI3OGU0NmQ5YjkyNTA0ZTZlYTY2ZDBlYTc1Yzk4OTI4YmZlOTczNmY4ZjQxM2QxMTc0MzYxNDBhOTBjOGRmZA==/hls/var1320000/playlist.m3u8')
     # Mercado del Puerto
@@ -47,6 +53,8 @@ def start_to_process():
     # Original FPS
     try:
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
+        if FPS == 0.:
+            FPS = 24.
     except ValueError:
         FPS = 7.
 
@@ -68,7 +76,8 @@ def start_to_process():
 
     blobs_detector = BlobDetector()
     tracker = Tracker(SEC_PER_FRAME)
-    communicator = Communicator()
+    communicator = \
+        Communicator(queue_name=config.get('TRACK_INFO_QUEUE_NAME'))
 
     loop_time = time.time()
 
@@ -139,7 +148,11 @@ def start_to_process():
             t0 = time.time()
 
             if number_frame % FPS_OVER_2 == 0:
+                for info in info_to_send:
+                    info['tracker_id'] = identifier
                 # Send info to the pattern recognition every half second
+
+
                 communicator.apply(json.dumps(info_to_send))
 
             # Draw circles in each blob
@@ -152,25 +165,25 @@ def start_to_process():
                         (255, 255, 0), 2)
 
             # ### Warnings' receiver ###
-            try:
-                while True:
-                    connection = pika.BlockingConnection()
-                    channel = connection.channel()
-                    warnings = channel.basic_get('warnings')
-                    if None in warnings:
-                        break
-                    else:
-                        warnings = warnings[2].decode()
-                        new_warn = json.loads(warnings)
-                        print("NEW WARN", new_warn)
-                        rules = str(new_warn['rules'][-1][1])
-                        id_track = new_warn['id']
-                        tracklet = tracklets.get(id_track, None)
-                        if tracklet:
-                            tracklet.last_rule = rules
-                            tracklet.last_rule_time = datetime.now()
-            except pika.exceptions.ConnectionClosed:
-                pass
+            # try:
+            #     while True:
+            #         connection = pika.BlockingConnection()
+            #         channel = connection.channel()
+            #         warnings = channel.basic_get('warnings')
+            #         if None in warnings:
+            #             break
+            #         else:
+            #             warnings = warnings[2].decode()
+            #             new_warn = json.loads(warnings)
+            #             print("NEW WARN", new_warn)
+            #             rules = str(new_warn['rules'][-1][1])
+            #             id_track = new_warn['id']
+            #             tracklet = tracklets.get(id_track, None)
+            #             if tracklet:
+            #                 tracklet.last_rule = rules
+            #                 tracklet.last_rule_time = datetime.now()
+            # except pika.exceptions.ConnectionClosed:
+            #     pass
             # # END ### Warnings' receiver ###
 
             pattern_recogn_time += time.time() - t0
@@ -237,7 +250,7 @@ def start_to_process():
             t0 = time.time()
 
             # Display the frames
-            to_show = cv2.resize(to_show, (work_w*3, work_h*3))
+            # to_show = cv2.resize(to_show, (work_w*3, work_h*3))
             cv2.imshow('result', to_show)
             cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
@@ -277,5 +290,5 @@ def start_to_process():
 
 if __name__ == '__main__':
     print('Start to process images...')
-    start_to_process()
+    track_source()
     print('END.')

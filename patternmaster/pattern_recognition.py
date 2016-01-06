@@ -23,9 +23,10 @@ class PatternRecognition(object):
 
     movement_change_rules = load_system_rules()
 
-    def __init__(self, min_angle_rotation=90, min_walking_speed=10,
+    def __init__(self, identifier, min_angle_rotation=90, min_walking_speed=10,
                  min_running_speed=120):
         self.tracklets_info = {}  # Collection of Tracklets
+        self.identifier = identifier
         self.min_angle_rotation = min_angle_rotation
         self.min_walking_speed = min_walking_speed
         self.min_running_speed = min_running_speed
@@ -33,7 +34,8 @@ class PatternRecognition(object):
             Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
                          expiration_time=config.
                          getint('WARNINGS_EXPIRATION_TIME'),
-                         host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'))
+                         host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
+                         exchange='to_master', exchange_type='topic')
 
     def apply(self, tracklet_raw_info):
         """
@@ -272,7 +274,8 @@ class PatternRecognition(object):
     def fire_alarms(self, tracklet_info):
 
         self.communicator.apply(
-            json.dumps({'rules': [(r[0], r[1].name) for r in
+            json.dumps({'tracker_id': self.identifier,
+                        'rules': [(r[0], r[1].name) for r in
                                   tracklet_info.last_found_rules],
                         'position':
                             tracklet_info.last_position,

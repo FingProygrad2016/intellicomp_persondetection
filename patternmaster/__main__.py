@@ -13,10 +13,7 @@ from patternmaster.config import config
 
 class PatternMaster(object):
 
-    pattern_recognition = \
-        PatternRecognition(config.getint('MIN_ANGLE_ROTATION'),
-                           config.getint('MIN_WALKING_SPEED'),
-                           config.getint('MIN_RUNNING_SPEED'))
+    pattern_recognition = {}
 
     def __init__(self):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(
@@ -34,7 +31,15 @@ class PatternMaster(object):
     def proccess(ch, method, properties, body):
         tracklets = json.loads(body.decode())
         for info in tracklets:
-            PatternMaster.pattern_recognition.apply(info)
+            identifier = info['tracker_id']
+            if identifier not in PatternMaster.pattern_recognition:
+                PatternMaster.pattern_recognition[identifier] = \
+                    PatternRecognition(identifier,
+                                       config.getint('MIN_ANGLE_ROTATION'),
+                                       config.getint('MIN_WALKING_SPEED'),
+                                       config.getint('MIN_RUNNING_SPEED'))
+
+            PatternMaster.pattern_recognition[identifier].apply(info)
 
     def __del__(self):
         self.connection.close()
