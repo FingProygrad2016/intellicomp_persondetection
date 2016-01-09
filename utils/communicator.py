@@ -16,9 +16,9 @@ def real_send(args):
 
 class Communicator:
 
-    def __init__(self, queue_name='track_info', expiration_time=60,
+    def __init__(self, queue_name=None, expiration_time=60,
                  host_address='localhost', exchange=None,
-                 exchange_type='direct'):
+                 exchange_type='direct', routing_key=None):
         self.queue_name = queue_name
         self.expiration_time = str(expiration_time)
         self.connection = \
@@ -29,16 +29,21 @@ class Communicator:
         if exchange:
             self.channel.exchange_declare(exchange, exchange_type=exchange_type)
             self.exchange = exchange
-        else:
+
+            if routing_key:
+                self.channel.queue_bind(queue=self.queue_name,
+                                        exchange=self.exchange,
+                                        routing_key=routing_key)
+        if queue_name:
             self.exchange = ''
             self.channel.queue_declare(queue=queue_name)
 
-    def send_message(self, message):
+    def send_message(self, message, routing_key=None):
         self.channel.basic_publish(exchange=self.exchange,
-                                   routing_key=self.queue_name,
+                                   routing_key=routing_key or self.queue_name,
                                    body=message,
                                    properties=pika.BasicProperties(
-                                       expiration=self.expiration_time))
+                                   expiration=self.expiration_time))
 
     def apply(self, message):
         if message:

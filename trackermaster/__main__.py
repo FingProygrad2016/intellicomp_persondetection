@@ -164,27 +164,27 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                         (255, 255, 0), 2)
 
-            # ### Warnings' receiver ###
-            # try:
-            #     while True:
-            #         connection = pika.BlockingConnection()
-            #         channel = connection.channel()
-            #         warnings = channel.basic_get('warnings')
-            #         if None in warnings:
-            #             break
-            #         else:
-            #             warnings = warnings[2].decode()
-            #             new_warn = json.loads(warnings)
-            #             print("NEW WARN", new_warn)
-            #             rules = str(new_warn['rules'][-1][1])
-            #             id_track = new_warn['id']
-            #             tracklet = tracklets.get(id_track, None)
-            #             if tracklet:
-            #                 tracklet.last_rule = rules
-            #                 tracklet.last_rule_time = datetime.now()
-            # except pika.exceptions.ConnectionClosed:
-            #     pass
-            # # END ### Warnings' receiver ###
+            ### Warnings' receiver ###
+            try:
+                while True:
+                    connection = pika.BlockingConnection()
+                    channel = connection.channel()
+                    warnings = channel.basic_get('warnings')
+                    if None in warnings:
+                        break
+                    else:
+                        warnings = warnings[2].decode()
+                        new_warn = json.loads(warnings)
+                        print("NEW WARN", new_warn)
+                        rules = str(new_warn['rules'][-1][1])
+                        id_track = new_warn['id']
+                        tracklet = tracklets.get(id_track, None)
+                        if tracklet:
+                            tracklet.last_rule = rules
+                            tracklet.last_rule_time = datetime.now()
+            except pika.exceptions.ConnectionClosed:
+                pass
+            # END ### Warnings' receiver ###
 
             pattern_recogn_time += time.time() - t0
 

@@ -53,10 +53,11 @@ if __name__ == '__main__':
 
     # Starting up the base
 
-    warnings_queue = Communicator(queue_name='to_master')
+    warnings_queue = Communicator(queue_name='master_rcv', exchange='to_master',
+                                  routing_key='*', exchange_type='topic')
 
     log("Starting up Pool of processes...")
-    processes_pool = Pool()
+    processes_pool = Pool(10)
 
     log("Starting up the Pattern Recognition Engine...")
     pattern_master = processes_pool.apply_async(pattern_recognition_launcher)
@@ -71,7 +72,7 @@ if __name__ == '__main__':
 
     for method, properties, msg in warnings_queue.consume():
         if method.routing_key == 'cmd':
-            cmd = msg.split(' ')
+            cmd = msg.decode().split(' ')
             if cmd[0] == 'EXIT':
                 break
             elif cmd[0] == 'SOURCE' and cmd[1] == 'NEW':
@@ -92,8 +93,6 @@ if __name__ == '__main__':
 
     del warnings_queue
 
-    pattern_master.terminate()
-    webs_exposer.terminate()
-    map(lambda x: x.terminate(), streamings.values())
+    processes_pool.terminate()
 
     log("Fin de Master Luncher.")
