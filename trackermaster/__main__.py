@@ -1,3 +1,4 @@
+from __future__ import print_function
 from datetime import datetime
 import inspect
 import sys
@@ -7,16 +8,17 @@ import cv2
 import json
 import time
 import pika
+from math import trunc
 from hashlib import sha1
 from datetime import datetime as dt
 from trackermaster.config import config
 
-from utils.tools import find_resolution_multiplier
-from trackermaster.black_boxes.background_substraction import \
-    BackgroundSubtractorKNN
+from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_with_frame
+from trackermaster.black_boxes.background_substraction import BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
-from utils.communicator import Communicator
+from trackermaster.black_boxes.person_detection import PersonDetector, non_max_suppression
 from trackermaster.black_boxes.tracking import Tracker
+from utils.communicator import Communicator
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
@@ -75,6 +77,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     background_subtractor = BackgroundSubtractorKNN()
 
     blobs_detector = BlobDetector()
+    person_detector = PersonDetector()
     tracker = Tracker(SEC_PER_FRAME)
     communicator = \
         Communicator(queue_name=config.get('TRACK_INFO_QUEUE_NAME'))
@@ -124,6 +127,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
         if has_more_images:
             # resize to a manageable work resolution
             frame = cv2.resize(frame, (work_w, work_h))
+            frame_copy = frame.copy()
+            frame_copy2 = frame.copy()
 
             # Black boxes process
             t0 = time.time()
@@ -133,127 +138,138 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             t0 = time.time()
             blobs_points = blobs_detector.apply(bg_sub)
 
-            # Bounding boxes for each blob
-            im2, contours, hierarchy = cv2.findContours(bg_sub, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            bounding_boxes = []
-            for contour in contours:
-                bounding_boxes.append(cv2.boundingRect(contour))
+            if blobs_points:
+                bounding_boxes = find_blobs_bounding_boxes(bg_sub)
+                for (x, y, w, h) in bounding_boxes:
+                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-            blob_det_time += time.time() - t0
-            t0 = time.time()
-            trayectos, info_to_send, tracklets = \
-                tracker.apply(blobs_points, frame, number_frame)
-            t_time += time.time() - t0
+                    crop_img = crop_image_with_frame(frame_copy2, (x, y, w, h), 4, 8)
+                    crop_img = cv2.resize(crop_img, (64, 128))
+                    cv2.imshow('crop_img', crop_img)
 
-            t0 = time.time()
+                    pick = person_detector.apply(crop_img)
 
-            if number_frame % FPS_OVER_2 == 0:
-                for info in info_to_send:
-                    info['tracker_id'] = identifier
-                # Send info to the pattern recognition every half second
+                    blobs = []
+                    # draw the final bounding boxes
+                    for (xA, yA, xB, yB) in pick:
+                        xA += (x - 4) - xA
+                        xB += ((x + w) + 4) - xB
+                        yA += (y - 8) - yA
+                        yB += ((y + h) + 8) - yB
+                        cv2.rectangle(frame_copy, (xA, yA), (xB, yB), (0, 255, 0), 2)
+                        blobs.append(cv2.KeyPoint(xB / 2, yB / 2, xB - xA))
 
+                    blob_det_time += time.time() - t0
+                    t0 = time.time()
+                    trayectos, info_to_send, tracklets = \
+                        tracker.apply(blobs_points, frame, number_frame)
+                    t_time += time.time() - t0
 
-                communicator.apply(json.dumps(info_to_send))
+                    t0 = time.time()
 
-            # Draw circles in each blob
-            to_show = cv2.drawKeypoints(
-               to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
-               flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                    if number_frame % FPS_OVER_2 == 0:
+                        for info in info_to_send:
+                            info['tracker_id'] = identifier
+                        # Send info to the pattern recognition every half second
 
-            # Write FPS in the frame to show
-            cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
-                        (255, 255, 0), 2)
+                        communicator.apply(json.dumps(info_to_send))
 
-            ### Warnings' receiver ###
-            try:
-                while True:
-                    connection = pika.BlockingConnection()
-                    channel = connection.channel()
-                    warnings = channel.basic_get('warnings')
-                    if None in warnings:
-                        break
-                    else:
-                        warnings = warnings[2].decode()
-                        new_warn = json.loads(warnings)
-                        print("NEW WARN", new_warn)
-                        rules = str(new_warn['rules'][-1][1])
-                        id_track = new_warn['id']
-                        tracklet = tracklets.get(id_track, None)
-                        if tracklet:
-                            tracklet.last_rule = rules
-                            tracklet.last_rule_time = datetime.now()
-            except pika.exceptions.ConnectionClosed:
-                pass
-            # END ### Warnings' receiver ###
+                    # Draw circles in each blob
+                    to_show = cv2.drawKeypoints(
+                       to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
+                       flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-            pattern_recogn_time += time.time() - t0
+                    # Write FPS in the frame to show
+                    cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
+                                (255, 255, 0), 2)
 
-            t0 = time.time()
+                    ### Warnings' receiver ###
+                    try:
+                        while True:
+                            connection = pika.BlockingConnection()
+                            channel = connection.channel()
+                            warnings = channel.basic_get('warnings')
+                            if None in warnings:
+                                break
+                            else:
+                                warnings = warnings[2].decode()
+                                new_warn = json.loads(warnings)
+                                print("NEW WARN", new_warn)
+                                rules = str(new_warn['rules'][-1][1])
+                                id_track = new_warn['id']
+                                tracklet = tracklets.get(id_track, None)
+                                if tracklet:
+                                    tracklet.last_rule = rules
+                                    tracklet.last_rule_time = datetime.now()
+                    except pika.exceptions.ConnectionClosed:
+                        pass
+                    # END ### Warnings' receiver ###
 
-            for tracklet in tracklets.values():
-                if getattr(tracklet, 'last_rule', None):
-                    time_pass = datetime.now() - \
-                                getattr(tracklet, 'last_rule_time')
-                    if time_pass.seconds < 9:
-                        cv2.putText(to_show, tracklet.last_rule,
-                                    (int(tracklet.last_point[0]),
-                                     int(tracklet.last_point[1])),
-                                    font, 0.3 -
-                                    (time_pass.seconds/30), (255, 0, 0), 1)
-                    else:
-                        tracklet.last_rule = None
+                    pattern_recogn_time += time.time() - t0
 
-            # Draw the journeys of the tracked persons
-            for journey in trayectos:
-                journey_data = journey[0]
-                journey_color = journey[1]
-                journey_id = journey[2]
-                rectangle_points = journey[3]
-                prediction = journey[4]
-                has_big_blob = journey[5]
+                    t0 = time.time()
 
-                journey_data_len = len(journey_data)
+                    for tracklet in tracklets.values():
+                        if getattr(tracklet, 'last_rule', None):
+                            time_pass = datetime.now() - \
+                                        getattr(tracklet, 'last_rule_time')
+                            if time_pass.seconds < 9:
+                                cv2.putText(to_show, tracklet.last_rule,
+                                            (int(tracklet.last_point[0]),
+                                             int(tracklet.last_point[1])),
+                                            font, 0.3 -
+                                            (time_pass.seconds/30), (255, 0, 0), 1)
+                            else:
+                                tracklet.last_rule = None
 
-                for num in range(max(0, journey_data_len - 30),
-                                 journey_data_len - 1):
-                    tuple1 = tuple(journey_data[num][0:2])
-                    tuple2 = tuple(journey_data[num+1][0:2])
-                    cv2.line(to_show, tuple1, tuple2, journey_color,
-                             thickness=1)
-                    cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
-                if has_big_blob:
-                    thickness = 2
-                else:
-                    thickness = 1
-                cv2.rectangle(frame, rectangle_points[0], rectangle_points[1],
-                              journey_color, thickness=thickness)
+                    # Draw the journeys of the tracked persons
+                    for journey in trayectos:
+                        journey_data = journey[0]
+                        journey_color = journey[1]
+                        journey_id = journey[2]
+                        rectangle_points = journey[3]
+                        prediction = journey[4]
+                        has_big_blob = journey[5]
 
-                last_data = journey_data[journey_data_len - 1]
-                last_journey_point = \
-                    (int(last_data[0][0]), int(last_data[1][0]))
-                cv2.rectangle(
-                    frame, (last_journey_point[0], last_journey_point[1] - 7),
-                    (last_journey_point[0] + 12, last_journey_point[1] + 1),
-                    (255, 255, 255), -1
-                )
-                cv2.putText(frame, str(journey_id), last_journey_point, font,
-                            0.3, journey_color, 1)
-                cv2.circle(frame, (prediction[0], prediction[1]), 3,
-                           journey_color, -1)
+                        journey_data_len = len(journey_data)
 
-            # Draw bounding boxes
-            for (x, y, w, h) in bounding_boxes:
-                frame = cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+                        for num in range(max(0, journey_data_len - 30),
+                                         journey_data_len - 1):
+                            tuple1 = tuple(journey_data[num][0:2])
+                            tuple2 = tuple(journey_data[num+1][0:2])
+                            cv2.line(to_show, tuple1, tuple2, journey_color,
+                                     thickness=1)
+                            cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
+                        if has_big_blob:
+                            thickness = 2
+                        else:
+                            thickness = 1
+                        cv2.rectangle(frame, rectangle_points[0], rectangle_points[1],
+                                      journey_color, thickness=thickness)
 
-            show_info_time += time.time() - t0
+                        last_data = journey_data[journey_data_len - 1]
+                        last_journey_point = \
+                            (int(last_data[0][0]), int(last_data[1][0]))
+                        cv2.rectangle(
+                            frame, (last_journey_point[0], last_journey_point[1] - 7),
+                            (last_journey_point[0] + 12, last_journey_point[1] + 1),
+                            (255, 255, 255), -1
+                        )
+                        cv2.putText(frame, str(journey_id), last_journey_point, font,
+                                    0.3, journey_color, 1)
+                        cv2.circle(frame, (prediction[0], prediction[1]), 3,
+                                   journey_color, -1)
 
-            t0 = time.time()
+                    show_info_time += time.time() - t0
+
+                    t0 = time.time()
 
             # Display the frames
             # to_show = cv2.resize(to_show, (work_w*3, work_h*3))
             cv2.imshow('result', to_show)
             cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
+            cv2.imshow('person detection', frame_copy)
 
             display_time += time.time() - t0
 

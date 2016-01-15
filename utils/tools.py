@@ -1,6 +1,7 @@
 """
 Modulo que contiene funciones de ayuda generales
 """
+import cv2
 
 MAX_HEIGHT = 480
 MAX_WIDTH = 640
@@ -64,3 +65,41 @@ def find_resolution_multiplier(w, h):
             return mult_h
     else:
         return 1
+
+
+def find_blobs_bounding_boxes(bg_image):
+    """
+    Find bounding boxes for each element of 'blobs'
+    :param bg_image: the image containing the blobs
+    :return: a list of rectangles representing the bounding boxes
+    """
+    # Bounding boxes for each blob
+    im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    bounding_boxes = []
+    for contour in contours:
+        bounding_boxes.append(cv2.boundingRect(contour))
+    return bounding_boxes
+
+
+def crop_image_with_frame(image, rect, frame_width, frame_height):
+    """
+    Crop an image generating a frame around
+    :param image: the original image
+    :param rect: rectangle to crop
+    :param frame_width: width of the frame
+    :param frame_height: height of the frame
+    :return: the image cropped with the frame around
+    """
+
+    (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
+    if (y - frame_height) > 0:
+        y -= frame_height
+    else:
+        y = 0
+    if (x - frame_width) > 0:
+        x -= frame_width
+    else:
+        x = 0
+
+    # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
+    return image[y: (y + 8) + (h + 8), x: (x + 4) + (w + 4)]
