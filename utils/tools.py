@@ -1,7 +1,9 @@
 """
 Modulo que contiene funciones de ayuda generales
 """
+import base64
 import cv2
+import numpy as np
 
 MAX_HEIGHT = 480
 MAX_WIDTH = 640
@@ -103,3 +105,8 @@ def crop_image_with_frame(image, rect, frame_width, frame_height):
 
     # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
     return image[y: (y + 8) + (h + 8), x: (x + 4) + (w + 4)]
+
+
+def frame2base64png(frame):
+    return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
+

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import base64
 from datetime import datetime
 import inspect
 import sys
@@ -8,15 +9,14 @@ import cv2
 import json
 import time
 import pika
-from math import trunc
 from hashlib import sha1
 from datetime import datetime as dt
 from trackermaster.config import config
 
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_with_frame
+from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_with_frame, frame2base64png
 from trackermaster.black_boxes.background_substraction import BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
-from trackermaster.black_boxes.person_detection import PersonDetector, non_max_suppression
+from trackermaster.black_boxes.person_detection import PersonDetector
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
 
@@ -24,9 +24,22 @@ path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
+# communicator = \
+#     Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
+#                  expiration_time=config.
+#                  getint('WARNINGS_EXPIRATION_TIME'),
+#                  host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
+#                  exchange='to_master', exchange_type='topic')
+#
+
 
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                  source=None):
+
+    comm_info = Communicator(exchange='to_master', routing_key='info',
+                             exchange_type='topic')
+    comm_img = Communicator(exchange='to_master', routing_key='img',
+                            exchange_type='topic')
 
     # Instance of VideoCapture to capture webcam(0) images
 
@@ -170,8 +183,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                     if number_frame % FPS_OVER_2 == 0:
                         for info in info_to_send:
                             info['tracker_id'] = identifier
+                            info['img'] = frame2base64png(frame).decode()
                         # Send info to the pattern recognition every half second
-
                         communicator.apply(json.dumps(info_to_send))
 
                     # Draw circles in each blob
@@ -282,6 +295,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
             total_time += time.time() - t_total
 
+    cv2.destroyAllWindows()
+
     print("Average times::::")
     read_time = read_time / number_frame
     print("Read time " + str(read_time))
@@ -303,6 +318,13 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     total_time = total_time / number_frame
     print("Total time " + str(total_time))
 
+    comm_info.send_message(
+        "EXIT " + identifier +
+        "<br><img src='data:image/png;charset=utf-8;base64," +
+        frame2base64png(to_show).decode() + "'>", routing_key='info')
+    # comm_info.send_message(frame2base64png(frame), routing_key='img')
+
+    exit()
 
 if __name__ == '__main__':
     print('Start to process images...')

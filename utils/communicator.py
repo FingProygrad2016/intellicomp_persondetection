@@ -11,7 +11,7 @@ dispatcher = signal('Dispatcher')
 
 @dispatcher.connect
 def real_send(args):
-    args[0].send_message(args[1])
+    args[0].send_message(args[1], args[2])
 
 
 class Communicator:
@@ -30,11 +30,11 @@ class Communicator:
             self.channel.exchange_declare(exchange, exchange_type=exchange_type)
             self.exchange = exchange
 
+        if queue_name:
             if routing_key:
                 self.channel.queue_bind(queue=self.queue_name,
                                         exchange=self.exchange,
                                         routing_key=routing_key)
-        if queue_name:
             self.exchange = ''
             self.channel.queue_declare(queue=queue_name)
 
@@ -45,9 +45,9 @@ class Communicator:
                                    properties=pika.BasicProperties(
                                    expiration=self.expiration_time))
 
-    def apply(self, message):
+    def apply(self, message, routing_key=None):
         if message:
-            dispatcher.send([self, message.encode()])
+            dispatcher.send([self, message.encode(), routing_key])
 
     def __delete__(self, instance):
         self.connection.close()
