@@ -9,7 +9,7 @@ from munkres import Munkres
 
 class HungarianAlgorithm:
 
-    def __init__(self, cost_function, threshold, infinite):
+    def __init__(self, cost_function, threshold, infinite=100000):
         self.threshold = threshold
         self.infinite = infinite
         self.cost_function = cost_function
@@ -66,6 +66,8 @@ class HungarianAlgorithm:
 
     def apply(self, rows_data, columns_data):
         assigned_row = []
+        assigned_row_cost = numpy.empty(shape=len(rows_data), dtype=float)
+        assigned_row_cost.fill(-1.0)
 
         if len(rows_data) > 0:
             if len(columns_data) > 0:
@@ -85,10 +87,11 @@ class HungarianAlgorithm:
                                 assigned_row[i] = columns_relation[column][1]
                             else:
                                 assigned_row[i] = -1
+                            assigned_row_cost[i] = costs[j][column]
 
                             j += 1
             else:
                 assigned_row = numpy.empty(shape=len(rows_data), dtype=int)
                 assigned_row.fill(-1)
 
-        return assigned_row
+        return assigned_row, assigned_row_cost
