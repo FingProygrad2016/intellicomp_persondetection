@@ -23,8 +23,10 @@ class Tracker:
     threshold_color = config.getint('THRESHOLD_COLOR')
     threshold_size = config.getint('THRESHOLD_SIZE')
     threshold_distance = config.getint('THRESHOLD_DISTANCE')
-    max_seconds_without_update = 5.0  # 2.0
+    max_seconds_without_update = 4.0  # 2.0
     max_seconds_to_predict_position = 2.5  # 1.0  # must be lower or equal than max_seconds_without_update
+    max_seconds_without_any_blob = 2.0
+    min_seconds_to_be_accepted_in_group = 0.5
 
     k_filters = []
     kfs_per_blob = []
@@ -39,6 +41,11 @@ class Tracker:
 
         # calculate the amount of valid frames to predict position of kalman filters without one to one relationship
         self.valid_frames_to_predict_position = self.max_seconds_to_predict_position / self.seconds_per_frame
+
+        # calculate the amount of valid frames to be without any near blob
+        self.valid_frames_without_any_blob = self.max_seconds_without_any_blob / self.seconds_per_frame
+
+        self.valid_frames_since_created = self.min_seconds_to_be_accepted_in_group / self.seconds_per_frame
 
         def position_distance_function(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
@@ -134,13 +141,19 @@ class Tracker:
                 item_blobs = item['blobs']
                 if len(item_blobs) == 0:
                     # there are not blobs assigned to the kalman filter(s)
-                    # remove the kalman filter(s) that has not been assigned for a long time
+
+                    # remove the kalman filter(s) that have been alone for some time
                     kf_to_remove_in_item = []
                     for j, kf in enumerate(item_kf):
-                        # Amount of frames it has been without a one to one relationship
-                        frames_without_one_to_one = self.last_frame - kf.last_frame_update
-                        if frames_without_one_to_one > self.valid_frames_without_update:
-                            # If TrackInfo is too old, remove it forever
+                        # Amount of frames it has been without any blob relationship
+                        frames_without_any_blob = self.last_frame - kf.last_frame_not_alone
+                        # Amount of frames since it has been created
+                        frames_since_created = self.last_frame - kf.created_frame
+                        if frames_without_any_blob > self.valid_frames_without_any_blob:
+                            # If TrackInfo has been without blobs for some time, remove it forever
+                            kf_to_remove_in_item.append({"index": j, "kf": kf})
+                        elif frames_since_created < self.valid_frames_since_created:
+                            # it has been created a very short time ago: remove it
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
 
                     kf_to_remove.extend(kf_to_remove_in_item)
@@ -151,6 +164,7 @@ class Tracker:
 
                     if len(item_kf) == 0:
                         items_to_remove.append(i)
+
                 elif len(item_blobs) == 1:
                     blob = item_blobs[0]
                     if len(item_kf) == 1:
@@ -167,12 +181,20 @@ class Tracker:
                         for j, kf in enumerate(item_kf):
                             # Amount of frames it has been without a one to one relationship
                             frames_without_one_to_one = self.last_frame - kf.last_frame_update
+                            # Amount of frames since it has been created
+                            frames_since_created = self.last_frame - kf.created_frame
                             if frames_without_one_to_one > self.valid_frames_without_update:
                                 # If TrackInfo is too old, remove it forever
                                 kf_to_remove_in_item.append({"index": j, "kf": kf})
                             elif frames_without_one_to_one > self.valid_frames_to_predict_position:
                                 # If it has been without one to one for a long time, correct with the merged blob
-                                kf.update_pos_info(new_position=blob.pt)
+                                kf.update_pos_info(new_position=blob.pt, frame_number=frame_number)
+                            elif frames_since_created < self.valid_frames_since_created:
+                                # it has been created a very short time ago: remove it
+                                kf_to_remove_in_item.append({"index": j, "kf": kf})
+                            else:
+                                # It has been with one to one recently. It is left only with prediction.
+                                kf.update_not_alone_frame_number(frame_number)
 
                         kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -352,12 +374,20 @@ class Tracker:
                             for j, kf in enumerate(item_kf):
                                 # Amount of frames it has been without a one to one relationship
                                 frames_without_one_to_one = self.last_frame - kf.last_frame_update
+                                # Amount of frames since it has been created
+                                frames_since_created = self.last_frame - kf.created_frame
                                 if frames_without_one_to_one > self.valid_frames_without_update:
                                     # If TrackInfo is too old, remove it forever
                                     kf_to_remove_in_item.append({"index": j, "kf": kf})
                                 elif frames_without_one_to_one > self.valid_frames_to_predict_position:
                                     # If it has been without one to one for a long time, correct with the merged blob
-                                    kf.update_pos_info(new_position=item_blobs[0].pt)
+                                    kf.update_pos_info(new_position=item_blobs[0].pt, frame_number=frame_number)
+                                elif frames_since_created < self.valid_frames_since_created:
+                                    # it has been created a very short time ago: remove it
+                                    kf_to_remove_in_item.append({"index": j, "kf": kf})
+                                else:
+                                    # It has been with one to one recently. It is left only with prediction.
+                                    kf.update_not_alone_frame_number(frame_number)
 
                             kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -434,9 +464,11 @@ class TrackInfo:
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
+        self.created_frame = frame_number
         self.id = uuid4().hex
         self.short_id = short_id
         self.last_frame_update = frame_number
+        self.last_frame_not_alone = frame_number
         self.last_update = self.created_datetime
         self.last_point = point
         self.group_number = -1
@@ -458,8 +490,8 @@ class TrackInfo:
         #                                                 [0,0,1,0],
         #                                                 [0,0,0,1]],np.float32)
         self.kalman_filter.transitionMatrix = \
-            np.array([[1, 0, 1, 0, 0.5, 0],
-                      [0, 1, 0, 1, 0, 0.5],
+            np.array([[1, 0, 1, 0, 0.1, 0],
+                      [0, 1, 0, 1, 0, 0.1],
                       [0, 0, 1, 0, 1, 0],
                       [0, 0, 0, 1, 0, 1],
                       [0, 0, 0, 0, 1, 0],
@@ -500,6 +532,7 @@ class TrackInfo:
 
     def update_last_frame(self, last_frame_update):
         self.last_frame_update = last_frame_update
+        self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
 
     def update_info(self, new_position, color, size, blob, last_frame_update):
@@ -508,6 +541,7 @@ class TrackInfo:
         self.color = color
         self.size = size
         self.last_frame_update = last_frame_update
+        self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
         self.last_point = new_position
 
@@ -520,11 +554,15 @@ class TrackInfo:
 
         self.number_updates += 1
 
-    def update_pos_info(self, new_position):  # , last_frame_update):
+    def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
         self.correct(np.array(new_position, np.float32))
         self.last_point = new_position
+        self.last_frame_not_alone = frame_number
 
         self.number_updates += 1
+
+    def update_not_alone_frame_number(self, frame_number):
+        self.last_frame_not_alone = frame_number
 
     def to_dict(self):
         return {
