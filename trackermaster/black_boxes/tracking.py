@@ -23,10 +23,10 @@ class Tracker:
     threshold_color = config.getint('THRESHOLD_COLOR')
     threshold_size = config.getint('THRESHOLD_SIZE')
     threshold_distance = config.getint('THRESHOLD_DISTANCE')
-    max_seconds_without_update = 4.0  # 2.0
-    max_seconds_to_predict_position = 2.5  # 1.0  # must be lower or equal than max_seconds_without_update
-    max_seconds_without_any_blob = 2.0
-    min_seconds_to_be_accepted_in_group = 0.5
+    max_seconds_without_update = config.getfloat('MAX_SECONDS_WITHOUT_UPDATE')
+    max_seconds_to_predict_position = config.getfloat('MAX_SECONDS_TO_PREDICT_POSITION')
+    max_seconds_without_any_blob = config.getfloat('MAX_SECONDS_WITHOUT_ANY_BLOB')
+    min_seconds_to_be_accepted_in_group = config.getfloat('MIN_SECONDS_TO_BE_ACCEPTED_IN_GROUP')
 
     k_filters = []
     kfs_per_blob = []
