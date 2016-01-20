@@ -22,6 +22,13 @@ path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
+# communicator = \
+#     Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
+#                  expiration_time=config.
+#                  getint('WARNINGS_EXPIRATION_TIME'),
+#                  host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
+#                  exchange='to_master', exchange_type='topic')
+#
 
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                  source=None):
@@ -151,8 +158,6 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                 for info in info_to_send:
                     info['tracker_id'] = identifier
                 # Send info to the pattern recognition every half second
-
-
                 communicator.apply(json.dumps(info_to_send))
 
             # Draw circles in each blob
@@ -164,27 +169,27 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                         (255, 255, 0), 2)
 
-            ### Warnings' receiver ###
-            try:
-                while True:
-                    connection = pika.BlockingConnection()
-                    channel = connection.channel()
-                    warnings = channel.basic_get('warnings')
-                    if None in warnings:
-                        break
-                    else:
-                        warnings = warnings[2].decode()
-                        new_warn = json.loads(warnings)
-                        print("NEW WARN", new_warn)
-                        rules = str(new_warn['rules'][-1][1])
-                        id_track = new_warn['id']
-                        tracklet = tracklets.get(id_track, None)
-                        if tracklet:
-                            tracklet.last_rule = rules
-                            tracklet.last_rule_time = datetime.now()
-            except pika.exceptions.ConnectionClosed:
-                pass
-            # END ### Warnings' receiver ###
+            # ### Warnings' receiver ###
+            # try:
+            #     while True:
+            #         warnings = \
+            #             communicator.channel.\
+            #                 basic_get(config.get('WARNINGS_QUEUE_NAME'))
+            #         if None in warnings:
+            #             break
+            #         else:
+            #             warnings = warnings[2].decode()
+            #             new_warn = json.loads(warnings)
+            #             print("NEW WARN", new_warn)
+            #             rules = str(new_warn['rules'][-1][1])
+            #             id_track = new_warn['id']
+            #             tracklet = tracklets.get(id_track, None)
+            #             if tracklet:
+            #                 tracklet.last_rule = rules
+            #                 tracklet.last_rule_time = datetime.now()
+            # except pika.exceptions.ConnectionClosed:
+            #     pass
+            # # END ### Warnings' receiver ###
 
             pattern_recogn_time += time.time() - t0
 
@@ -266,6 +271,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
             total_time += time.time() - t_total
 
+    cv2.destroyAllWindows()
+
     print("Average times::::")
     read_time = read_time / number_frame
     print("Read time " + str(read_time))
@@ -287,6 +294,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     total_time = total_time / number_frame
     print("Total time " + str(total_time))
 
+    exit()
 
 if __name__ == '__main__':
     print('Start to process images...')

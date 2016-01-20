@@ -31,8 +31,7 @@ class PatternRecognition(object):
         self.min_walking_speed = min_walking_speed
         self.min_running_speed = min_running_speed
         self.communicator = \
-            Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
-                         expiration_time=config.
+            Communicator(expiration_time=config.
                          getint('WARNINGS_EXPIRATION_TIME'),
                          host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
                          exchange='to_master', exchange_type='topic')
@@ -216,8 +215,8 @@ class PatternRecognition(object):
             else:
                 break
 
-        print("ID:", tracklet_info.id[:5], "SPEED-EVENTS",
-              last_speed_events, "DIR-EVENTS", last_dir_events)
+        # print("ID:", tracklet_info.id[:5], "SPEED-EVENTS",
+        #       last_speed_events, "DIR-EVENTS", last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
@@ -280,7 +279,8 @@ class PatternRecognition(object):
                         'position':
                             tracklet_info.last_position,
                         'id': tracklet_info.id,
-                        'timestamp': str(tracklet_info.last_time_found_rules)}))
+                        'timestamp': str(tracklet_info.last_time_found_rules)}),
+        routing_key='warnings')
 
-        for rule in tracklet_info.last_found_rules:
-            print(":: ID:", tracklet_info.id[:5], str(rule))
+        # for rule in tracklet_info.last_found_rules:
+        #     print(":: ID:", tracklet_info.id[:5], str(rule))
