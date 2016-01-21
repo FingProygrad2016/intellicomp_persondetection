@@ -21,14 +21,45 @@
             socket = io.connect('http://' + document.domain + ':' + location.port);
             // event handler for server sent data
             // the data is displayed in the "Received" section of the page
-            socket.on('msg', function (msg) {
-                $('#warnings').append('<br><div class="alert alert-info" role="alert">' + msg.data + '</div>');
-                $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
+            socket.on('warning', function (msg) {
+                try {
+                    data = JSON.parse(msg.data);
+                    $('#warnings').append('<br><div class="alert alert-danger" role="alert"><b>' + data['tracker_id'] + '</b> ' + data['rules'] + '<br/><img src="data:image/png;charset=utf-8;base64,' + data['img'] + '"</div>');
+                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
+                } catch (Exception) {
+
+                }
             });
-        })
+
+            socket.on('info', function (msg) {
+                try {
+                    $('#warnings').append('<br><div class="alert alert-info" role="alert">' + msg.data + '</div>');
+                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
+                } catch (Exception) {
+
+                }
+            });
+            socket.on('cmd', function (msg) {
+                try {
+                    $('#warnings').append('<br><div class="alert alert-success" role="alert">' + msg.data + '</div>');
+                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
+                } catch (Exception) {
+
+                }
+            });
+            socket.on('img', function (msg) {
+                try {
+                    $('#warnings').append('<br><div class="alert alert-success" role="alert"><img src="data:image/png;charset=utf-8;base64,' + msg.data + '"></div>');
+                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
+                } catch (Exception) {
+
+                }
+            });
+        });
 
         function add_new_source(){
-            socket.emit('cmd', {'data': 'SOURCE NEW ' + $('#path').val()})
+            socket.emit('cmd', {'data': 'SOURCE NEW ' +
+            $('#path').val() + ' ' + $('#identifier').val()})
         }
     </script>
 

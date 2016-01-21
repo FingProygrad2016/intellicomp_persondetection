@@ -88,12 +88,14 @@ class PatternRecognition(object):
                 found_rules = self.calc_rules(tracklet_info)
 
                 # If Rules were matched, warn about it
-                tracklet_info.last_found_rules = []
-                if found_rules:
-                    found_rules.sort(key=lambda x: x[2], reverse=True)
-                    tracklet_info.last_found_rules = found_rules
-                    tracklet_info.last_time_found_rules = last_update_datetime
-                    self.fire_alarms(tracklet_info)
+                if [x[1] for x in tracklet_info.last_found_rules] != \
+                        [x[1] for x in found_rules]:
+                    if found_rules:
+                        found_rules.sort(key=lambda x: x[2], reverse=True)
+                        tracklet_info.last_found_rules = found_rules
+                        tracklet_info.last_time_found_rules = last_update_datetime
+                        tracklet_info.img = tracklet_raw_info['img']
+                        self.fire_alarms(tracklet_info)
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -189,7 +191,10 @@ class PatternRecognition(object):
         """
 
         :param tracklet_info:
-        :return: a list of tuples with the distance and the rule that was
+        :return: a list of tuples with:
+             0- The distance (trust measurement)
+             1- The rule that was satisfied
+             2- The time that the rule has taken
         satisfied
         """
         found_rules = []
@@ -214,9 +219,6 @@ class PatternRecognition(object):
                 last_dir_events.insert(0, event)
             else:
                 break
-
-        # print("ID:", tracklet_info.id[:5], "SPEED-EVENTS",
-        #       last_speed_events, "DIR-EVENTS", last_dir_events)
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
@@ -279,8 +281,6 @@ class PatternRecognition(object):
                         'position':
                             tracklet_info.last_position,
                         'id': tracklet_info.id,
+                        'img': tracklet_info.img,
                         'timestamp': str(tracklet_info.last_time_found_rules)}),
-        routing_key='warnings')
-
-        # for rule in tracklet_info.last_found_rules:
-        #     print(":: ID:", tracklet_info.id[:5], str(rule))
+            routing_key='warnings')

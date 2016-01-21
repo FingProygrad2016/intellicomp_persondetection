@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 import inspect
 import sys
@@ -11,7 +12,7 @@ from hashlib import sha1
 from datetime import datetime as dt
 from trackermaster.config import config
 
-from utils.tools import find_resolution_multiplier
+from utils.tools import find_resolution_multiplier, frame2base64png
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
@@ -30,8 +31,14 @@ sys.path.insert(0, path)
 #                  exchange='to_master', exchange_type='topic')
 #
 
+
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                  source=None):
+
+    comm_info = Communicator(exchange='to_master', routing_key='info',
+                             exchange_type='topic')
+    comm_img = Communicator(exchange='to_master', routing_key='img',
+                            exchange_type='topic')
 
     # Instance of VideoCapture to capture webcam(0) images
 
@@ -157,6 +164,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             if number_frame % FPS_OVER_2 == 0:
                 for info in info_to_send:
                     info['tracker_id'] = identifier
+                    info['img'] = frame2base64png(frame).decode()
                 # Send info to the pattern recognition every half second
                 communicator.apply(json.dumps(info_to_send))
 
@@ -168,29 +176,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             # Write FPS in the frame to show
             cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
                         (255, 255, 0), 2)
-
-            # ### Warnings' receiver ###
-            # try:
-            #     while True:
-            #         warnings = \
-            #             communicator.channel.\
-            #                 basic_get(config.get('WARNINGS_QUEUE_NAME'))
-            #         if None in warnings:
-            #             break
-            #         else:
-            #             warnings = warnings[2].decode()
-            #             new_warn = json.loads(warnings)
-            #             print("NEW WARN", new_warn)
-            #             rules = str(new_warn['rules'][-1][1])
-            #             id_track = new_warn['id']
-            #             tracklet = tracklets.get(id_track, None)
-            #             if tracklet:
-            #                 tracklet.last_rule = rules
-            #                 tracklet.last_rule_time = datetime.now()
-            # except pika.exceptions.ConnectionClosed:
-            #     pass
-            # # END ### Warnings' receiver ###
-
+            
             pattern_recogn_time += time.time() - t0
 
             t0 = time.time()
@@ -293,6 +279,12 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     print("cv2.waitKey time " + str(wait_key_time))
     total_time = total_time / number_frame
     print("Total time " + str(total_time))
+
+    comm_info.send_message(
+        "EXIT " + identifier +
+        "<br><img src='data:image/png;charset=utf-8;base64," +
+        frame2base64png(to_show).decode() + "'>", routing_key='info')
+    # comm_info.send_message(frame2base64png(frame), routing_key='img')
 
     exit()
 

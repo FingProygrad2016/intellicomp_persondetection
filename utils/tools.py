@@ -1,6 +1,9 @@
 """
 Modulo que contiene funciones de ayuda generales
 """
+import base64
+import cv2
+import numpy as np
 
 MAX_HEIGHT = 480
 MAX_WIDTH = 640
@@ -64,3 +67,6 @@ def find_resolution_multiplier(w, h):
             return mult_h
     else:
         return 1
+
+def frame2base64png(frame):
+    return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())

@@ -7,17 +7,23 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
 socketio = SocketIO(app)
 thread = None
-warnings_queue = Communicator(queue_name='master_rcv', exchange='to_master',
-                                  routing_key='#', exchange_type='topic')
+
+warnings_queue = Communicator(queue_name='web_rcv', exchange='to_master',
+             routing_key='#', exchange_type='topic')
 
 
 def background_thread():
     """Example of how to send server generated events to clients."""
     count = 0
     for method, properties, msg in warnings_queue.consume():
-        count += 1
-        # socketio.emit('msg', {'data': msg, 'count': count})
-        socketio.emit('msg', {'data': msg.decode()})
+        if method.routing_key == 'cmd':
+            socketio.emit('cmd', {'data': msg.decode()})
+        elif method.routing_key == 'warnings':
+            socketio.emit('warning', {'data': msg.decode()})
+        elif method.routing_key == 'info':
+            socketio.emit('info', {'data': msg.decode()})
+        elif method.routing_key == 'img':
+            socketio.emit('img', {'data': msg.decode()})
 
 @app.route('/')
 def index():
@@ -37,4 +43,7 @@ def ws_conn():
 
 @socketio.on('cmd')
 def ws_disconn(data):
+    comm = Communicator(exchange='to_master', routing_key='cmd',
+                        exchange_type='topic')
+    comm.send_message(data['data'], routing_key='cmd')
     print(data)
