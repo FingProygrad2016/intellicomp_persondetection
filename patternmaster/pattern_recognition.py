@@ -142,7 +142,10 @@ class PatternRecognition(object):
         else:
             # calculate the difference between actual direction angle and new
             # direction angle
-            min_diff_signed = tracklet_info.average_direction - angle
+            if angle:
+                min_diff_signed = tracklet_info.average_direction - angle
+            else:
+                min_diff_signed = 0
             min_diff_signed = (min_diff_signed + 180) % 360 - 180
             min_diff = abs(min_diff_signed)
 
