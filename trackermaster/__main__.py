@@ -10,6 +10,7 @@ import time
 from hashlib import sha1
 from datetime import datetime as dt
 
+from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_for_person_detection, frame2base64png
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
@@ -17,12 +18,20 @@ from trackermaster.black_boxes.person_detection import PersonDetector
 from trackermaster.black_boxes.tracking import Tracker
 from trackermaster.config import config
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, \
+from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes,\
     crop_image_for_person_detection, frame2base64png
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
+
+# communicator = \
+#     Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
+#                  expiration_time=config.
+#                  getint('WARNINGS_EXPIRATION_TIME'),
+#                  host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
+#                  exchange='to_master', exchange_type='topic')
+#
 
 
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
@@ -70,17 +79,18 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     except ValueError:
         FPS = 7.
 
+    print("Working at", FPS, "FPS")
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 
     # Getting width and height of captured images
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print("Real resolution: Width ", w, "Height ", h)
+    print("Real resolution: Width", w, "Height", h)
     resolution_multiplier = find_resolution_multiplier(w, h)
     work_w = int(w / resolution_multiplier)
     work_h = int(h / resolution_multiplier)
-    print("Work resolution: Width ", work_w, "Height ", work_h)
+    print("Work resolution: Width", work_w, "Height", work_h)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -154,12 +164,16 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                 bounding_boxes = find_blobs_bounding_boxes(bg_sub)
                 scores = []
                 for (x, y, w, h) in bounding_boxes:
-                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
-                                  (255, 0, 0), 2)
+                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     # Crop a rectangle around detected blob
-                    crop_img = crop_image_for_person_detection(frame_copy2,
-                                                               (x, y, w, h))
+                    crop_img = \
+                        crop_image_for_person_detection(frame_copy2,
+                                                        (x, y, w, h))
+
+                    if 0.8 <= (w / h) <= 1.2:
+                        cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
+                                      (255, 0, 0), 2)
                     cv2.imshow('crop_img', crop_img)
 
                     person, score = \
@@ -172,8 +186,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         xB += ((x + w) + 4) - xB
                         yA += (y - 8) - yA
                         yB += ((y + h) + 8) - yB
-                        cv2.rectangle(frame_copy,
-                                      (xA, yA), (xB, yB), (0, 255, 0), 2)
+                        cv2.rectangle(frame_copy, (xA, yA), (xB, yB),
+                                      (0, 255, 0), 2)
                         blobs.append(cv2.KeyPoint(xB / 2, yB / 2, xB - xA))
                     scores.append(score)
 
@@ -193,10 +207,11 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                     communicator.apply(json.dumps(info_to_send))
 
                 # Draw circles in each blob
-                to_show = cv2.drawKeypoints(
-                   to_show, blobs_points, outImage=np.array([]),
-                    color=(0, 0, 255),
-                   flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                to_show = \
+                    cv2.drawKeypoints(
+                        to_show, blobs_points,
+                        outImage=np.array([]), color=(0, 0, 255),
+                        flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
                 # Write FPS in the frame to show
                 cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
@@ -242,9 +257,9 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         thickness = 2
                     else:
                         thickness = 1
-                    cv2.rectangle(
-                        frame, rectangle_points[0], rectangle_points[1],
-                        journey_color, thickness=thickness)
+                    cv2.rectangle(frame, rectangle_points[0],
+                                  rectangle_points[1], journey_color,
+                                  thickness=thickness)
 
                     last_data = journey_data[journey_data_len - 1]
                     last_journey_point = \

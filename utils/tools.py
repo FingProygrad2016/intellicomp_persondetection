@@ -5,8 +5,8 @@ import base64
 import cv2
 import numpy as np
 
-MAX_HEIGHT = 480
-MAX_WIDTH = 640
+MAX_WIDTH = 320
+MAX_HEIGHT = 240
 
 
 def get_avg_color(raw_image, point, square_half_width=2):
@@ -18,7 +18,7 @@ def get_avg_color(raw_image, point, square_half_width=2):
     :return:
     """
     return raw_image[point[1]-square_half_width-1:point[1]+square_half_width,
-           point[1]-square_half_width-1:point[1]+square_half_width].\
+                     point[1]-square_half_width-1:point[1]+square_half_width].\
         mean(axis=0).mean(axis=0)
 
 
@@ -30,7 +30,8 @@ def euclidean_distance(point1, point2):
     :return:
     """
     # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
-    return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2, zip(point1, point2)))), 0.5)
+    return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2, zip(point1, point2)))
+                   ), 0.5)
 
 
 def diff_in_milliseconds(time_start, time_end):
@@ -76,7 +77,8 @@ def find_blobs_bounding_boxes(bg_image):
     :return: a list of rectangles representing the bounding boxes
     """
     # Bounding boxes for each blob
-    im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE,
+                                                cv2.CHAIN_APPROX_SIMPLE)
     bounding_boxes = []
     for contour in contours:
         bounding_boxes.append(cv2.boundingRect(contour))
@@ -85,27 +87,31 @@ def find_blobs_bounding_boxes(bg_image):
 
 def crop_image_for_person_detection(image, rect):
     """
-    Crop an image generating a frame around
+    Crop an image generating a frame (border) around
     :param image: the original image
     :param rect: rectangle to crop
-    :return: the image cropped with the frame around
+    :return: the image cropped with the frame (border) around
     """
 
     (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
-    frame_width = w / 2
-    frame_height = h / 4
-    if (y - frame_height) > 0:
-        y -= frame_height
+
+    if h >= (2 * w):
+        w = h / 2
+    else:
+        h = 2 * w
+
+    if (y - (h / 4)) > 0:
+        y -= (h / 4)
     else:
         y = 0
-    if (x - frame_width) > 0:
-        x -= frame_width
+    if (x - (w / 4)) > 0:
+        x -= (w / 4)
     else:
         x = 0
 
     # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
-    return cv2.resize((image[y: (y + frame_height) + (h + frame_height), x: (x + frame_width) + (w + frame_width)]),
-                      (64, 128))
+    return cv2.resize((image[y: (y + (h / 4)) + (h + (h / 4)),
+                       x: (x + (w / 4)) + (w + (w / 4))]), (64, 128))
 
 
 def frame2base64png(frame):

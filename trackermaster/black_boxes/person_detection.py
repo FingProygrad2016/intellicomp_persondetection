@@ -21,8 +21,9 @@ class PersonDetector:
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
     def apply(self, bounding_box, image):
-        (rects, weights) = self.hog.detectMultiScale(image, winStride=self.winStride, padding=self.padding,
-                                                     scale=self.scale)
+        (rects, weights) = \
+            self.hog.detectMultiScale(image, winStride=self.winStride,
+                                      padding=self.padding, scale=self.scale)
         # apply non-maxima suppression to the bounding boxes using a
         # fairly large overlap threshold to try to maintain overlapping
         # boxes that are still people
