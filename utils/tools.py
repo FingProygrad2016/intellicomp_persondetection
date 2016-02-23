@@ -109,4 +109,3 @@ def crop_image_with_frame(image, rect, frame_width, frame_height):
 
 def frame2base64png(frame):
     return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
-

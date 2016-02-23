@@ -31,12 +31,13 @@ class Communicator:
             self.exchange = exchange
 
         if queue_name:
+            self.channel.queue_declare(queue=queue_name)
             if routing_key:
                 self.channel.queue_bind(queue=self.queue_name,
                                         exchange=self.exchange,
                                         routing_key=routing_key)
             self.exchange = ''
-            self.channel.queue_declare(queue=queue_name)
+            # self.channel.queue_declare(queue=queue_name)
 
     def send_message(self, message, routing_key=None):
         self.channel.basic_publish(exchange=self.exchange,

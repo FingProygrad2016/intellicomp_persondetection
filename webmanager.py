@@ -9,7 +9,7 @@ socketio = SocketIO(app)
 thread = None
 
 warnings_queue = Communicator(queue_name='web_rcv', exchange='to_master',
-             routing_key='#', exchange_type='topic')
+                              routing_key='#', exchange_type='topic')
 
 
 def background_thread():
