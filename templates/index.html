@@ -12,11 +12,15 @@
     <link href="static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
       <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="static/jquery-1.11.3.min.js"></script>
+    <script src="static/underscore.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="static/bootstrap/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="static/socket.io.min.js"></script>
     <script type="text/javascript" charset="utf-8">
+        var current_sources = [];
+
         $(document).ready(function() {
+
             socket = io.connect('http://' + document.domain + ':' + location.port);
             // event handler for server sent data
             // the data is displayed in the "Received" section of the page
@@ -56,9 +60,40 @@
             });
         });
 
+        function add_close_source_button(identifier){
+            $('#current_sources').append(
+                '<li class="list-group-item" style="height: 55px; position: relative;">' +
+                '<span class="" style="float: left;">' + identifier +
+                '</span><button type="button button-md"  style="right: 16px; position: absolute;"' +
+                'class="btn btn-primary btn-md" ' +
+                'onclick="remove_source(\'' + identifier + '\')">' +
+                'Cerrar</button></li>');
+        }
+
         function add_new_source(){
-            socket.emit('cmd', {'data': 'SOURCE NEW ' +
-            $('#path').val() + ' ' + $('#identifier').val()})
+            var identifier = $('#identifier').val();
+            if (_.indexOf(current_sources, identifier) === -1) {
+                socket.emit('cmd', {
+                    'data': 'SOURCE NEW ' +
+                    $('#path').val() + ' ' + identifier
+                });
+                add_close_source_button(identifier);
+                current_sources.push(identifier);
+            }else{
+                $('#warnings').append('<br><div class="alert alert-danger" role="alert">Origen de datos "' + identifier + '" ya está siendo procesado.</div>');
+            }
+        }
+        function remove_source(identifier){
+            socket.emit('cmd', {'data': 'SOURCE TERMINATE ' + identifier});
+            current_sources = _.without(current_sources, identifier)
+            update_sources_list();
+        }
+
+        function update_sources_list(){
+            $('#current_sources').html('');
+            _.each(current_sources, function(identifier){
+                add_close_source_button(identifier);
+            })
         }
     </script>
 
@@ -76,11 +111,18 @@
     <div class="container">
         <div class="col-md-4">
             <div class="panel panel-info">
-                <div class="panel-heading"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span>       Origenes de datos</div>
+                <div class="panel-heading"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span>Agregar origen de datos</div>
                 <div class="panel-body">
-                    <input id="path" type="text" placeholder="Path"/>
-                    <input id="identifier" type="text" placeholder="Identifier"/>
+                    <input id="path" type="text" placeholder="Path" value="/home/jp/Documents/FIng/proygrad/prototipo_sistema/Videos/Video_003.avi"/>
+                    <input id="identifier" type="text" placeholder="Identifier" value="tres"/>
                     <input id="add" type="button"onclick="add_new_source()" value="Add"/>
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <div class="panel-heading"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span>Origenes de datos en procesamiento</div>
+                <div class="panel-body">
+                    <ul class="list-group" id="current_sources">
+                    </ul>
                 </div>
             </div>
         </div>

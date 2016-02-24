@@ -157,7 +157,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
                     crop_img = crop_image_with_frame(frame_copy2, (x, y, w, h), 4, 8)
                     crop_img = cv2.resize(crop_img, (64, 128))
-                    cv2.imshow('crop_img', crop_img)
+                    # cv2.imshow('crop_img', crop_img)
 
                     pick = person_detector.apply(crop_img)
 
@@ -257,7 +257,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             # Display the frames
             # to_show = cv2.resize(to_show, (work_w*3, work_h*3))
             cv2.imshow('result', to_show)
-            cv2.imshow('background subtraction', bg_sub)
+            # cv2.imshow('background subtraction', bg_sub)
             cv2.imshow('raw image', frame)
             cv2.imshow('person detection', frame_copy)
 
