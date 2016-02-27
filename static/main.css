@@ -1,0 +1,46 @@
+html{
+    height: 96%;
+    margin: 0;
+    padding: 0;
+}
+
+body{
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#main_navbar{
+    height: 5%;
+    padding: 0;
+}
+
+#main_container{
+    height: 92%;
+    padding: 0;
+}
+
+#logs_column{
+    height: 100%;
+}
+
+#logs_panel{
+    height: 100%;
+}
+
+#warnings{
+    height: 95.5%;
+    overflow-y: auto;
+    padding-bottom: 0px;
+}
+
+.list-source-item{
+    height: 55px;
+    position: relative;
+}
+
+.list-source-item-title{
+    float: left;
+    word-wrap: break-word;
+    line-height: 35px;
+}

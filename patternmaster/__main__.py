@@ -1,11 +1,11 @@
 import sys
 import os
+import json
+import pika
+
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
-
-import json
-import pika
 
 from patternmaster.pattern_recognition import PatternRecognition
 from patternmaster.config import config

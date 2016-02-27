@@ -10,17 +10,18 @@
 
     <!-- Bootstrap -->
     <link href="static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-      <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="static/jquery-1.11.3.min.js"></script>
     <script src="static/underscore.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="static/bootstrap/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="static/socket.io.min.js"></script>
-    <!-- ProyGrad panel code -->
+    <!-- ProyGrad panel code and style -->
+    <link href="static/main.css" rel="stylesheet">
     <script type="text/javascript"  src="static/js/app.js"></script>
   </head>
   <body>
-      <nav class="navbar navbar-default">
+      <nav class="navbar navbar-default" id="main_navbar">
       <div class="container-fluid">
         <div class="navbar-header">
           <a class="navbar-brand" href="#">
@@ -29,7 +30,7 @@
         </div>
       </div>
     </nav>
-    <div class="container">
+    <div class="container" id="main_container">
         <div class="col-md-4">
             <div class="panel panel-info">
                 <div class="panel-heading"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span>Agregar origen de datos</div>
@@ -63,10 +64,10 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-8">
-            <div class="panel panel-warning">
+        <div class="col-md-8" id="logs_column">
+            <div class="panel panel-warning" id="logs_panel">
                 <div class="panel-heading"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>       Advertencias recibidas</div>
-                <div class="panel-body" id="warnings" style="height: 600px;overflow-y: auto;"></div>
+                <div class="panel-body" id="warnings"></div>
             </div>
         </div>
     </div>

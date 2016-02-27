@@ -1,5 +1,6 @@
 from hashlib import sha1
 from datetime import datetime as dt
+import json
 
 from multiprocessing import Process
 import pika
@@ -77,6 +78,11 @@ if __name__ == '__main__':
                     if source:
                         source.terminate()
                         del streamings[cmd[2]]
+            elif cmd[0] == 'SOURCE' and cmd[1] == 'LIST':
+                comm = Communicator(exchange='to_master', exchange_type='topic')
+                comm.send_message(json.dumps(dict(
+                    info_id="SOURCE LIST", content=list(streamings.keys()))),
+                    routing_key='info')
         else:
             log('WARNING %s' % msg)
 

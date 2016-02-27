@@ -35,13 +35,32 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     #       "white_balance_temperature_auto=0,"
     #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
+
+    comm_info = Communicator(exchange='to_master', exchange_type='topic')
+
     if source:
         cap = cv2.VideoCapture(source)
+        comm_info.send_message(json.dumps(dict(
+        info_id="OPEN", id=identifier,
+        content="Opening source: %s." % source)),
+        routing_key='info')
     else:
         # Videos de muestra
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
-        cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
+        source = videos_path + '/../Videos/Video_003.avi'
+        cap = cv2.VideoCapture(source)
+
+    has_at_least_one_frame, _ = cap.read()
+    if not has_at_least_one_frame:
+        comm_info.send_message(json.dumps(dict(
+            info_id="EXIT WITH ERROR", id=identifier,
+            content="<p>ERROR: Trying to open source but couldn't.</p>")),
+            routing_key='info')
+        print('EXIT %s with error: Source %s could not be loaded.' %
+              (identifier, source))
+
+        exit()
 
     # Original FPS
     try:
@@ -72,6 +91,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     tracker = Tracker(SEC_PER_FRAME)
     communicator = \
         Communicator(queue_name=config.get('TRACK_INFO_QUEUE_NAME'))
+    exit_cause = 'FINISHED'
 
     loop_time = time.time()
 
@@ -117,7 +137,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
         if has_more_images:
             # resize to a manageable work resolution
-            frame = cv2.resize(frame, (work_w, work_h))
+            raw_frame = cv2.resize(frame, (work_w, work_h))
+            frame = raw_frame.copy()
             frame_copy = frame.copy()
             frame_copy2 = frame.copy()
 
@@ -167,7 +188,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                 if number_frame % FPS_OVER_2 == 0:
                     for info in info_to_send:
                         info['tracker_id'] = identifier
-                        info['img'] = frame2base64png(frame).decode()
+                        info['img'] = frame2base64png(raw_frame).decode()
                     # Send info to the pattern recognition every half second
                     communicator.apply(json.dumps(info_to_send))
 
@@ -255,6 +276,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             t0 = time.time()
 
             if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
+                exit_cause = 'CLOSED'
                 break
 
             wait_key_time += time.time() - t0
@@ -287,8 +309,9 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     comm_info = Communicator(exchange='to_master', exchange_type='topic')
     comm_info.send_message(json.dumps(dict(
         info_id="EXIT", id=identifier,
-        img="<br><img src='data:image/png;charset=utf-8;base64," +
-        frame2base64png(frame).decode() + "'>")), routing_key='info')
+        content="Exit cause: " + exit_cause +
+        "<br><img src='data:image/png;charset=utf-8;base64," +
+        frame2base64png(raw_frame).decode() + "'>")), routing_key='info')
 
     exit()
 
