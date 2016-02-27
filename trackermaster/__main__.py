@@ -1,5 +1,4 @@
 from __future__ import print_function
-import base64
 from datetime import datetime
 import inspect
 import sys
@@ -8,43 +7,28 @@ import numpy as np
 import cv2
 import json
 import time
-import pika
 from hashlib import sha1
 from datetime import datetime as dt
 
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_with_frame, frame2base64png
-from trackermaster.black_boxes.background_substraction import BackgroundSubtractorKNN
+from trackermaster.black_boxes.background_substraction import \
+    BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.person_detection import PersonDetector
 from trackermaster.black_boxes.tracking import Tracker
 from trackermaster.config import config
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_for_person_detection,\
-                        frame2base64png
+from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, \
+    crop_image_for_person_detection, frame2base64png
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
-# communicator = \
-#     Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
-#                  expiration_time=config.
-#                  getint('WARNINGS_EXPIRATION_TIME'),
-#                  host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
-#                  exchange='to_master', exchange_type='topic')
-#
-
 
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                  source=None):
 
-    comm_info = Communicator(exchange='to_master', routing_key='info',
-                             exchange_type='topic')
-    comm_img = Communicator(exchange='to_master', routing_key='img',
-                            exchange_type='topic')
-
     # Instance of VideoCapture to capture webcam(0) images
-
     # WebCam
     # cap = cv2.VideoCapture(0)
     # popen("v4l2-ctl -d /dev/video1 --set-ctrl "
@@ -58,14 +42,6 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
         cap = cv2.VideoCapture(videos_path + '/../Videos/Video_003.avi')
-    # Palacio Legislativo
-    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_byhzppsn,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfYnloenBwc24lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTUzMzUmcmFuZG9tPW1qc2cwdnJHakYmYy1pcD0xOTAuNjQuNDkuMjcsMGI3OGU0NmQ5YjkyNTA0ZTZlYTY2ZDBlYTc1Yzk4OTI4YmZlOTczNmY4ZjQxM2QxMTc0MzYxNDBhOTBjOGRmZA==/hls/var1320000/playlist.m3u8')
-    # Mercado del Puerto
-    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTQ1OTkmcmFuZG9tPTZjaFFUTmk3MDMmYy1pcD0xOTAuNjQuNDkuMjcsM2IzNWZkNjQ4ODU5YTczZGVhNTA3OWVjZTFjMjNlMTFiOWQxMjJhZGIwNmRkYjFlNzIwNWY4ODYzNzU0ODU5MA==/hls/var3300000/playlist.m3u8')
-    # Plaza del Entrevero
-    # cap = cv2.VideoCapture('http://live.cdn.antel.net.uy/auth_0_3iwgu26m,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfM2l3Z3UyNm0lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NDg5NTU2MDcmcmFuZG9tPUFoNzJOVExHSXUmYy1pcD0xOTAuNjQuNDkuMjcsODI0NjhkZTM2NDNiMDQ5YjUyZmI3ZDNlNzUxY2M5NjRlOTMwMjFiM2UxNzUwMDRmZGI0ZWZhMWM4NTJlMjZlOQ==/hls/var3300000/playlist.m3u8')
-
-    # cap = cv2.VideoCapture('sec_cam.mp4')
 
     # Original FPS
     try:
@@ -157,13 +133,16 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                 bounding_boxes = find_blobs_bounding_boxes(bg_sub)
                 scores = []
                 for (x, y, w, h) in bounding_boxes:
-                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
+                                  (255, 0, 0), 2)
 
                     # Crop a rectangle around detected blob
-                    crop_img = crop_image_for_person_detection(frame_copy2, (x, y, w, h))
+                    crop_img = crop_image_for_person_detection(frame_copy2,
+                                                               (x, y, w, h))
                     cv2.imshow('crop_img', crop_img)
 
-                    person, score = person_detector.apply((x, y, w, h), crop_img)
+                    person, score = \
+                        person_detector.apply((x, y, w, h), crop_img)
 
                     blobs = []
                     # draw the final bounding boxes
@@ -172,13 +151,15 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         xB += ((x + w) + 4) - xB
                         yA += (y - 8) - yA
                         yB += ((y + h) + 8) - yB
-                        cv2.rectangle(frame_copy, (xA, yA), (xB, yB), (0, 255, 0), 2)
+                        cv2.rectangle(frame_copy,
+                                      (xA, yA), (xB, yB), (0, 255, 0), 2)
                         blobs.append(cv2.KeyPoint(xB / 2, yB / 2, xB - xA))
                     scores.append(score)
 
                 blob_det_time += time.time() - t0
                 t0 = time.time()
-                trayectos, info_to_send, tracklets = tracker.apply(blobs_points, frame, number_frame, scores)
+                trayectos, info_to_send, tracklets = \
+                    tracker.apply(blobs_points, frame, number_frame, scores)
                 t_time += time.time() - t0
 
                 t0 = time.time()
@@ -192,7 +173,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
                 # Draw circles in each blob
                 to_show = cv2.drawKeypoints(
-                   to_show, blobs_points, outImage=np.array([]), color=(0, 0, 255),
+                   to_show, blobs_points, outImage=np.array([]),
+                    color=(0, 0, 255),
                    flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
                 # Write FPS in the frame to show
@@ -233,24 +215,27 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         tuple2 = tuple(journey_data[num+1][0:2])
                         cv2.line(to_show, tuple1, tuple2, journey_color,
                                  thickness=1)
-                        cv2.line(frame, tuple1, tuple2, journey_color, thickness=1)
+                        cv2.line(frame, tuple1, tuple2, journey_color,
+                                 thickness=1)
                     if has_big_blob:
                         thickness = 2
                     else:
                         thickness = 1
-                    cv2.rectangle(frame, rectangle_points[0], rectangle_points[1],
-                                  journey_color, thickness=thickness)
+                    cv2.rectangle(
+                        frame, rectangle_points[0], rectangle_points[1],
+                        journey_color, thickness=thickness)
 
                     last_data = journey_data[journey_data_len - 1]
                     last_journey_point = \
                         (int(last_data[0][0]), int(last_data[1][0]))
                     cv2.rectangle(
-                        frame, (last_journey_point[0], last_journey_point[1] - 7),
+                        frame, (last_journey_point[0],
+                                last_journey_point[1] - 7),
                         (last_journey_point[0] + 12, last_journey_point[1] + 1),
                         (255, 255, 255), -1
                     )
-                    cv2.putText(frame, str(journey_id), last_journey_point, font,
-                                0.3, journey_color, 1)
+                    cv2.putText(frame, str(journey_id), last_journey_point,
+                                font, 0.3, journey_color, 1)
                     cv2.circle(frame, (prediction[0], prediction[1]), 3,
                                journey_color, -1)
 
@@ -299,11 +284,11 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     total_time = total_time / number_frame
     print("Total time " + str(total_time))
 
-    comm_info.send_message(
-        "EXIT " + identifier +
-        "<br><img src='data:image/png;charset=utf-8;base64," +
-        frame2base64png(to_show).decode() + "'>", routing_key='info')
-    # comm_info.send_message(frame2base64png(frame), routing_key='img')
+    comm_info = Communicator(exchange='to_master', exchange_type='topic')
+    comm_info.send_message(json.dumps(dict(
+        info_id="EXIT", id=identifier,
+        img="<br><img src='data:image/png;charset=utf-8;base64," +
+        frame2base64png(frame).decode() + "'>")), routing_key='info')
 
     exit()
 

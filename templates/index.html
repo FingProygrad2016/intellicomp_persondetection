@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,87 +16,8 @@
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="static/bootstrap/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="static/socket.io.min.js"></script>
-    <script type="text/javascript" charset="utf-8">
-        var current_sources = [];
-
-        $(document).ready(function() {
-
-            socket = io.connect('http://' + document.domain + ':' + location.port);
-            // event handler for server sent data
-            // the data is displayed in the "Received" section of the page
-            socket.on('warning', function (msg) {
-                try {
-                    data = JSON.parse(msg.data);
-                    $('#warnings').append('<br><div class="alert alert-danger" role="alert"><b>' + data['tracker_id'] + '</b> ' + data['rules'] + '<br/><img src="data:image/png;charset=utf-8;base64,' + data['img'] + '"</div>');
-                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
-                } catch (Exception) {
-
-                }
-            });
-
-            socket.on('info', function (msg) {
-                try {
-                    $('#warnings').append('<br><div class="alert alert-info" role="alert">' + msg.data + '</div>');
-                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
-                } catch (Exception) {
-
-                }
-            });
-            socket.on('cmd', function (msg) {
-                try {
-                    $('#warnings').append('<br><div class="alert alert-success" role="alert">' + msg.data + '</div>');
-                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
-                } catch (Exception) {
-
-                }
-            });
-            socket.on('img', function (msg) {
-                try {
-                    $('#warnings').append('<br><div class="alert alert-success" role="alert"><img src="data:image/png;charset=utf-8;base64,' + msg.data + '"></div>');
-                    $('#warnings').animate({scrollTop: $('#warnings').get(0).scrollHeight}, 500)
-                } catch (Exception) {
-
-                }
-            });
-        });
-
-        function add_close_source_button(identifier){
-            $('#current_sources').append(
-                '<li class="list-group-item" style="height: 55px; position: relative;">' +
-                '<span class="" style="float: left;">' + identifier +
-                '</span><button type="button button-md"  style="right: 16px; position: absolute;"' +
-                'class="btn btn-primary btn-md" ' +
-                'onclick="remove_source(\'' + identifier + '\')">' +
-                'Cerrar</button></li>');
-        }
-
-        function add_new_source(){
-            var identifier = $('#identifier').val();
-            if (_.indexOf(current_sources, identifier) === -1) {
-                socket.emit('cmd', {
-                    'data': 'SOURCE NEW ' +
-                    $('#path').val() + ' ' + identifier
-                });
-                add_close_source_button(identifier);
-                current_sources.push(identifier);
-            }else{
-                $('#warnings').append('<br><div class="alert alert-danger" role="alert">Origen de datos "' + identifier + '" ya está siendo procesado.</div>');
-            }
-        }
-        function remove_source(identifier){
-            socket.emit('cmd', {'data': 'SOURCE TERMINATE ' + identifier});
-            current_sources = _.without(current_sources, identifier)
-            update_sources_list();
-        }
-
-        function update_sources_list(){
-            $('#current_sources').html('');
-            _.each(current_sources, function(identifier){
-                add_close_source_button(identifier);
-            })
-        }
-    </script>
-
+    <!-- ProyGrad panel code -->
+    <script type="text/javascript"  src="static/js/app.js"></script>
   </head>
   <body>
       <nav class="navbar navbar-default">
@@ -113,9 +34,25 @@
             <div class="panel panel-info">
                 <div class="panel-heading"><span class="glyphicon glyphicon-facetime-video" aria-hidden="true"></span>Agregar origen de datos</div>
                 <div class="panel-body">
-                    <input id="path" type="text" placeholder="Path" value="/home/jp/Documents/FIng/proygrad/prototipo_sistema/Videos/Video_003.avi"/>
-                    <input id="identifier" type="text" placeholder="Identifier" value="tres"/>
-                    <input id="add" type="button"onclick="add_new_source()" value="Add"/>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="identifier_">ID</span>
+                        <input type="text"
+                               value="VideoTres"
+                               class="form-control"
+                               aria-describedby="identifier_" id="identifier">
+                    </div><br>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="path_">HTTP/FILE</span>
+                        <input type="text"
+                               value="/home/jp/Documents/FIng/proygrad/prototipo_sistema/Videos/Video_003.avi"
+                               class="form-control"
+                               aria-describedby="path_" id="path">
+                    </div><br>
+                    <div>
+                        <button type="button"
+                                class="btn btn-primary btn-lg btn-block"
+                                id="add" onclick="add_new_source()">Add</button>
+                    </div>
                 </div>
             </div>
             <div class="panel panel-info">
@@ -133,6 +70,5 @@
             </div>
         </div>
     </div>
-
   </body>
 </html>

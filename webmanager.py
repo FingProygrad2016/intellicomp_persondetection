@@ -1,6 +1,7 @@
 from threading import Thread
 from flask import Flask, render_template
 from flask.ext.socketio import SocketIO
+
 from utils.communicator import Communicator
 
 app = Flask(__name__)
@@ -13,8 +14,6 @@ warnings_queue = Communicator(queue_name='web_rcv', exchange='to_master',
 
 
 def background_thread():
-    """Example of how to send server generated events to clients."""
-    count = 0
     for method, properties, msg in warnings_queue.consume():
         if method.routing_key == 'cmd':
             socketio.emit('cmd', {'data': msg.decode()})
@@ -24,6 +23,7 @@ def background_thread():
             socketio.emit('info', {'data': msg.decode()})
         elif method.routing_key == 'img':
             socketio.emit('img', {'data': msg.decode()})
+
 
 @app.route('/')
 def index():
@@ -38,7 +38,6 @@ def index():
 @socketio.on('connect')
 def ws_conn():
     return True
-    # socketio.emit('msg', {'data': 'WELCOME ' + str(randint(100, 200))})
 
 
 @socketio.on('cmd')
