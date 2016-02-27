@@ -17,6 +17,7 @@ from webmanager import socketio, app
 def log(msg):
     print('::MASTER:: %s' % msg)
 
+
 def websocket_exposer():
     socketio.run(app, port=5000)
 
@@ -72,8 +73,10 @@ if __name__ == '__main__':
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':
                 if len(cmd) > 2:
-                    streamings[cmd[2]].terminate()
-                    del streamings[cmd[2]]
+                    source = streamings.get(cmd[2])
+                    if source:
+                        source.terminate()
+                        del streamings[cmd[2]]
         else:
             log('WARNING %s' % msg)
 
