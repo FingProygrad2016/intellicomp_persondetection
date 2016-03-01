@@ -1,16 +1,17 @@
 from __future__ import print_function
-from datetime import datetime
-import inspect
-import sys
-import os
-import json
-import time
-from hashlib import sha1
-from datetime import datetime as dt
-import numpy as np
 import cv2
+import inspect
+import json
+import numpy as np
+import os
+import sys
+import time
 
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_for_person_detection, frame2base64png
+from datetime import datetime
+from datetime import datetime as dt
+from hashlib import sha1
+from imutils.object_detection import non_max_suppression
+from math import pow, sqrt
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
@@ -165,48 +166,54 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                 bounding_boxes = find_blobs_bounding_boxes(bg_sub)
                 scores = []
 
-                for (x, y, w, h) in bounding_boxes:
+                rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in
+                                  bounding_boxes])
+                rectangles = np.array([[x1, y1, x2 - x1, y2 - y1] for
+                                       (x1, y1, x2, y2) in
+                                       non_max_suppression(rects,
+                                                           probs=None,
+                                                           overlapThresh=0.3)])
 
+                blobs = []
+                for (x, y, w, h) in rectangles:
                     # Crop a rectangle around detected blob
                     crop_img = \
-                        crop_image_for_person_detection(frame_copy2,
-                                                        (x *
-                                                         resolution_multiplier,
-                                                         y *
-                                                         resolution_multiplier,
-                                                         w *
-                                                         resolution_multiplier,
-                                                         h *
-                                                         resolution_multiplier))
+                        crop_image_for_person_detection(
+                            frame_copy2, (x * resolution_multiplier,
+                                          y * resolution_multiplier,
+                                          w * resolution_multiplier,
+                                          h * resolution_multiplier))
 
                     cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
                                   (255, 0, 0), 2)
                     cv2.imshow('crop_img', crop_img)
 
-                    person, score = \
+                    persons, score = \
                         person_detector.apply((x, y, w, h), crop_img)
 
-                    blobs = []
                     # draw the final bounding boxes
-                    for (xA, yA, xB, yB) in person:
+                    for (xA, yA, xB, yB) in persons:
                         x_1 = int(round((xA * w) / 128))
                         y_1 = int(round((yA * h) / 256))
                         x_2 = int(round((xB * w) / 128))
                         y_2 = int(round((yB * h) / 256))
 
-                        x_A = (x - 4) + x_1
-                        x_B = (x + 4) + x_2
-                        y_A = (y - 8) + y_1
-                        y_B = (y + 8) + y_2
-                        cv2.rectangle(frame_copy, (x_A, y_A), (x_B, y_B),
+                        x_a = (x - 4) + x_1
+                        x_b = (x + 4) + x_2
+                        y_a = (y - 8) + y_1
+                        y_b = (y + 8) + y_2
+                        cv2.rectangle(frame_copy, (x_a, y_a), (x_b, y_b),
                                       (0, 255, 0), 2)
-                        blobs.append(cv2.KeyPoint(x_B / 2, y_B / 2, x_B - x_A))
-                    scores.append(score)
+                        blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
+                                                  round((y_a + y_b) / 2),
+                                                  sqrt(pow(x_b - x_a, 2) +
+                                                       pow(y_b - y_a, 2))))
+                        scores.append(score)
 
                 blob_det_time += time.time() - t0
                 t0 = time.time()
                 trayectos, info_to_send, tracklets = \
-                    tracker.apply(blobs_points, frame, number_frame, scores)
+                    tracker.apply(blobs, frame, number_frame, scores)
                 t_time += time.time() - t0
 
                 t0 = time.time()
@@ -280,8 +287,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         frame, (last_journey_point[0],
                                 last_journey_point[1] - 7),
                         (last_journey_point[0] + 12, last_journey_point[1] + 1),
-                        (255, 255, 255), -1
-                    )
+                        (255, 255, 255), -1)
                     cv2.putText(frame, str(journey_id), last_journey_point,
                                 font, 0.3, journey_color, 1)
                     cv2.circle(frame, (prediction[0], prediction[1]), 3,

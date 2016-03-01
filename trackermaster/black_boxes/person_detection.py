@@ -32,8 +32,11 @@ class PersonDetector:
         if len(person):
             return person, 1
         else:
-            if (((bounding_box[2] / bounding_box[3]) >= (self.aspect_ratio - (0.2 * self.aspect_ratio))) and
-                    ((bounding_box[2] / bounding_box[3]) <= (self.aspect_ratio + (0.2 * self.aspect_ratio)))):
-                return [], 1 - (abs(self.aspect_ratio - (bounding_box[2] / bounding_box[3])))
+            if (((bounding_box[2] / bounding_box[3]) >=
+                     (self.aspect_ratio - (0.2 * self.aspect_ratio))) and
+                    ((bounding_box[2] / bounding_box[3]) <=
+                         (self.aspect_ratio + (0.2 * self.aspect_ratio)))):
+                return [], 0.7 - (abs(self.aspect_ratio -
+                                    (bounding_box[2] / bounding_box[3])))
             else:
                 return [], 0
