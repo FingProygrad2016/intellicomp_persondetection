@@ -111,7 +111,7 @@ def crop_image_for_person_detection(image, rect):
 
     # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
     return cv2.resize((image[y: (y + (h / 4)) + (h + (h / 4)),
-                       x: (x + (w / 4)) + (w + (w / 4))]), (64, 128))
+                       x: (x + (w / 4)) + (w + (w / 4))]), (128, 256))
 
 
 def frame2base64png(frame):

@@ -428,7 +428,7 @@ class Tracker:
             for kf in self.k_filters:
                 # journeys.append((kf.journey, kf.journey_color, kf.short_id,
                 #                 kf.rectangle, kf.prediction, self.kfs_per_blob[kf.group_number]['color']))
-                if kf.score > 0:
+                if kf.score > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
                                      kf.rectangle, kf.prediction, False))
 

@@ -80,7 +80,6 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     except ValueError:
         FPS = 7.
 
-    print("Working at", FPS, "FPS")
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 
@@ -92,6 +91,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     work_w = int(w / resolution_multiplier)
     work_h = int(h / resolution_multiplier)
     print("Work resolution: Width", work_w, "Height", work_h)
+    print("Working at", FPS, "FPS")
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -147,11 +147,11 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
         read_time += time.time() - t0
 
         if has_more_images:
+            frame_copy2 = frame.copy()
             # resize to a manageable work resolution
             raw_frame = cv2.resize(frame, (work_w, work_h))
             frame = raw_frame.copy()
             frame_copy = frame.copy()
-            frame_copy2 = frame.copy()
 
             # Black boxes process
             t0 = time.time()
@@ -164,17 +164,23 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
             if blobs_points:
                 bounding_boxes = find_blobs_bounding_boxes(bg_sub)
                 scores = []
+
                 for (x, y, w, h) in bounding_boxes:
-                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     # Crop a rectangle around detected blob
                     crop_img = \
                         crop_image_for_person_detection(frame_copy2,
-                                                        (x, y, w, h))
+                                                        (x *
+                                                         resolution_multiplier,
+                                                         y *
+                                                         resolution_multiplier,
+                                                         w *
+                                                         resolution_multiplier,
+                                                         h *
+                                                         resolution_multiplier))
 
-                    if 0.8 <= (w / h) <= 1.2:
-                        cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
-                                      (255, 0, 0), 2)
+                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
+                                  (255, 0, 0), 2)
                     cv2.imshow('crop_img', crop_img)
 
                     person, score = \
@@ -183,13 +189,18 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                     blobs = []
                     # draw the final bounding boxes
                     for (xA, yA, xB, yB) in person:
-                        xA += (x - 4) - xA
-                        xB += ((x + w) + 4) - xB
-                        yA += (y - 8) - yA
-                        yB += ((y + h) + 8) - yB
-                        cv2.rectangle(frame_copy, (xA, yA), (xB, yB),
+                        x_1 = int(round((xA * w) / 128))
+                        y_1 = int(round((yA * h) / 256))
+                        x_2 = int(round((xB * w) / 128))
+                        y_2 = int(round((yB * h) / 256))
+
+                        x_A = (x - 4) + x_1
+                        x_B = (x + 4) + x_2
+                        y_A = (y - 8) + y_1
+                        y_B = (y + 8) + y_2
+                        cv2.rectangle(frame_copy, (x_A, y_A), (x_B, y_B),
                                       (0, 255, 0), 2)
-                        blobs.append(cv2.KeyPoint(xB / 2, yB / 2, xB - xA))
+                        blobs.append(cv2.KeyPoint(x_B / 2, y_B / 2, x_B - x_A))
                     scores.append(score)
 
                 blob_det_time += time.time() - t0
