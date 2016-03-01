@@ -44,3 +44,15 @@ body{
     word-wrap: break-word;
     line-height: 35px;
 }
+
+#config_values{
+    display: none;
+    height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+
+.glyphicon{
+    padding-right: 8px;
+}

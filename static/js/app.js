@@ -6,8 +6,21 @@ function publish_log(msg){
     warnings.animate({scrollTop: warnings.get(0).scrollHeight}, 500)
 }
 
-$('document').ready(function() {
+function addConfigInput(parent, item, default_val) {
+    var idval = parent + '_' + item,
+        idlabel = idval + '_';
+    $('#config_values').append(
+        '<div class="input-group">' +
+        '<span class="input-group-addon" id="' + idlabel + '" title="' +
+        idval + '">' + idval.slice(0,20) + '</span>' +
+        '<input type="text" value="' + default_val +
+        '" class="form-control config_' + parent +
+        '" aria-describedby="path_" id="' +
+        item + '">' + '</div><br>'
+    )
+}
 
+$('document').ready(function() {
 
     /*** WEBSOCKET COMMUNICATION ***/
 
@@ -58,6 +71,10 @@ $('document').ready(function() {
 
     /*** EVENTS ***/
 
+    $(window).unload(function(){
+        io.disconnect();
+    });
+
     $('#identifier').keypress(function (e) {
         if (e.which == 13) {
             $('#path').focus();
@@ -70,10 +87,27 @@ $('document').ready(function() {
         }
     });
 
+    $('#showhide_advancedconf').click(function(e){
+       $('#config_values').toggle('slow');
+    });
+
     /*** ASK FOR CURRENT SOURCES RUNNING ***/
     socket.emit('cmd', {
         'data': 'SOURCE LIST'
     });
+
+    /*** LOAD DEFAULT CONFIGS ***/
+    $.ajax('/configs').
+        done(function(response, status){
+            var data = JSON.parse(response)
+            _.each(data.trackermaster, function(item){
+                addConfigInput('trackermaster', item[0], item[1]);
+            }, this);
+            _.each(data.patternmaster, function(item){
+                addConfigInput('patternmaster', item[0], item[1]);
+            }, this);
+        }).
+        error(alert, 'Couldn\'t load the default configurations.');
 });
 
 function add_close_source_button(identifier) {
@@ -112,9 +146,25 @@ function add_new_source() {
     identifier = identifier.val();
     path = path.val();
     if (_.indexOf(current_sources, identifier) === -1) {
+        var config_trackermaster,
+            config_patternmaster;
+
+        function get_config_dict(collection_identifier){
+            return _.reduce($(collection_identifier),
+                function(partial, new_value){
+                    partial[new_value.id] = new_value.value;
+                    return partial;
+                }, {});
+        }
+
+        config_trackermaster = get_config_dict('input.config_trackermaster');
+        config_patternmaster = get_config_dict('input.config_patternmaster');
+
         socket.emit('cmd', {
             'data': 'SOURCE NEW ' +
-            path + ' ' + identifier
+            path + ' ' + identifier + ' ' +
+            JSON.stringify(config_trackermaster) + ' ' +
+            JSON.stringify(config_patternmaster)
         });
         add_close_source_button(identifier);
         current_sources.push(identifier);

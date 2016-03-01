@@ -1,8 +1,12 @@
+import json
 from threading import Thread
+
 from flask import Flask, render_template
 from flask.ext.socketio import SocketIO
 
 from utils.communicator import Communicator
+from trackermaster.config import config as configs_tracker
+from patternmaster.config import config as configs_pattern
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
@@ -35,6 +39,14 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/configs')
+def get_configs():
+    return json.dumps(
+        dict(trackermaster=[list(x) for x in dict(configs_tracker).items()],
+             patternmaster=[list(x) for x in dict(configs_pattern).items()])), \
+           200
+
+
 @socketio.on('connect')
 def ws_conn():
     return True
@@ -46,3 +58,8 @@ def ws_disconn(data):
                         exchange_type='topic')
     comm.send_message(data['data'], routing_key='cmd')
     print(data)
+
+
+if __name__ == '__main__':
+    # app.run(debug=True)
+    app.run(debug=False)

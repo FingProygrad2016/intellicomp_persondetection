@@ -3,12 +3,12 @@ from datetime import datetime
 import inspect
 import sys
 import os
-import numpy as np
-import cv2
 import json
 import time
 from hashlib import sha1
 from datetime import datetime as dt
+import numpy as np
+import cv2
 
 from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes, crop_image_for_person_detection, frame2base64png
 from trackermaster.black_boxes.background_substraction import \
@@ -49,10 +49,11 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
 
     if source:
         cap = cv2.VideoCapture(source)
-        comm_info.send_message(json.dumps(dict(
-        info_id="OPEN", id=identifier,
-        content="Opening source: %s." % source)),
-        routing_key='info')
+        comm_info.send_message(
+            json.dumps(dict(
+                info_id="OPEN", id=identifier,
+                content="Opening source: %s." % source)),
+            routing_key='info')
     else:
         # Videos de muestra
         videos_path = os.path.dirname(
