@@ -34,15 +34,15 @@ class BackgroundSubtractorMOG2:
 
 class BackgroundSubtractorKNN:
 
-    # Configuration parameters
-    history = config.getint('HISTORY')
-    dist_2_threshold = config.getint('DIST_2_THRESHOLD')
-    n_samples = config.getint('N_SAMPLES')
-    knn_samples = config.getint('KNN_SAMPLES')
-    detect_shadows = config.getboolean('DETECT_SHADOWS')
-    shadow_threshold = config.getfloat('SHADOW_THRESHOLD')
-
     def __init__(self):
+
+        # Configuration parameters
+        self.history = config.getint('HISTORY')
+        self.dist_2_threshold = config.getint('DIST_2_THRESHOLD')
+        self.n_samples = config.getint('N_SAMPLES')
+        self.knn_samples = config.getint('KNN_SAMPLES')
+        self.detect_shadows = config.getboolean('DETECT_SHADOWS')
+        self.shadow_threshold = config.getfloat('SHADOW_THRESHOLD')
 
         self.subtractor = cv2.createBackgroundSubtractorKNN()
 

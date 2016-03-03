@@ -1,5 +1,5 @@
 from uuid import uuid4
-from datetime import datetime, timedelta
+from datetime import datetime
 import random
 
 import numpy as np
@@ -15,24 +15,30 @@ from trackermaster.config import config
 # Metodo para reconocer a que blob hacemos referencia (por color y tamano):
 # http://airccse.org/journal/sipij/papers/2211sipij01.pdf
 
-INFINITE_DISTANCE = config.getint('INFINITE_DISTANCE')
-
 
 class Tracker:
-
-    threshold_color = config.getint('THRESHOLD_COLOR')
-    threshold_size = config.getint('THRESHOLD_SIZE')
-    threshold_distance = config.getint('THRESHOLD_DISTANCE')
-    max_seconds_without_update = config.getfloat('MAX_SECONDS_WITHOUT_UPDATE')
-    max_seconds_to_predict_position = config.getfloat('MAX_SECONDS_TO_PREDICT_POSITION')
-    max_seconds_without_any_blob = config.getfloat('MAX_SECONDS_WITHOUT_ANY_BLOB')
-    min_seconds_to_be_accepted_in_group = config.getfloat('MIN_SECONDS_TO_BE_ACCEPTED_IN_GROUP')
 
     k_filters = []
     kfs_per_blob = []
     tracklets_short_id = 1
 
     def __init__(self, seconds_per_frame):
+
+        # Configuration parameters
+        self.threshold_color = config.getint('THRESHOLD_COLOR')
+        self.threshold_size = config.getint('THRESHOLD_SIZE')
+        self.threshold_distance = config.getint('THRESHOLD_DISTANCE')
+        self.max_seconds_without_update = \
+            config.getfloat('MAX_SECONDS_WITHOUT_UPDATE')
+        self.max_seconds_to_predict_position = \
+            config.getfloat('MAX_SECONDS_TO_PREDICT_POSITION')
+        self.max_seconds_without_any_blob = \
+            config.getfloat('MAX_SECONDS_WITHOUT_ANY_BLOB')
+        self.min_seconds_to_be_accepted_in_group = \
+            config.getfloat('MIN_SECONDS_TO_BE_ACCEPTED_IN_GROUP')
+
+        self.INFINITE_DISTANCE = config.getint('INFINITE_DISTANCE')
+
         self.last_frame = 0
         self.seconds_per_frame = seconds_per_frame
 
@@ -53,7 +59,7 @@ class Tracker:
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance,
-                                                    INFINITE_DISTANCE)
+                                                    self.INFINITE_DISTANCE)
 
         def position_distance_function_ini(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
@@ -61,21 +67,21 @@ class Tracker:
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos_ini = HungarianAlgorithm(position_distance_function_ini, self.threshold_distance,
-                                                        INFINITE_DISTANCE)
+                                                        self.INFINITE_DISTANCE)
 
         def blob_size_distance_function(k_filter, blob):
             return abs(blob.size - k_filter.size)
 
         # Hungarian Algorithm for blob size
         self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size,
-                                                     INFINITE_DISTANCE)
+                                                     self.INFINITE_DISTANCE)
 
         def blob_color_distance_function(color, k_filter):
             return euclidean_distance(color, k_filter.color)
 
         # Hungarian Algorithm for blob color
         self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color,
-                                                      INFINITE_DISTANCE)
+                                                      self.INFINITE_DISTANCE)
 
     def apply(self, blobs, raw_image, frame_number, scores):
         """
@@ -451,7 +457,7 @@ class Tracker:
         return len(self.k_filters) - 1
 
     def search_nearest_blob(self, kfs_group_item, blobs):
-        min_distance = INFINITE_DISTANCE
+        min_distance = self.INFINITE_DISTANCE
         nearest_blob = -1
         for i in range(0, len(blobs)):
             prediction = kfs_group_item['average_pos']

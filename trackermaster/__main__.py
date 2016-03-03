@@ -1,42 +1,37 @@
 from __future__ import print_function
-import cv2
 import inspect
-import json
-import numpy as np
-import os
 import sys
+import os
+import json
 import time
-
-from datetime import datetime
-from datetime import datetime as dt
 from hashlib import sha1
 from imutils.object_detection import non_max_suppression
 from math import pow, sqrt
+from datetime import datetime as dt
+import numpy as np
+import cv2
+
+from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.person_detection import PersonDetector
 from trackermaster.black_boxes.tracking import Tracker
-from trackermaster.config import config
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, find_blobs_bounding_boxes,\
-    crop_image_for_person_detection, frame2base64png
+from utils.tools import find_resolution_multiplier, \
+    find_blobs_bounding_boxes, crop_image_for_person_detection, \
+    frame2base64png
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
-# communicator = \
-#     Communicator(queue_name=config.get('WARNINGS_QUEUE_NAME'),
-#                  expiration_time=config.
-#                  getint('WARNINGS_EXPIRATION_TIME'),
-#                  host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
-#                  exchange='to_master', exchange_type='topic')
-#
-
 
 def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
-                 source=None):
+                 source=None, trackermaster_conf={"max_inertia":"122","shadow_threshold":"0.5","max_circularity":"1.0","min_dist_between_blobs":"3","min_circularity":"0.01","winstride_0":"2","filter_by_area":"True","threshold_distance":"30","detect_shadows":"False","winstride_1":"2","min_threshold":"1","min_convexity":"0.2","warnings_expiration_time":"60","warnings_queue_name":"warnings","blob_color":"255","small_blobs_size_threshold":"10","max_seconds_without_any_blob":"2.0","infinite_distance":"999999","max_convexity":"1.0","threshold_color":"15","padding_1":"4","padding_0":"4","small_blobs_size_distance_threshold":"10","aspect_ratio":"0.5","max_seconds_to_predict_position":"2.5","max_area":"5000","filter_by_circularity":"False","filter_by_inertia":"False","warnings_queue_hostaddress":"localhost","track_info_queue_name":"track_info","filter_by_convexity":"False","n_samples":"5","min_inertia":"0","min_seconds_to_be_accepted_in_group":"0.5","knn_samples":"5","threshold_step":"10","scale":"1.01","min_area":"50","dist_2_threshold":"350","max_seconds_without_update":"4.0","filter_by_color":"True","threshold_size":"1","history":"100","track_info_queue_hostaddress":"localhost","max_threshold":"100"} ):
+
+    if trackermaster_conf:
+        set_custome_config(trackermaster_conf)
 
     # Instance of VideoCapture to capture webcam(0) images
     # WebCam
@@ -81,6 +76,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     except ValueError:
         FPS = 7.
 
+    print("Working at", FPS, "FPS")
     SEC_PER_FRAME = 1. / FPS
     FPS_OVER_2 = (FPS / 2)
 
@@ -92,7 +88,6 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     work_w = int(w / resolution_multiplier)
     work_h = int(h / resolution_multiplier)
     print("Work resolution: Width", work_w, "Height", work_h)
-    print("Working at", FPS, "FPS")
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -148,11 +143,11 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
         read_time += time.time() - t0
 
         if has_more_images:
-            frame_copy2 = frame.copy()
             # resize to a manageable work resolution
             raw_frame = cv2.resize(frame, (work_w, work_h))
             frame = raw_frame.copy()
             frame_copy = frame.copy()
+            frame_copy2 = frame.copy()
 
             # Black boxes process
             t0 = time.time()
@@ -191,6 +186,7 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                     persons, score = \
                         person_detector.apply((x, y, w, h), crop_img)
 
+                    blobs = []
                     # draw the final bounding boxes
                     for (xA, yA, xB, yB) in persons:
                         x_1 = int(round((xA * w) / 128))
@@ -343,8 +339,8 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     comm_info.send_message(json.dumps(dict(
         info_id="EXIT", id=identifier,
         content="Exit cause: " + exit_cause +
-        "<br><img src='data:image/png;charset=utf-8;base64," +
-        frame2base64png(raw_frame).decode() + "'>")), routing_key='info')
+                "<br><img src='data:image/png;charset=utf-8;base64," +
+                frame2base64png(raw_frame).decode() + "'>")), routing_key='info')
 
     exit()
 

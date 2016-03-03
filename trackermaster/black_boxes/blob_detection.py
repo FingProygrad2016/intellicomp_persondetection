@@ -13,21 +13,32 @@ class BlobDetector:
     small_blobs = []
     big_blobs = []
 
-    # Configuration parameters
-    threshold = [config.getint('MIN_THRESHOLD'), config.getint('MAX_THRESHOLD'), config.getint('THRESHOLD_STEP')]
-    min_dist_between_blobs = config.getint('MIN_DIST_BETWEEN_BLOBS')
-    filter_by_color = [config.getboolean('FILTER_BY_COLOR'), config.getint('BLOB_COLOR')]
-    filter_by_area = [config.getboolean('FILTER_BY_AREA'), config.getint('MIN_AREA'), config.getint('MAX_AREA')]
-    filter_by_circularity = [config.getboolean('FILTER_BY_CIRCULARITY'), config.getfloat('MIN_CIRCULARITY'),
-                             config.getfloat('MAX_CIRCULARITY')]
-    filter_by_convexity = [config.getboolean('FILTER_BY_CONVEXITY'), config.getfloat('MIN_CONVEXITY'),
-                           config.getfloat('MAX_CONVEXITY')]
-    filter_by_inertia = [config.getboolean('FILTER_BY_INERTIA'), config.getfloat('MIN_INERTIA'),
-                         config.getfloat('MAX_INERTIA')]
-    small_blobs_size_threshold = config.getint('SMALL_BLOBS_SIZE_THRESHOLD')
-    small_blobs_size_distance_threshold = config.getint('SMALL_BLOBS_SIZE_DISTANCE_THRESHOLD')
-
     def __init__(self):
+
+        # Configuration parameters
+        self.threshold = [config.getint('MIN_THRESHOLD'),
+                          config.getint('MAX_THRESHOLD'),
+                          config.getint('THRESHOLD_STEP')]
+        self.min_dist_between_blobs = config.getint('MIN_DIST_BETWEEN_BLOBS')
+        self.filter_by_color = [config.getboolean('FILTER_BY_COLOR'),
+                                config.getint('BLOB_COLOR')]
+        self.filter_by_area = [config.getboolean('FILTER_BY_AREA'),
+                               config.getint('MIN_AREA'),
+                               config.getint('MAX_AREA')]
+        self.filter_by_circularity = \
+            [config.getboolean('FILTER_BY_CIRCULARITY'),
+             config.getfloat('MIN_CIRCULARITY'),
+             config.getfloat('MAX_CIRCULARITY')]
+        self.filter_by_convexity = [config.getboolean('FILTER_BY_CONVEXITY'),
+                                    config.getfloat('MIN_CONVEXITY'),
+                                    config.getfloat('MAX_CONVEXITY')]
+        self.filter_by_inertia = [config.getboolean('FILTER_BY_INERTIA'),
+                                  config.getfloat('MIN_INERTIA'),
+                                  config.getfloat('MAX_INERTIA')]
+        self.small_blobs_size_threshold = \
+            config.getint('SMALL_BLOBS_SIZE_THRESHOLD')
+        self.small_blobs_size_distance_threshold = \
+            config.getint('SMALL_BLOBS_SIZE_DISTANCE_THRESHOLD')
 
         # Setup SimpleBlobDetector parameters
         params = cv2.SimpleBlobDetector_Params()
@@ -66,7 +77,8 @@ class BlobDetector:
 
         self.detector = cv2.SimpleBlobDetector_create(params)
         self.small_blobs_size_threshold = self.small_blobs_size_threshold
-        self.small_blobs_size_distance_threshold = self.small_blobs_size_distance_threshold
+        self.small_blobs_size_distance_threshold = \
+            self.small_blobs_size_distance_threshold
 
     # Try to identify small blobs with big blobs
     def identify_small_blobs(self):
@@ -77,7 +89,8 @@ class BlobDetector:
             candidate = (None, 100000)
             for bigBlobIndex, bigBlob in enumerate(self.big_blobs):
                 dist = euclidean_distance(smallBlob.pt, bigBlob.pt)
-                if (dist < self.small_blobs_size_distance_threshold) and (dist < candidate[1]):
+                if (dist < self.small_blobs_size_distance_threshold) and \
+                        (dist < candidate[1]):
                     candidate = (bigBlobIndex, dist - (bigBlob.size / 2))
             if candidate[0]:
                 # Calculo tamano total de la adicion del small blob

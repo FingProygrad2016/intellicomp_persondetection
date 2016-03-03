@@ -7,15 +7,15 @@ from trackermaster.config import config
 
 class PersonDetector:
 
-    detector = None
-
-    # Configuration parameters
-    aspect_ratio = config.getfloat('ASPECT_RATIO')
-    padding = (config.getint('PADDING_0'), config.getint('PADDING_1'))
-    scale = config.getfloat('SCALE')
-    winStride = (config.getint('WINSTRIDE_0'), config.getint('WINSTRIDE_1'))
-
     def __init__(self):
+
+        # Configuration parameters
+        self.aspect_ratio = config.getfloat('ASPECT_RATIO')
+        self.padding = (config.getint('PADDING_0'), config.getint('PADDING_1'))
+        self.scale = config.getfloat('SCALE')
+        self.winStride = (config.getint('WINSTRIDE_0'),
+                          config.getint('WINSTRIDE_1'))
+
         # Initialize the HOG descriptor/person detector
         self.hog = cv2.HOGDescriptor()
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
