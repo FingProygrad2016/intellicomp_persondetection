@@ -57,7 +57,7 @@ $('document').ready(function() {
         }
     });
     socket.on('cmd', function (msg) {
-        data = msg.data.split(' ')
+        data = msg.data.split(' ');
         publish_log('<div style="word-wrap: break-word;" ' +
             'class="alert alert-success" role="alert">' +
             msg.data.split(' ').slice(0,4).join(' ') + '</div>');
