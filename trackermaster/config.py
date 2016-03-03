@@ -14,4 +14,40 @@ def read_conf():
 
     return configuration['DEFAULT']
 
-config = read_conf()
+global custome_config
+custome_config = None
+
+
+class CustomConfig(object):
+    data = read_conf()
+
+    @classmethod
+    def get(cls, name):
+        if custome_config:
+            return custome_config[name.lower()]
+        return cls.data[name]
+
+    @classmethod
+    def getint(cls, name):
+        if custome_config:
+            return int(custome_config[name.lower()])
+        return cls.data[name]
+
+    @classmethod
+    def getfloat(cls, name):
+        if custome_config:
+            return float(custome_config[name.lower()])
+        return cls.data[name]
+
+    @classmethod
+    def getboolean(cls, name):
+        if custome_config:
+            return bool(custome_config[name.lower()])
+        return cls.data[name]
+
+
+def set_custome_config(data):
+    global custome_config
+    custome_config = data
+
+config = CustomConfig

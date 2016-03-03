@@ -68,8 +68,12 @@ if __name__ == '__main__':
                     identifier = \
                         sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
 
+                trackermaster_conf = cmd[4]
+                patternmaster_conf = cmd[5]
+
                 streamings[identifier] = Process(
-                    target=track_source, args=[identifier, cmd[2]])
+                    target=track_source, args=[identifier, cmd[2],
+                                               trackermaster_conf])
                 streamings[identifier].start()
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':
