@@ -1,7 +1,6 @@
 from datetime import timedelta
 import numpy as np
 from enum import Enum
-from patternmaster.config import config
 
 from utils.tools import diff_in_milliseconds
 
@@ -31,9 +30,9 @@ class Quantifiers(Enum):
 
 class Event(object):
 
-    AP_TOLERANCE = config.getint('APROX_TOLERANCE')
-
-    def __init__(self, quantifier, value, time_end, duration):
+    def __init__(self, quantifier, value, time_end, duration,
+                 aprox_tolerance=1500):
+        self.AP_TOLERANCE = aprox_tolerance
         self.quantifier = quantifier
         self.value = value
         if time_end:
@@ -73,7 +72,8 @@ class Event(object):
 
 
 class EventSpeed(Event):
-    def __init__(self, type, quantifier, value, time_end=None, duration=0):
+    def __init__(self, type, quantifier, value, time_end=None, duration=0,
+                 aprox_tolerance=1500):
         self.type = type
         self.info_type = EventInfoType.TIME
         super(EventSpeed, self).__init__(quantifier, value, time_end, duration)
@@ -85,7 +85,8 @@ class EventSpeed(Event):
 
 
 class EventDirection(Event):
-    def __init__(self, type, quantifier, value, time_end=None, duration=0):
+    def __init__(self, type, quantifier, value, time_end=None, duration=0,
+                 aprox_tolerance=1500):
         self.type = DirectionEventTypes.ROTATION
         self.info_type = EventInfoType.ANGLE
         super(EventDirection, self).__init__(quantifier, value, time_end,

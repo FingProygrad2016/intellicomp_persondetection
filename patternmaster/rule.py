@@ -4,7 +4,7 @@ import inspect
 
 from patternmaster.event import EventSpeed, SpeedEventTypes, Quantifiers, \
     EventDirection, DirectionEventTypes
-from patternmaster.config import config
+from patternmaster.config import read_conf
 
 
 class Rule(object):
@@ -22,7 +22,10 @@ class Rule(object):
         }
 
 
-def load_system_rules():
+def load_system_rules(config=None):
+
+    if not config:
+        config = read_conf()
 
     rules = []
 
@@ -49,8 +52,9 @@ def load_system_rules():
                                 event_quantifier not in \
                                 [q.name for q in Quantifiers]:
                             raise Exception(
-                                'Rule loader fails in line ' + str(line) + '. ' +
-                                'Info type or/and quantifier is/are not valid.')
+                                'Rule loader fails in line %s. ' +
+                                'Info type or/and quantifier is/are not valid.'
+                                % str(line))
                         event_class = EventSpeed
                         type_enum = SpeedEventTypes
                     elif event_type == 'DIRECTION':
@@ -66,9 +70,10 @@ def load_system_rules():
                                               float(event_value)))
                 rules.append(Rule(line, rule_name, events=events))
             except IndexError:
-                raise Exception('Rule loader fails in line ' + str(line) + '. ' +
-                          'Min. amount of attributes is 5.')
+                raise Exception('Rule loader fails in line %s. '
+                                'Min. amount of attributes is 5.' % str(line))
             except Exception as e:
-                raise Exception('Rule loader fails in line ' + str(line) + '. ' + e.args[0])
+                raise Exception('Rule loader fails in line %s. %s' %
+                                (str(line), e.args[0]))
 
     return rules

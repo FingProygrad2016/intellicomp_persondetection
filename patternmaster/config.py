@@ -11,4 +11,20 @@ def read_conf():
 
     return configuration['DEFAULT']
 
-config = read_conf()
+
+class CustomConfig:
+
+    def __init__(self, custome_conf):
+        self.custome_config = custome_conf
+
+    def get(self, name):
+        return self.custome_config[name.lower()]
+
+    def getint(self, name):
+        return int(self.custome_config[name.lower()])
+
+    def getfloat(self, name):
+        return float(self.custome_config[name.lower()])
+
+    def getboolean(self, name):
+        return bool(self.custome_config[name.lower()])

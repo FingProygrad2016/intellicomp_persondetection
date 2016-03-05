@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     # Starting up the base
 
-    warnings_queue = Communicator(queue_name='master_rcv', exchange='to_master',
+    warnings_queue = Communicator(queue_name='launcher_rcv', exchange='to_master',
                                   routing_key='#', exchange_type='topic')
 
     log("Starting up the Pattern Recognition Engine...")
@@ -68,12 +68,15 @@ if __name__ == '__main__':
                     identifier = \
                         sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
 
-                trackermaster_conf = cmd[4]
-                patternmaster_conf = cmd[5]
+                trackermaster_conf = json.loads(cmd[4]) \
+                    if len(cmd) > 4 else None
+                patternmaster_conf = json.loads(cmd[5]) \
+                    if len(cmd) > 5 else None
 
                 streamings[identifier] = Process(
                     target=track_source, args=[identifier, cmd[2],
-                                               trackermaster_conf])
+                                               trackermaster_conf,
+                                               patternmaster_conf])
                 streamings[identifier].start()
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':

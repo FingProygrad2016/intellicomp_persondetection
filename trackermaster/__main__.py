@@ -27,9 +27,19 @@ path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
 
-def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
-                 source=None, trackermaster_conf={"max_inertia":"122","shadow_threshold":"0.5","max_circularity":"1.0","min_dist_between_blobs":"3","min_circularity":"0.01","winstride_0":"2","filter_by_area":"True","threshold_distance":"30","detect_shadows":"False","winstride_1":"2","min_threshold":"1","min_convexity":"0.2","warnings_expiration_time":"60","warnings_queue_name":"warnings","blob_color":"255","small_blobs_size_threshold":"10","max_seconds_without_any_blob":"2.0","infinite_distance":"999999","max_convexity":"1.0","threshold_color":"15","padding_1":"4","padding_0":"4","small_blobs_size_distance_threshold":"10","aspect_ratio":"0.5","max_seconds_to_predict_position":"2.5","max_area":"5000","filter_by_circularity":"False","filter_by_inertia":"False","warnings_queue_hostaddress":"localhost","track_info_queue_name":"track_info","filter_by_convexity":"False","n_samples":"5","min_inertia":"0","min_seconds_to_be_accepted_in_group":"0.5","knn_samples":"5","threshold_step":"10","scale":"1.01","min_area":"50","dist_2_threshold":"350","max_seconds_without_update":"4.0","filter_by_color":"True","threshold_size":"1","history":"100","track_info_queue_hostaddress":"localhost","max_threshold":"100"} ):
+def send_patternrecognition_config(communicator, identifier,
+                                   patternmaster_conf):
+    if patternmaster_conf:
+        communicator.apply(json.dumps({'config': patternmaster_conf,
+                                      'identifier': identifier}),
+                           routing_key='processing_settings')
 
+
+def track_source(identifier=None, source=None, trackermaster_conf=None,
+                 patternmaster_conf={"warnings_expiration_time":"60","track_info_queue_name":"track_info","min_walking_speed":"8","track_info_queue_hostaddress":"localhost","patterns_definition_file_path":"/patterns_definition.dat","min_events_speed_amount":"6","min_angle_rotation":"15","aprox_tolerance":"1500","warnings_queue_name":"warnings","weight_new_direction_angle":"0.2","min_events_speed_time":"30000","min_running_speed":"80","min_events_dir_time":"30000","warnings_queue_hostaddress":"localhost","min_events_dir_amount":"2"}):
+
+    if not identifier:
+        identifier = sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
     if trackermaster_conf:
         set_custome_config(trackermaster_conf)
 
@@ -41,7 +51,16 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     #       "white_balance_temperature=inactive,exposure_absolute=inactive,"
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
 
+    # Communication with Launcher and others
     comm_info = Communicator(exchange='to_master', exchange_type='topic')
+
+    # Communication with PatternMaster
+    communicator = \
+        Communicator(exchange=config.get('TRACK_INFO_QUEUE_NAME'),
+                     exchange_type='direct')
+    exit_cause = 'FINISHED'
+
+    send_patternrecognition_config(communicator, identifier, patternmaster_conf)
 
     if source:
         cap = cv2.VideoCapture(source)
@@ -96,9 +115,6 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
     blobs_detector = BlobDetector()
     person_detector = PersonDetector()
     tracker = Tracker(SEC_PER_FRAME)
-    communicator = \
-        Communicator(queue_name=config.get('TRACK_INFO_QUEUE_NAME'))
-    exit_cause = 'FINISHED'
 
     loop_time = time.time()
 
@@ -219,7 +235,13 @@ def track_source(identifier=sha1(str(dt.utcnow()).encode('utf-8')).hexdigest(),
                         info['tracker_id'] = identifier
                         info['img'] = frame2base64png(raw_frame).decode()
                     # Send info to the pattern recognition every half second
-                    communicator.apply(json.dumps(info_to_send))
+                    communicator.apply(json.dumps(info_to_send),
+                                       routing_key='track_info')
+
+                if number_frame % (FPS*10) == 0:
+                    # Renew the config in pattern recognition every 10 seconds
+                    send_patternrecognition_config(communicator, identifier,
+                                                   patternmaster_conf)
 
                 # Draw circles in each blob
                 to_show = \

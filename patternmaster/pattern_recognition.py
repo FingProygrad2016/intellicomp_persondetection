@@ -9,32 +9,39 @@ from patternmaster.rule import load_system_rules
 from patternmaster.tracklet import Tracklet
 from utils.communicator import Communicator
 from utils.tools import euclidean_distance, diff_in_milliseconds
-from patternmaster.config import config
+from patternmaster.config import CustomConfig, read_conf
 
 
 class PatternRecognition(object):
 
-    WEIGHT_FOR_NEW_DIRECTION_ANGLE = \
-        config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
-    MIN_EVENTS_SPEED_AMOUNT = config.getint('MIN_EVENTS_SPEED_AMOUNT')
-    MIN_EVENTS_SPEED_TIME = config.getint('MIN_EVENTS_SPEED_TIME')
-    MIN_EVENTS_DIR_AMOUNT = config.getint('MIN_EVENTS_DIR_AMOUNT')
-    MIN_EVENTS_DIR_TIME = config.getint('MIN_EVENTS_DIR_TIME')
-
-    movement_change_rules = load_system_rules()
-
-    def __init__(self, identifier, min_angle_rotation=90, min_walking_speed=10,
-                 min_running_speed=120):
+    def __init__(self, identifier, custom_config=None):
         self.tracklets_info = {}  # Collection of Tracklets
         self.identifier = identifier
-        self.min_angle_rotation = min_angle_rotation
-        self.min_walking_speed = min_walking_speed
-        self.min_running_speed = min_running_speed
+        self.config = CustomConfig(custom_config) if custom_config \
+            else read_conf()
+
+        self.movement_change_rules = load_system_rules(self.config)
+
+        self.min_angle_rotation = self.config.getint('MIN_ANGLE_ROTATION')
+        self.min_walking_speed = self.config.getint('MIN_WALKING_SPEED')
+        self.min_running_speed = self.config.getint('MIN_RUNNING_SPEED')
+        self.WEIGHT_FOR_NEW_DIRECTION_ANGLE = \
+            self.config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
+        self.MIN_EVENTS_SPEED_AMOUNT = \
+            self.config.getint('MIN_EVENTS_SPEED_AMOUNT')
+        self.MIN_EVENTS_SPEED_TIME = self.config.getint('MIN_EVENTS_SPEED_TIME')
+        self.MIN_EVENTS_DIR_AMOUNT = self.config.getint('MIN_EVENTS_DIR_AMOUNT')
+        self.MIN_EVENTS_DIR_TIME = self.config.getint('MIN_EVENTS_DIR_TIME')
+
         self.communicator = \
-            Communicator(expiration_time=config.
-                         getint('WARNINGS_EXPIRATION_TIME'),
-                         host_address=config.get('WARNINGS_QUEUE_HOSTADDRESS'),
-                         exchange='to_master', exchange_type='topic')
+            Communicator(
+                expiration_time=self.config.getint('WARNINGS_EXPIRATION_TIME'),
+                host_address=self.config.get('WARNINGS_QUEUE_HOSTADDRESS'),
+                exchange='to_master', exchange_type='topic')
+
+    def set_config(self, data):
+        self.config = CustomConfig(data) if data \
+            else read_conf()
 
     def apply(self, tracklet_raw_info):
         """

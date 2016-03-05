@@ -31,19 +31,19 @@ class CustomConfig(object):
     def getint(cls, name):
         if custome_config:
             return int(custome_config[name.lower()])
-        return cls.data[name]
+        return int(cls.data[name])
 
     @classmethod
     def getfloat(cls, name):
         if custome_config:
             return float(custome_config[name.lower()])
-        return cls.data[name]
+        return float(cls.data[name])
 
     @classmethod
     def getboolean(cls, name):
         if custome_config:
             return bool(custome_config[name.lower()])
-        return cls.data[name]
+        return bool(cls.data[name])
 
 
 def set_custome_config(data):
