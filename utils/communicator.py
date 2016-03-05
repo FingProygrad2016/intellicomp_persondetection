@@ -15,6 +15,10 @@ def real_send(args):
 
 
 class Communicator:
+    """
+    Higher class level of pika functionalities.
+    A kind of abstraction to make it easier.
+    """
 
     def __init__(self, queue_name=None, expiration_time=60,
                  host_address='localhost', exchange=None,
@@ -44,7 +48,7 @@ class Communicator:
                                    routing_key=routing_key or self.queue_name,
                                    body=message,
                                    properties=pika.BasicProperties(
-                                   expiration=self.expiration_time))
+                                       expiration=self.expiration_time))
 
     def apply(self, message, routing_key=None):
         if message:
