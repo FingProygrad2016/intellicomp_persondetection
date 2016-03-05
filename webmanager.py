@@ -5,8 +5,8 @@ from flask import Flask, render_template
 from flask.ext.socketio import SocketIO
 
 from utils.communicator import Communicator
-from trackermaster.config import config as configs_tracker
-from patternmaster.config import config as configs_pattern
+from trackermaster.config import read_conf as configs_tracker
+from patternmaster.config import read_conf as configs_pattern
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
@@ -42,9 +42,9 @@ def index():
 @app.route('/configs')
 def get_configs():
     return json.dumps(
-        dict(trackermaster=[list(x) for x in dict(configs_tracker).items()],
-             patternmaster=[list(x) for x in dict(configs_pattern).items()])), \
-           200
+        dict(trackermaster=[list(x) for x in dict(configs_tracker()).items()],
+             patternmaster=[list(x) for x in
+                            dict(configs_pattern()).items()])), 200
 
 
 @socketio.on('connect')
@@ -61,5 +61,5 @@ def ws_disconn(data):
 
 
 if __name__ == '__main__':
-    # app.run(debug=True)
-    app.run(debug=False)
+    app.run(debug=True)
+    # app.run(debug=False)

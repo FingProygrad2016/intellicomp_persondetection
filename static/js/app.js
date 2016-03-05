@@ -27,11 +27,15 @@ $('document').ready(function() {
     socket = io.connect('http://' + document.domain + ':' + location.port);
 
     socket.on('warning', function (msg) {
-        data = JSON.parse(msg.data);
-        publish_log('<div class="alert alert-danger" role="alert"><b>' +
-            data['tracker_id'] + '</b> ' + data['rules'] +
-            '<br/><img src="data:image/png;charset=utf-8;base64,' +
-            data['img'] + '"</div>');
+        var data = JSON.parse(msg.data);
+        publish_log('<div class="alert alert-danger" role="alert" ' +
+            'style="height: 275px">' +
+            '<div class="col-md-4"><b>ID:</b> ' + data['tracker_id'] + '<br>' +
+            '<b>CONFIABILIDAD:</b> ' + data['rules'][0][0] + '<br>' +
+            '<b>TIPO DE PATRÓN:</b> ' + data['rules'][0][1] + '</div>' +
+            '<div class="col-md-8" style="text-align: center;">' +
+            '<img src="data:image/png;charset=utf-8;base64,' + data['img'] +
+            '"</div></div>');
     });
     socket.on('info', function (msg) {
         data = JSON.parse(msg.data);
