@@ -16,7 +16,7 @@ from webmanager import socketio, app
 
 
 def log(msg):
-    print('::MASTER:: %s' % msg)
+    print(msg)
 
 
 def websocket_exposer():
@@ -53,6 +53,8 @@ if __name__ == '__main__':
     log("Espero el resultado")
 
     for method, properties, msg in warnings_queue.consume():
+        log('(TYPE %s) %s' %
+            (method.routing_key, msg))
         if method.routing_key == 'cmd':
             cmd = msg.decode().split(' ')
             if cmd[0] == 'EXIT':
@@ -90,8 +92,6 @@ if __name__ == '__main__':
                 comm.send_message(json.dumps(dict(
                     info_id="SOURCE LIST", content=list(streamings.keys()))),
                     routing_key='info')
-        else:
-            log('WARNING %s' % msg)
 
     del warnings_queue
 

@@ -57,7 +57,6 @@ def ws_disconn(data):
     comm = Communicator(exchange='to_master', routing_key='cmd',
                         exchange_type='topic')
     comm.send_message(data['data'], routing_key='cmd')
-    print(data)
 
 
 if __name__ == '__main__':

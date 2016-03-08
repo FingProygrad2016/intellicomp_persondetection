@@ -36,7 +36,7 @@ def send_patternrecognition_config(communicator, identifier,
 
 
 def track_source(identifier=None, source=None, trackermaster_conf=None,
-                 patternmaster_conf={"warnings_expiration_time":"60","track_info_queue_name":"track_info","min_walking_speed":"8","track_info_queue_hostaddress":"localhost","patterns_definition_file_path":"/patterns_definition.dat","min_events_speed_amount":"6","min_angle_rotation":"15","aprox_tolerance":"1500","warnings_queue_name":"warnings","weight_new_direction_angle":"0.2","min_events_speed_time":"30000","min_running_speed":"80","min_events_dir_time":"30000","warnings_queue_hostaddress":"localhost","min_events_dir_amount":"2"}):
+                 patternmaster_conf=None):
 
     if not identifier:
         identifier = sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
@@ -260,7 +260,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                 for tracklet in tracklets.values():
                     if getattr(tracklet, 'last_rule', None):
-                        time_pass = datetime.now() - \
+                        time_pass = dt.now() - \
                                     getattr(tracklet, 'last_rule_time')
                         if time_pass.seconds < 9:
                             cv2.putText(to_show, tracklet.last_rule,
