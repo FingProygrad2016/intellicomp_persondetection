@@ -20,13 +20,13 @@ warnings_queue = Communicator(queue_name='web_rcv', exchange='to_master',
 def background_thread():
     for method, properties, msg in warnings_queue.consume():
         if method.routing_key == 'cmd':
-            socketio.emit('cmd', {'data': msg.decode()})
+            socketio.emit('cmd', {'data': msg.decode()}, broadcast=True)
         elif method.routing_key == 'warnings':
-            socketio.emit('warning', {'data': msg.decode()})
+            socketio.emit('warning', {'data': msg.decode()}, broadcast=True)
         elif method.routing_key == 'info':
-            socketio.emit('info', {'data': msg.decode()})
+            socketio.emit('info', {'data': msg.decode()}, broadcast=True)
         elif method.routing_key == 'img':
-            socketio.emit('img', {'data': msg.decode()})
+            socketio.emit('img', {'data': msg.decode()}, broadcast=True)
 
 
 @app.route('/')

@@ -39,8 +39,9 @@ if __name__ == '__main__':
 
     # Starting up the base
 
-    warnings_queue = Communicator(queue_name='launcher_rcv', exchange='to_master',
-                                  routing_key='#', exchange_type='topic')
+    warnings_queue = Communicator(queue_name='launcher_rcv',
+                                  exchange='to_master', routing_key='#',
+                                  exchange_type='topic')
 
     log("Starting up the Pattern Recognition Engine...")
     pattern_master = Process(target=pattern_recognition_launcher)
