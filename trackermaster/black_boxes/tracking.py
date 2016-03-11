@@ -95,17 +95,17 @@ class Tracker:
 
         journeys = []
 
+        # elapsed_time = (frame_number - self.last_frame) * self.seconds_per_frame
+        self.last_frame = frame_number
+
+        for kf in self.k_filters:
+            # Amount of frames it has been without a one to one relationship
+            frames_without_one_to_one = self.last_frame - kf.last_frame_update
+            if frames_without_one_to_one <= self.valid_frames_to_predict_position:
+                # predict position of kfs without one at one relationship for a valid time frame
+                kf.predict()
+
         if len(blobs) > 0:
-            # elapsed_time = (frame_number - self.last_frame) * self.seconds_per_frame
-            self.last_frame = frame_number
-
-            for kf in self.k_filters:
-                # Amount of frames it has been without a one to one relationship
-                frames_without_one_to_one = self.last_frame - kf.last_frame_update
-                if frames_without_one_to_one <= self.valid_frames_to_predict_position:
-                    # predict position of kfs without one at one relationship for a valid time frame
-                    kf.predict()
-
             for item in self.kfs_per_blob:
                 item['blobs'] = []
                 item['has_been_assigned'] = False
@@ -434,7 +434,7 @@ class Tracker:
             for kf in self.k_filters:
                 # journeys.append((kf.journey, kf.journey_color, kf.short_id,
                 #                 kf.rectangle, kf.prediction, self.kfs_per_blob[kf.group_number]['color']))
-                if kf.score > 0.3:
+                if kf.score  > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
                                      kf.rectangle, kf.prediction, False))
 
@@ -449,7 +449,8 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob, frame_number, 0)
+        track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob,
+                               frame_number, 0, self.seconds_per_frame)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1
@@ -474,7 +475,7 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob, frame_number, score):
+    def __init__(self, color, size, point, short_id, blob, frame_number, score, time_interval):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
