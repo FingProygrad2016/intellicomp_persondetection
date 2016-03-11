@@ -469,7 +469,8 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob, frame_number, score, time_interval, process_noise_cov):
+    def __init__(self, color, size, point, short_id, blob, frame_number,
+                 score, time_interval, process_noise_cov):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
@@ -509,8 +510,8 @@ class TrackInfo:
         self.process_noise_cov = process_noise_cov
         self.initial_position = point
 
-        # Initialize the process noise matrix to the identity, in order to only take into account the measurements...
-        # ... in the first frames.
+        # Initialize the process noise matrix to the identity, in order to
+        # only take into account the measurements in the first frames.
         # Process prediction is not taken into account in first frames, as...
         # ... there is not a good initial velocity prediction
         self.kalman_filter.processNoiseCov = np.eye(N=6, dtype=np.float32)
@@ -520,10 +521,12 @@ class TrackInfo:
                       [0, 1]], np.float32)
 
         self.journey = []
-        self.journey_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        self.journey_color = (random.randint(0, 255), random.randint(0, 255),
+                              random.randint(0, 255))
         self.number_updates = 1
 
-        array_aux = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
+        array_aux = np.array(
+            [[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = array_aux
 
         # prediction of next new position
@@ -550,7 +553,8 @@ class TrackInfo:
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
 
-    def update_info(self, new_position, color, size, blob, last_frame_update, score):
+    def update_info(self, new_position, color, size,
+                    blob, last_frame_update, score):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
         self.color = color
@@ -560,7 +564,8 @@ class TrackInfo:
         self.last_update = datetime.now()
         self.last_point = new_position
 
-        self.score = (self.score * self.number_updates + score) / (self.number_updates + 1)
+        self.score = (self.score * self.number_updates + score) /\
+                     (self.number_updates + 1)
 
         xt = int(round(blob.pt[0] - (blob.size / 4)))
         yt = int(round(blob.pt[1] - (blob.size / 2)))
@@ -572,11 +577,12 @@ class TrackInfo:
         self.number_updates += 1
 
         if self.number_updates == 5:
-            # Use the information of the initial position and 5th update new_position to...
-            # ... initialize the kalman filter velocity.
+            # Use the information of the initial position and 5th update
+            # new_position to initialize the kalman filter velocity.
             # Also, initialize the kalman filter process noise matrix.
             self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
+            aux = (new_position[0] - self.initial_position[0],
+                   new_position[1] - self.initial_position[1])
             self.kalman_filter.statePost[1] = aux[0]/5.0
             self.kalman_filter.statePost[4] = aux[1]/5.0
 
@@ -588,13 +594,14 @@ class TrackInfo:
         self.number_updates += 1
 
         if self.number_updates == 5:
-            # Use the information of the initial position and 5th update new_position to...
-            # ... initialize the kalman filter velocity.
+            # Use the information of the initial position and 5th update
+            # new_position to initialize the kalman filter velocity.
             # Also, initialize the kalman filter process noise matrix.
             self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
-            self.kalman_filter.statePost[1] = aux[0]/5.0
-            self.kalman_filter.statePost[4] = aux[1]/5.0
+            aux = (new_position[0] - self.initial_position[0],
+                   new_position[1] - self.initial_position[1])
+            self.kalman_filter.statePost[1] = aux[0] / 5.0
+            self.kalman_filter.statePost[4] = aux[1] / 5.0
 
     def update_not_alone_frame_number(self, frame_number):
         self.last_frame_not_alone = frame_number

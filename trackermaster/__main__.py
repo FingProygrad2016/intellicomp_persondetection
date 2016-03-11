@@ -23,6 +23,10 @@ from utils.tools import find_resolution_multiplier, \
     find_blobs_bounding_boxes, crop_image_for_person_detection, \
     frame2base64png
 
+import matplotlib
+matplotlib.use('template')
+from matplotlib import pyplot as plt
+
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
@@ -248,16 +252,22 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 for (x, y, w, h) in rectangles:
                     # Crop a rectangle around detected blob
                     # crop_img = \
-                    cropped_images.append(crop_image_for_person_detection(
-                        frame_copy2, (x * resolution_multiplier,
-                                      y * resolution_multiplier,
-                                      w * resolution_multiplier,
-                                      h * resolution_multiplier)))
+                    cropped_images.append((
+                        crop_image_for_person_detection(
+                            frame_copy2, (x * resolution_multiplier,
+                                          y * resolution_multiplier,
+                                          w * resolution_multiplier,
+                                          h * resolution_multiplier)),
+                        (x, y, w, h)))
 
                 if number_frame <= 100:
-                    person_detector.create_confidence_matrix(cropped_images)
+                    person_detector.create_confidence_matrix([x[0] for x in
+                                                              cropped_images])
                 else:
-                    for crop_img in cropped_images:
+                    plt.scatter(person_detector.widths, person_detector.heights, c=person_detector.c)
+
+                    plt.show()
+                    for (crop_img, (x, y, w, h)) in cropped_images:
                         cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
                                       (255, 0, 0), 2)
                         cv2.imshow('crop_img', crop_img)
@@ -271,9 +281,11 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         # TODO: combinar con histogramas (http://progpython.blogspot.com.uy/2011/09/histogramas-con-python-matplotlib.html)
                         # TODO: https://ernestocrespo13.wordpress.com/2015/01/11/generacion-de-un-histograma-de-frecuencia-con-numpy-scipy-y-matplotlib/
                         if min_size > 0:
-                            min_person_size = np.median([min_person_size, min_size])
+                            min_person_size =\
+                                np.median([min_person_size, min_size])
                         if max_size > 0:
-                            max_person_size = np.median([max_person_size, max_size])
+                            max_person_size =\
+                                np.median([max_person_size, max_size])
                         print("Min, max:", (min_person_size, max_person_size))
 
                         # draw the final bounding boxes

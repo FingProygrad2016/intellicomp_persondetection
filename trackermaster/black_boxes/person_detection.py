@@ -5,10 +5,16 @@ from imutils.object_detection import non_max_suppression
 from trackermaster.config import config
 from utils.tools import rect_size
 
+# import matplotlib
+# matplotlib.use('template')
+# from matplotlib import pyplot as plt
 
 class PersonDetector:
     detector = None
     confidenceMatrix = None
+    widths = []
+    heights = []
+    c = None
 
     def __init__(self):
 
@@ -80,20 +86,23 @@ class PersonDetector:
                                 in non_max_suppression(rects, probs=None,
                                                        overlapThresh=0.65)])
             if len(persons):
-                widths.append(cropped_image.shape[0])
-                heights.append(cropped_image.shape[1])
-        hist, xedges, yedges = np.histogram2d(widths, heights, (xedges, yedges))
-        # xidx = np.clip(np.digitize(widths, xedges), 0, hist.shape[0])
-        # yidx = np.clip(np.digitize(heights, yedges), 0, hist.shape[1])
-        # c = hist[xidx, yidx]
-        #plt.scatter(widths, heights, c=c)
-
-        #plt.show()
+                self.widths.append(cropped_image.shape[0])
+                self.heights.append(cropped_image.shape[1])
+        hist, xedges, yedges = np.histogram2d(self.widths, self.heights, (xedges, yedges))
 
         if self.confidenceMatrix.any():
             np.add(self.confidenceMatrix, hist, out=self.confidenceMatrix)
         else:
             self.confidenceMatrix = hist
+
+        xidx = np.clip(np.digitize(widths, xedges), 0, hist.shape[0] - 1)
+        yidx = np.clip(np.digitize(heights, yedges), 0, hist.shape[1] - 1)
+        self.c = self.confidenceMatrix[xidx, yidx]
+        # plt.scatter(widths, heights, c=c)
+        #
+        # plt.show()
+
+        return self.confidenceMatrix
 
     def update_confidence(self, blob):
         return None
