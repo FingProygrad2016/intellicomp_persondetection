@@ -79,6 +79,8 @@ class BlobDetector:
         self.small_blobs_size_threshold = self.small_blobs_size_threshold
         self.small_blobs_size_distance_threshold = \
             self.small_blobs_size_distance_threshold
+        self.min_person_blob_size = 0
+        self.max_person_blob_size = 1000000
 
     # Try to identify small blobs with big blobs
     def identify_small_blobs(self):
@@ -121,20 +123,24 @@ class BlobDetector:
 
         return result
 
-    def apply(self, background):
+    def apply(self, background, min_person_size, max_person_size):
         blobs = self.detector.detect(background)
-
-        self.big_blobs = []
-        self.small_blobs = []
-
         for blob in blobs:
-            if blob.size > self.small_blobs_size_threshold:
-                self.big_blobs.append(blob)
-            else:
-                self.small_blobs.append(blob)
-
-        if self.small_blobs:
-            result = self.identify_small_blobs()
-            return result
-        else:
-            return self.big_blobs
+            if (blob.size > (max_person_size * 1.1)) or \
+                    (blob.size < (min_person_size * 0.9)):
+                blobs.remove(blob)
+        return blobs
+        # self.big_blobs = []
+        # self.small_blobs = []
+        #
+        # for blob in blobs:
+        #     if blob.size > self.small_blobs_size_threshold:
+        #         self.big_blobs.append(blob)
+        #     else:
+        #         self.small_blobs.append(blob)
+        #
+        # if self.small_blobs:
+        #     result = self.identify_small_blobs()
+        #     return result
+        # else:
+        #     return self.big_blobs
