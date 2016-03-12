@@ -20,6 +20,23 @@ function addConfigInput(parent, item, default_val) {
     )
 }
 
+log_template_info_image = function(kind, data, image_base64) {
+    var formatted_data = '',
+        image_block = image_base64 ?
+            '<img src="data:image/png;charset=utf-8;base64,' +
+            image_base64 + '">' : '' ;
+    _.each(data, function(value, key){
+       formatted_data +=  '<b>' + key.toUpperCase() + '</b> ' +
+           value + '<br>'
+    });
+
+    return '' +
+        '<div class="alert alert-' + kind + '" role="alert" style="height: 275px">' +
+        '<div class="col-md-4">' + formatted_data + '</div>' +
+        '<div class="col-md-8" style="text-align: center;">' + image_block +
+        '</div>' + '</div>';
+};
+
 $('document').ready(function() {
 
     /*** WEBSOCKET COMMUNICATION ***/
@@ -28,36 +45,31 @@ $('document').ready(function() {
 
     socket.on('warning', function (msg) {
         var data = JSON.parse(msg.data);
-        publish_log('<div class="alert alert-danger" role="alert" ' +
-            'style="height: 275px">' +
-            '<div class="col-md-4"><b>ID:</b> ' + data['tracker_id'] + '<br>' +
-            '<b>CONFIABILIDAD:</b> ' + data['rules'][0][0] + '<br>' +
-            '<b>TIPO DE PATRÓN:</b> ' + data['rules'][0][1] + '</div>' +
-            '<div class="col-md-8" style="text-align: center;">' +
-            '<img src="data:image/png;charset=utf-8;base64,' + data['img'] +
-            '"</div></div>');
+        publish_log(log_template_info_image('danger',
+                {'ID': data['tracker_id'],
+                'CONFIABILIDAD': data['rules'][0][0],
+                'TIPO DE PATRÓN': data['rules'][0][1]},
+                data['img']));
     });
     socket.on('info', function (msg) {
         data = JSON.parse(msg.data);
         if (data.info_id === 'EXIT') {
             remove_source_from_lst(data.id);
-            publish_log('<div style="word-wrap: break-word;" ' +
-                'class="alert alert-info" role="alert"><p>EXIT ' +
-                data.id + '</p>' + data.content + '</div>');
+            publish_log(log_template_info_image('info',
+                {'INFO': data.info_id, 'ID': data.id, 'CONTENT': data.content},
+                data.img));
         }else if (data.info_id === 'EXIT WITH ERROR') {
             remove_source_from_lst(data.id);
-            publish_log('<div style="word-wrap: break-word;" ' +
-                'class="alert alert-danger" role="alert"><p>EXIT ' +
-                data.id + '</p>' + data.content + '</div>');
+            publish_log(log_template_info_image('danger',
+                {'INFO': data.info_id, 'ID': data.id, 'CONTENT': data.content}));
         }else if (data.info_id === 'SOURCE LIST') {
             _.each(data.content, function(identifier) {
                 add_close_source_button(identifier);
                 current_sources.push(identifier);
             })
         }else{
-            publish_log('<div style="word-wrap: break-word;" ' +
-                'class="alert alert-info" role="alert"><p>' + data.info_id +
-                ' ' + data.id + '</p>' + data.content + '</div>');
+            publish_log(log_template_info_image('info',
+                {'INFO': data.info_id, 'ID': data.id, 'CONTENT': data.content}));
         }
     });
     socket.on('cmd', function (msg) {

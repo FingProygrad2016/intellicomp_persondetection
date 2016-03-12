@@ -338,7 +338,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
-                exit_cause = 'CLOSED'
+                exit_cause = 'CLOSED BY PRESSING "Q|q"'
                 break
 
             wait_key_time += time.time() - t0
@@ -371,9 +371,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     comm_info = Communicator(exchange='to_master', exchange_type='topic')
     comm_info.send_message(json.dumps(dict(
         info_id="EXIT", id=identifier,
-        content="Exit cause: " + exit_cause +
-                "<br><img src='data:image/png;charset=utf-8;base64," +
-                frame2base64png(raw_frame).decode() + "'>")),
+        content="CAUSE: " + exit_cause,
+        img=frame2base64png(raw_frame).decode())),
         routing_key='info')
 
     exit()
