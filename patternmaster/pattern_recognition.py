@@ -135,8 +135,8 @@ class PatternRecognition(object):
 
         current_events = self.calc_direction_events(tracklet_info, angle,
                                                     last_update, time_lapse)
-        current_events.extend(self.calc_speed_events(distance, last_update,
-                                                     time_lapse))
+        current_events.extend(
+            self.calc_speed_events(distance, last_update, time_lapse))
 
         return current_events
 

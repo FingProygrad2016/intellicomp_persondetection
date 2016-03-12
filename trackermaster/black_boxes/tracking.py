@@ -432,13 +432,12 @@ class Tracker:
 
             # Prepare the return data
             for kf in self.k_filters:
-                # journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                #                 kf.rectangle, kf.prediction, self.kfs_per_blob[kf.group_number]['color']))
-                if kf.score  > 0.3:
+                if kf.score > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
                                      kf.rectangle, kf.prediction, False))
 
-        return journeys, [kf.to_dict() for kf in self.k_filters], {k.id: k for k in self.k_filters}
+        return journeys, [kf.to_dict() for kf in self.k_filters], \
+            {k.id: k for k in self.k_filters}
 
     def add_new_tracking(self, point, color, size, blob, frame_number, score):
         """
