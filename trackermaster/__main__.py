@@ -244,7 +244,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             if bounding_boxes:
-
                 rectangles = x1y1x2y2_to_x1y1wh(
                     non_max_suppression(x1y1wh_to_x1y1x2y2(bounding_boxes),
                                         overlapThresh=0.3))
@@ -258,6 +257,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ##################### ##
                 # ## PERSONS DETECTOR # ##
                 # ##################### ##
+
 
                 blobs, scores = \
                     person_detection.apply(rectangles, resolution_multiplier,

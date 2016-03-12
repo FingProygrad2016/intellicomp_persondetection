@@ -101,8 +101,8 @@ def crop_image_for_person_detection(image, rect):
     w_frame = w / 4
     y_top = int(np.max((y - h_frame, 0)))
     x_top = int(np.max((x - w_frame, 0)))
-    y_bottom = int(np.min((y + h + h_frame, image.shape[0])))
     x_bottom = int(np.min((x + w + w_frame, image.shape[1])))
+    y_bottom = int(np.min((y + h + h_frame, image.shape[0])))
 
     height_with_frame = abs(y_top - y_bottom)
     width_with_frame = abs(x_top - x_bottom)
@@ -114,7 +114,7 @@ def crop_image_for_person_detection(image, rect):
     resize = (int(round(w * fact)), int(round(h * fact)))
 
     return cv2.resize((image[y_top:y_bottom, x_top:x_bottom]), resize), \
-        (x_top * fact, y_top * fact, width_with_frame * fact, height_with_frame * factq), fact
+        (x_top, y_top, width_with_frame, height_with_frame), fact
 
 
 def crop_image_for_person_detection2(image, rect):

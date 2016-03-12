@@ -11,6 +11,10 @@ from utils.tools import crop_image_for_person_detection, x1y1x2y2_to_x1y1wh, \
 from trackermaster.config import config
 from trackermaster.black_boxes.histogram2d import Histogram2D
 
+import matplotlib
+matplotlib.use('template')
+from matplotlib import pyplot as plt
+
 # Configuration parameters
 ASPECT_RATIO = config.getfloat('ASPECT_RATIO')
 PADDING = (config.getint('PADDING_0'), config.getint('PADDING_1'))
@@ -36,10 +40,9 @@ def apply_single(args):
         if len(persons):
             score = 1
     else:
-        current_aspec_ratio = bounding_box[3] / bounding_box[2]
-        if np.isclose(ASPECT_RATIO, current_aspec_ratio, atol=0.4):
-            # persons = x1y1wh_to_x1y1x2y2([bounding_box])
-            persons = x1y1wh_to_x1y1x2y2([[0, 0, bounding_box[2], bounding_box[3]]])
+        current_aspect_ratio = bounding_box[3] / bounding_box[2]
+        if np.isclose(ASPECT_RATIO, current_aspect_ratio, atol=0.4):
+            persons = [[0, 0, bounding_box[2], bounding_box[3]]]
             score = 0.7 - \
                 (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
 
@@ -47,29 +50,17 @@ def apply_single(args):
     persons_resize = []
     for person in persons:
 
-        # person son coordenadas tomando boundingbox como el todo
-        # si xA es 10, es 10 desde el valor x de boundingbox
-        # (xA, yA, xB, yB) = np.apply_along_axis(lambda val: val/mult2, 0, person)
         (xA, yA, xB, yB) = person
 
-        # x_1 = (xA * w) / 128
-        # y_1 = (yA * h) / 256
-        # x_2 = (xB * w) / 128
-        # y_2 = (yB * h) / 256
-        #
-        # x_a = int((x + x_1) / resolution_multiplier)
-        # x_b = int((x + x_2) / resolution_multiplier)
-        # y_a = int((y + y_1) / resolution_multiplier)
-        # y_b = int((y + y_2) / resolution_multiplier)
-
-        x_a = int(((x + xA) / mult2) / resolution_multiplier)
-        y_a = int(((y + yA) / mult2) / resolution_multiplier)
-        x_b = int(((x + xB) / mult2) / resolution_multiplier)
-        y_b = int(((y + yB) / mult2) / resolution_multiplier)
+        x_a = int(((x + (xA / mult2)) / resolution_multiplier))
+        y_a = int(((y + (yA / mult2)) / resolution_multiplier))
+        x_b = int(((x + (xB / mult2)) / resolution_multiplier))
+        y_b = int(((y + (yB / mult2)) / resolution_multiplier))
 
         persons_resize.append((x_a, y_a, x_b, y_b))
 
-    return persons_resize, score, bounding_box
+    return persons_resize, score,\
+           [(b / resolution_multiplier / mult2) for b in bounding_box]
 
 
 # HOG unique instance
@@ -114,11 +105,6 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
     if cropped_images:
 
-        # if number_frame > 100:
-        #     plt.scatter(HISTOGRAM_2D.widths, HISTOGRAM_2D.heights,
-        #                 c=HISTOGRAM_2D.c)
-        #     plt.show()
-
         res = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
 
         for xyAB in res:
@@ -131,7 +117,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
 
             else:
-
+                # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+                # plt.savefig('lala.png')
                 for person in xyAB[0]:
 
                     x_a, y_a, x_b, y_b = person
