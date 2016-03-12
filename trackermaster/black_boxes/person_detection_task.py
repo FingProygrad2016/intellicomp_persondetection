@@ -16,6 +16,7 @@ WIN_STRIDE = (config.getint('WINSTRIDE_0'),
 
 first_time = True
 
+
 def apply_single(args):
 
     image, bounding_box, mult2 = args[0]

@@ -159,7 +159,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     background_subtractor = BackgroundSubtractorKNN()
 
     blobs_detector = BlobDetector()
-    person_detector = Histogram2D()
+    # person_detector = Histogram2D()
     tracker = Tracker(SEC_PER_FRAME)
 
     loop_time = time.time()
@@ -183,6 +183,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     min_person_size = 1000000
     max_person_size = 0
+
+    person_detection.set_histogram_size(shape=(int(work_w / 10),
+                                               int(work_h / 10)))
 
     # Start the main loop
     while has_more_images:
@@ -232,7 +235,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             bg_subtraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
             to_show = bg_subtraction.copy()
 
-            bg_subtraction_resized = cv2.resize(bg_subtraction, (work_w, work_h))
+            bg_subtraction_resized =\
+                cv2.resize(bg_subtraction, (work_w, work_h))
 
             bg_sub_time += time.time() - t0
 

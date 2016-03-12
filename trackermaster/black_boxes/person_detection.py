@@ -13,10 +13,16 @@ matplotlib.use('template')
 from matplotlib import pyplot as plt
 
 # Histogram2D unique instance
-HISTOGRAM_2D = Histogram2D()
+HISTOGRAM_2D = None
 
 # Pool of processes for process person detection in parallel
 PROCESSES_POOL = Pool()
+
+
+def set_histogram_size(shape):
+    global HISTOGRAM_2D
+
+    HISTOGRAM_2D = Histogram2D(shape=shape)
 
 
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
@@ -49,23 +55,18 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         cropped_images.append((crop_img, resolution_multiplier))
 
     if cropped_images:
-
         res = PROCESSES_POOL.imap(apply_single, cropped_images)
 
         for xyAB in res:
-
-            # (x, y, w, h) = xyAB[2]
             score = xyAB[1]
 
-            if number_frame <= 10:
+            if number_frame <= 100:
                 if score == 1:
                     HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
-
             else:
                 # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
                 # plt.savefig('lala.png')
                 for person in xyAB[0]:
-
                     x_a, y_a, x_b, y_b = person
 
                     # Red and Yellow rectangles
