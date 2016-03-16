@@ -66,8 +66,8 @@ def draw_journeys(journeys, outputs):
         for i, (stretch_start, stretch_end) in \
                 enumerate(zip(journey_data[-num_of_points:],
                               journey_data[-num_of_points+1:])):
-            point_start = tuple(stretch_start[0:2])
-            point_end = tuple(stretch_end[0:2])
+            point_start = (stretch_start[0], stretch_start[3])
+            point_end = (stretch_end[0], stretch_end[3])
             for output in outputs:
                 cv2.line(output, point_start, point_end, journey_color,
                          thickness=2 if i > num_of_points_2 else 1)

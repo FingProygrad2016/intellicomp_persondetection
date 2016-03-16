@@ -494,35 +494,40 @@ class TrackInfo:
         yb = int(round(blob.pt[1] + (blob.size / 2)))
 
         self.rectangle = ((xt, yt), (xb, yb))
+
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
-        # self.kalman_filter.measurementMatrix = np.array([[1,0,0,0],
-        #                                                  [0,1,0,0]],
-        #                                                  np.float32)
-        self.kalman_filter.measurementMatrix = \
-            np.array([[1, 0, 1, 0, 0.5, 0], [0, 1, 0, 1, 0, 0.5]], np.float32)
-        # self.kalman_filter.transitionMatrix = np.array([[1,0,1,0],
-        #                                                 [0,1,0,1],
-        #                                                 [0,0,1,0],
-        #                                                 [0,0,0,1]],np.float32)
+
+        acceleration_change = time_interval * time_interval / 2
+
         self.kalman_filter.transitionMatrix = \
-            np.array([[1, 0, 1, 0, 0.5, 0],
-                      [0, 1, 0, 1, 0, 0.5],
-                      [0, 0, 1, 0, 1, 0],
-                      [0, 0, 0, 1, 0, 1],
-                      [0, 0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 0, 1]], np.float32)
-        self.kalman_filter.processNoiseCov = np.array([[1, 0, 0, 0, 0, 0],
-                                                       [0, 1, 0, 0, 0, 0],
-                                                       [0, 0, 1, 0, 0, 0],
-                                                       [0, 0, 0, 1, 0, 0],
-                                                       [0, 0, 0, 0, 1, 0],
-                                                       [0, 0, 0, 0, 0, 1]],
-                                                      np.float32) * 0.0001
+            np.array([[1, time_interval, acceleration_change, 0,             0,                   0],
+                      [0,             1,       time_interval, 0,             0,                   0],
+                      [0,             0,                   1, 0,             0,                   0],
+                      [0,             0,                   0, 1, time_interval, acceleration_change],
+                      [0,             0,                   0, 0,             1,       time_interval],
+                      [0,             0,                   0, 0,             0,                   1]], np.float32)
+
+        self.kalman_filter.measurementMatrix = \
+            np.array([[1, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 1, 0, 0]], np.float32)
+
+        self.kalman_filter.processNoiseCov = \
+            np.array([[0.013, 0.025, 0.025,     0,     0,     0],
+                      [0.025,  0.05,  0.05,     0,     0,     0],
+                      [0.025,  0.05,  0.05,     0,     0,     0],
+                      [0,         0,     0, 0.013, 0.025, 0.025],
+                      [0,         0,     0, 0.025,  0.05,  0.05],
+                      [0,         0,     0, 0.025,  0.05,  0.05]], np.float32)
+
+        self.kalman_filter.measurementNoiseCov = \
+            np.array([[1, 0],
+                      [0, 1]], np.float32)
+
         self.journey = []
         self.journey_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         self.number_updates = 0
 
-        array_aux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
+        array_aux = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = array_aux
         self.prediction = array_aux.copy()
 
