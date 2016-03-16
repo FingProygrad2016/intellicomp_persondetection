@@ -23,8 +23,11 @@ function addConfigInput(parent, item, default_val) {
 log_template_info_image = function(kind, data, image_base64) {
     var formatted_data = '',
         image_block = image_base64 ?
+            '<div class="col-md-8" style="text-align: center;">' +
             '<img src="data:image/png;charset=utf-8;base64,' +
-            image_base64 + '">' : '' ;
+            image_base64 + '"></div>' : '',
+        text_cols = image_base64 ? '4' : '12';
+
     _.each(data, function(value, key){
        formatted_data +=  '<b>' + key.toUpperCase() + '</b> ' +
            value + '<br>'
@@ -32,9 +35,8 @@ log_template_info_image = function(kind, data, image_base64) {
 
     return '' +
         '<div class="alert alert-' + kind + '" role="alert" style="height: 275px">' +
-        '<div class="col-md-4">' + formatted_data + '</div>' +
-        '<div class="col-md-8" style="text-align: center;">' + image_block +
-        '</div>' + '</div>';
+        '<div class="col-md-' + text_cols + '" style="word-wrap:break-word;">' +
+        formatted_data + '</div>' + image_block + '</div>';
 };
 
 $('document').ready(function() {
