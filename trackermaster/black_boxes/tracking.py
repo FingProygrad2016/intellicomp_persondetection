@@ -55,7 +55,7 @@ class Tracker:
 
         def position_distance_function(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
-            return euclidean_distance((prediction[0], prediction[1]), blob[0].pt)
+            return euclidean_distance((prediction[0], prediction[3]), blob[0].pt)
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance,
@@ -63,7 +63,7 @@ class Tracker:
 
         def position_distance_function_ini(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
-            return euclidean_distance((prediction[0], prediction[1]), blob.pt)
+            return euclidean_distance((prediction[0], prediction[3]), blob.pt)
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos_ini = HungarianAlgorithm(position_distance_function_ini, self.threshold_distance,
@@ -432,13 +432,12 @@ class Tracker:
 
             # Prepare the return data
             for kf in self.k_filters:
-                # journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                #                 kf.rectangle, kf.prediction, self.kfs_per_blob[kf.group_number]['color']))
-                if kf.score  > 0.3:
+                if kf.score > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
                                      kf.rectangle, kf.prediction, False))
 
-        return journeys, [kf.to_dict() for kf in self.k_filters], {k.id: k for k in self.k_filters}
+        return journeys, [kf.to_dict() for kf in self.k_filters], \
+            {k.id: k for k in self.k_filters}
 
     def add_new_tracking(self, point, color, size, blob, frame_number, score):
         """
@@ -506,8 +505,8 @@ class TrackInfo:
         #                                                 [0,0,1,0],
         #                                                 [0,0,0,1]],np.float32)
         self.kalman_filter.transitionMatrix = \
-            np.array([[1, 0, 1, 0, 0.1, 0],
-                      [0, 1, 0, 1, 0, 0.1],
+            np.array([[1, 0, 1, 0, 0.5, 0],
+                      [0, 1, 0, 1, 0, 0.5],
                       [0, 0, 1, 0, 1, 0],
                       [0, 0, 0, 1, 0, 1],
                       [0, 0, 0, 0, 1, 0],
@@ -525,6 +524,7 @@ class TrackInfo:
 
         array_aux = np.array([[point[0]], [point[1]], [0.0], [0.0], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = array_aux
+        self.prediction = array_aux.copy()
 
         # prediction of next new position
         self.predict()
