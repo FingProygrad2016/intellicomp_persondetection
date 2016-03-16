@@ -434,7 +434,7 @@ class Tracker:
             for kf in self.k_filters:
                 if kf.score > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                                     kf.rectangle, kf.prediction, False))
+                                     kf.rectangle, kf.kalman_filter.statePost, False))
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}
@@ -525,11 +525,10 @@ class TrackInfo:
 
         self.journey = []
         self.journey_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        self.number_updates = 0
+        self.number_updates = 1
 
         array_aux = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = array_aux
-        self.prediction = array_aux.copy()
 
         # prediction of next new position
         self.predict()
@@ -541,7 +540,7 @@ class TrackInfo:
                (self.color, self.size, self.last_update, self.created_datetime)
 
     def predict(self):
-        self.prediction = self.kalman_filter.predict()
+        self.kalman_filter.predict()
 
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
@@ -564,7 +563,8 @@ class TrackInfo:
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
         self.last_point = new_position
-        self.score = np.median([self.score, score])
+
+        self.score = (self.score * self.number_updates + score) / (self.number_updates + 1)
 
         xt = int(round(blob.pt[0] - (blob.size / 4)))
         yt = int(round(blob.pt[1] - (blob.size / 2)))
