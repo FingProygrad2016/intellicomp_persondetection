@@ -35,6 +35,56 @@ def send_patternrecognition_config(communicator, identifier,
                            routing_key='processing_settings')
 
 
+NUM_OF_POINTS = 40
+
+
+def draw_journeys(journeys, outputs):
+    """
+    Draw lines in frame representing the path of each object
+
+    :param journeys: list in which each item contains the path of an object
+    :param outputs: list of outputs where to draw the lines
+
+    :return: None
+    """
+
+    for journey in journeys:
+        journey_data = journey[0]
+        journey_color = journey[1]
+        journey_id = journey[2]
+        rectangle_points = journey[3]
+        prediction = journey[4]
+        has_big_blob = journey[5]
+
+        if NUM_OF_POINTS > len(journey_data):
+            num_of_points = len(journey_data)
+        else:
+            num_of_points = NUM_OF_POINTS
+        num_of_points_2 = num_of_points/2
+
+        # Draw the lines
+        for i, (stretch_start, stretch_end) in \
+                enumerate(zip(journey_data[-num_of_points:],
+                              journey_data[-num_of_points+1:])):
+            point_start = tuple(stretch_start[0:2])
+            point_end = tuple(stretch_end[0:2])
+            for output in outputs:
+                cv2.line(output, point_start, point_end, journey_color,
+                         thickness=2 if i > num_of_points_2 else 1)
+
+        if has_big_blob:
+            thickness = 2
+        else:
+            thickness = 1
+
+        for output in outputs:
+            cv2.rectangle(
+                output, rectangle_points[0], rectangle_points[1], journey_color,
+                thickness=thickness)
+            cv2.circle(output, (prediction[0], prediction[1]), 3,
+                       journey_color, -1)
+
+
 def track_source(identifier=None, source=None, trackermaster_conf=None,
                  patternmaster_conf=None):
 
@@ -168,7 +218,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             # Black boxes process
             t0 = time.time()
             bg_sub = background_subtractor.apply(frame)
-            to_show = np.copy(bg_sub)
+            to_show = bg_substraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
             bg_sub_time += time.time() - t0
             t0 = time.time()
             blobs_points = blobs_detector.apply(bg_sub)
@@ -202,7 +252,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     persons, score = \
                         person_detector.apply((x, y, w, h), crop_img)
 
-                    blobs = []
                     # draw the final bounding boxes
                     for (xA, yA, xB, yB) in persons:
                         x_1 = int(round((xA * w) / 128))
@@ -272,62 +321,24 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                             tracklet.last_rule = None
 
                 # Draw the journeys of the tracked persons
-                for journey in trayectos:
-                    journey_data = journey[0]
-                    journey_color = journey[1]
-                    journey_id = journey[2]
-                    rectangle_points = journey[3]
-                    prediction = journey[4]
-                    has_big_blob = journey[5]
-
-                    journey_data_len = len(journey_data)
-
-                    for num in range(max(0, journey_data_len - 30),
-                                     journey_data_len - 1):
-                        tuple1 = tuple(journey_data[num][0:2])
-                        tuple2 = tuple(journey_data[num+1][0:2])
-                        cv2.line(to_show, tuple1, tuple2, journey_color,
-                                 thickness=1)
-                        cv2.line(frame, tuple1, tuple2, journey_color,
-                                 thickness=1)
-                    if has_big_blob:
-                        thickness = 2
-                    else:
-                        thickness = 1
-                    cv2.rectangle(frame, rectangle_points[0],
-                                  rectangle_points[1], journey_color,
-                                  thickness=thickness)
-
-                    last_data = journey_data[journey_data_len - 1]
-                    last_journey_point = \
-                        (int(last_data[0][0]), int(last_data[1][0]))
-                    cv2.rectangle(
-                        frame, (last_journey_point[0],
-                                last_journey_point[1] - 7),
-                        (last_journey_point[0] + 12, last_journey_point[1] + 1),
-                        (255, 255, 255), -1)
-                    cv2.putText(frame, str(journey_id), last_journey_point,
-                                font, 0.3, journey_color, 1)
-                    cv2.circle(frame, (prediction[0], prediction[1]), 3,
-                               journey_color, -1)
+                draw_journeys(trayectos, [frame, to_show])
 
                 show_info_time += time.time() - t0
 
                 t0 = time.time()
 
             # Display the frames
-            # to_show = cv2.resize(to_show, (work_w*3, work_h*3))
-            cv2.imshow('result', to_show)
-            cv2.imshow('background subtraction', bg_sub)
-            cv2.imshow('raw image', frame)
-            cv2.imshow('person detection', frame_copy)
+            big_frame = np.vstack((np.hstack((bg_substraction, to_show)),
+                                   np.hstack((frame, frame_copy))))
+            big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
+            cv2.imshow('result', big_frame)
 
             display_time += time.time() - t0
 
             t0 = time.time()
 
             if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
-                exit_cause = 'CLOSED'
+                exit_cause = 'CLOSED BY PRESSING "Q|q"'
                 break
 
             wait_key_time += time.time() - t0
@@ -360,9 +371,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     comm_info = Communicator(exchange='to_master', exchange_type='topic')
     comm_info.send_message(json.dumps(dict(
         info_id="EXIT", id=identifier,
-        content="Exit cause: " + exit_cause +
-                "<br><img src='data:image/png;charset=utf-8;base64," +
-                frame2base64png(raw_frame).decode() + "'>")), routing_key='info')
+        content="CAUSE: " + exit_cause,
+        img=frame2base64png(raw_frame).decode())),
+        routing_key='info')
 
     exit()
 
