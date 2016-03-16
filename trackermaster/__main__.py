@@ -81,7 +81,7 @@ def draw_journeys(journeys, outputs):
             cv2.rectangle(
                 output, rectangle_points[0], rectangle_points[1], journey_color,
                 thickness=thickness)
-            cv2.circle(output, (prediction[0], prediction[1]), 3,
+            cv2.circle(output, (prediction[0], prediction[3]), 3,
                        journey_color, -1)
 
 
