@@ -1,3 +1,5 @@
+filterpy
+scipy
 numpy==1.10.0.post2
 pika==0.10.0
 #scipy==0.16.0

@@ -4,6 +4,8 @@ import random
 
 import numpy as np
 import cv2
+from scipy.linalg import block_diag
+from filterpy.common import Q_discrete_white_noise
 
 from utils.tools import get_avg_color, euclidean_distance
 from trackermaster.black_boxes.blob_assignment import HungarianAlgorithm
@@ -83,6 +85,22 @@ class Tracker:
         self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color,
                                                       self.INFINITE_DISTANCE)
 
+        # General matrixes for the Kalman Filters
+
+        q = Q_discrete_white_noise(dim=3, dt=self.seconds_per_frame, var=0.05)  # Var = variation of model between steps
+
+        """
+        q = Q_discrete_white_noise(dim=3, dt=1, var=0.05)  # Var = variation of model between steps
+        """
+        aux = block_diag(q, q)
+        self.process_noise_cov = \
+            np.array([[aux[0][0], aux[0][1], aux[0][2], aux[0][3], aux[0][4], aux[0][5]],
+                      [aux[1][0], aux[1][1], aux[1][2], aux[1][3], aux[1][4], aux[1][5]],
+                      [aux[2][0], aux[2][1], aux[2][2], aux[2][3], aux[2][4], aux[2][5]],
+                      [aux[3][0], aux[3][1], aux[3][2], aux[3][3], aux[3][4], aux[3][5]],
+                      [aux[4][0], aux[4][1], aux[4][2], aux[4][3], aux[4][4], aux[4][5]],
+                      [aux[5][0], aux[5][1], aux[5][2], aux[5][3], aux[5][4], aux[5][5]]], np.float32)
+
     def apply(self, blobs, raw_image, frame_number, scores):
         """
         For every blob, detect the corresponded tracked object and update it
@@ -154,7 +172,6 @@ class Tracker:
                 if len(item_blobs) == 0:
                     # there are not blobs assigned to the kalman filter(s)
 
-                    # remove the kalman filter(s) that have been alone for some time
                     kf_to_remove_in_item = []
                     for j, kf in enumerate(item_kf):
                         # Amount of frames it has been without any blob relationship
@@ -189,33 +206,9 @@ class Tracker:
                     elif len(item_kf) > 1:
                         # merged blobs: many kalman filters on one blob
                         # kalman filters are updated only with the blob position
-                        kf_to_remove_in_item = []
-                        for j, kf in enumerate(item_kf):
-                            # Amount of frames it has been without a one to one relationship
-                            frames_without_one_to_one = self.last_frame - kf.last_frame_update
-                            # Amount of frames since it has been created
-                            frames_since_created = self.last_frame - kf.created_frame
-                            if frames_without_one_to_one > self.valid_frames_without_update:
-                                # If TrackInfo is too old, remove it forever
-                                kf_to_remove_in_item.append({"index": j, "kf": kf})
-                            elif frames_without_one_to_one > self.valid_frames_to_predict_position:
-                                # If it has been without one to one for a long time, correct with the merged blob
-                                kf.update_pos_info(new_position=blob.pt, frame_number=frame_number)
-                            elif frames_since_created < self.valid_frames_since_created:
-                                # it has been created a very short time ago: remove it
-                                kf_to_remove_in_item.append({"index": j, "kf": kf})
-                            else:
-                                # It has been with one to one recently. It is left only with prediction.
-                                kf.update_not_alone_frame_number(frame_number)
 
-                        kf_to_remove.extend(kf_to_remove_in_item)
-
-                        # Remove the old tracked objects
-                        for x in reversed(kf_to_remove_in_item):
-                            item_kf.pop(x["index"])
-
-                        if len(item_kf) == 0:
-                            items_to_remove.append(i)
+                        self.remove_or_update_kalman_filters(i, frame_number, item_kf, blob,
+                                                             kf_to_remove, items_to_remove)
 
                 elif len(item_blobs) > 1:
                     if len(item_kf) >= len(item_blobs):
@@ -229,94 +222,58 @@ class Tracker:
                             unassigned_blobs.append(blob)
                             unassigned_blobs_ind.append(j)
 
-                        kfs_to_compare_by_position = []
-                        kfs_to_compare_by_position_ind = []
-                        kfs_to_compare_by_color = []
-                        kfs_to_compare_by_color_ind = []
+                        kfs_to_compare = []
+                        kfs_to_compare_ind = []
+                        kfs_to_compare_later = []
+                        kfs_to_compare_later_ind = []
+
                         for j, kf in enumerate(item_kf):
                             # Amount of frames it has been without a one to one relationship
                             frames_without_one_to_one = self.last_frame - kf.last_frame_update
                             if frames_without_one_to_one <= self.valid_frames_to_predict_position:
                                 # If it has been without one to one for a short time, compare by position
-                                kfs_to_compare_by_position.append(kf)
-                                kfs_to_compare_by_position_ind.append(j)
+                                kfs_to_compare.append(kf)
+                                kfs_to_compare_ind.append(j)
                             else:
                                 # If it has been without one to one for a long time, compare by color
-                                kfs_to_compare_by_color.append(kf)
-                                kfs_to_compare_by_color_ind.append(j)
+                                kfs_to_compare_later.append(kf)
+                                kfs_to_compare_later_ind.append(j)
 
                         # the blobs position are compared with all kfs with valid position comparison
                         # for each match, both go to a new group
                         # if all blobs are matched with valid kfs, the worst match keeps the remaining kfs
 
-                        best_filter_per_blob_pos, best_filter_per_blob_pos_costs = \
-                            self.hung_alg_blob_pos.apply(unassigned_blobs, kfs_to_compare_by_position)
-
-                        worst_fit_blob = -1
-                        worst_fit = 100000
-
-                        # if more kalman filters than blobs, the worst fitting blob keeps the remaining filters
-                        if len(item_kf) > len(unassigned_blobs):
-                            for j, fit in enumerate(best_filter_per_blob_pos_costs):
-                                if fit < worst_fit:
-                                    worst_fit_blob = j
-                                    worst_fit = fit
-
                         kf_to_remove_in_item = []
                         blob_to_remove_in_item = []
-                        kf_to_remove_aux = []
-                        blob_to_remove_aux = []
-                        for j, kf_ind in enumerate(best_filter_per_blob_pos):
-                            if j != worst_fit_blob:
-                                if kf_ind != -1:
-                                    blob, blob_index = unassigned_blobs[j]
-                                    kf = kfs_to_compare_by_position[kf_ind]
-                                    # this blob has to go to a new group, with the assigned kalman filter
-                                    groups_to_append.\
-                                        append({'k_filters': [kf],
-                                                'blobs': [(blob, blob_index)],
-                                                'color': (random.randint(0, 255),
-                                                          random.randint(0, 255),
-                                                          random.randint(0, 255))})
 
-                                    # kalman filter is updated with all the blob info
-                                    kf.update_info(new_position=blob.pt,
-                                                   color=get_avg_color(raw_image, blob.pt),
-                                                   size=blob.size, blob=blob,
-                                                   last_frame_update=frame_number, score=scores[blob_index])
+                        best_filter_per_blob, best_filter_per_blob_costs = \
+                            self.hung_alg_blob_pos.apply(unassigned_blobs, kfs_to_compare)
 
-                                    blob_to_remove_in_item.append(unassigned_blobs_ind[j])
-                                    kf_to_remove_in_item.append(kfs_to_compare_by_position_ind[kf_ind])
+                        choose_worst_fit_blob = False
+                        # if more kalman filters than blobs, the worst fitting blob keeps the remaining filters
+                        if len(item_kf) > len(unassigned_blobs):
+                            choose_worst_fit_blob = True
 
-                                    blob_to_remove_aux.append(j)
-                                    kf_to_remove_aux.append(kf_ind)
+                        aux_kfs_to_remove, aux_blobs_to_remove = self.get_nearest_blobs(groups_to_append, raw_image,
+                                                                                        frame_number, scores,
+                                                                                        unassigned_blobs,
+                                                                                        unassigned_blobs_ind,
+                                                                                        kfs_to_compare,
+                                                                                        kfs_to_compare_ind,
+                                                                                        best_filter_per_blob,
+                                                                                        best_filter_per_blob_costs,
+                                                                                        choose_worst_fit_blob)
 
-                                else:
-                                    # may be more than one non assigned blob (this one and, maybe, the worst fit blob)
-                                    pass  # TODO: what to do if there is more than one non assigned blob...
-                            else:
-                                # this blob has to be kept in the group, with the remaining kalman filters
-                                # nothing has to be done here
-                                pass
-
-                        # Remove the moved blobs
-                        for x in reversed(blob_to_remove_aux):
-                            unassigned_blobs.pop(x)
-                            unassigned_blobs_ind.pop(x)
+                        kf_to_remove_in_item.extend(aux_kfs_to_remove)
+                        blob_to_remove_in_item.extend(aux_blobs_to_remove)
 
                         if len(unassigned_blobs) > 1:
                             # if there is more than one blob left to assign, then show must go on
 
-                            kf_to_remove_aux.sort()
-                            # Remove the moved tracked objects
-                            for x in reversed(kf_to_remove_aux):
-                                kfs_to_compare_by_position.pop(x)
-                                kfs_to_compare_by_position_ind.pop(x)
-
                             # kalman filters which were not matched by position
                             # are added to the ones to compare by color
-                            kfs_to_compare_by_color.extend(kfs_to_compare_by_position)
-                            kfs_to_compare_by_color_ind.extend(kfs_to_compare_by_position_ind)
+                            kfs_to_compare.extend(kfs_to_compare_later)
+                            kfs_to_compare_ind.extend(kfs_to_compare_later_ind)
 
                             # unassigned blobs are compared by color with remaining kfs,
                             # including with kfs with valid position comparison that were not matched
@@ -324,49 +281,25 @@ class Tracker:
                             for blob in unassigned_blobs:
                                 average_colors.append(get_avg_color(raw_image, blob[0].pt))
 
-                            best_filter_per_blob_color, best_filter_per_blob_color_costs = \
-                                self.hung_alg_blob_color.apply(average_colors, kfs_to_compare_by_color)
-
-                            worst_fit_blob = -1
-                            worst_fit = 100000
+                            best_filter_per_blob, best_filter_per_blob_costs = \
+                                self.hung_alg_blob_color.apply(average_colors, kfs_to_compare)
 
                             # if more kalman filters than blobs, the worst fitting blob keeps the remaining filters
-                            if len(kfs_to_compare_by_color) > len(unassigned_blobs):
-                                for j, fit in enumerate(best_filter_per_blob_color_costs):
-                                    if fit < worst_fit:
-                                        worst_fit_blob = j
-                                        worst_fit = fit
+                            if len(kfs_to_compare) > len(unassigned_blobs):
+                                choose_worst_fit_blob = True
 
-                            for j, kf_ind in enumerate(best_filter_per_blob_color):
-                                if j != worst_fit_blob:
-                                    if kf_ind != -1:
-                                        blob, blob_index = unassigned_blobs[j]
-                                        kf = kfs_to_compare_by_color[kf_ind]
-                                        # this blob has to go to a new group, with the assigned kalman filter
-                                        groups_to_append.\
-                                            append({'k_filters': [kf],
-                                                    'blobs': [(blob, blob_index)],
-                                                    'color': (random.randint(0, 255),
-                                                              random.randint(0, 255),
-                                                              random.randint(0, 255))})
+                            aux_kfs_to_remove, aux_blobs_to_remove = self.get_nearest_blobs(groups_to_append, raw_image,
+                                                                                            frame_number, scores,
+                                                                                            unassigned_blobs,
+                                                                                            unassigned_blobs_ind,
+                                                                                            kfs_to_compare,
+                                                                                            kfs_to_compare_ind,
+                                                                                            best_filter_per_blob,
+                                                                                            best_filter_per_blob_costs,
+                                                                                            choose_worst_fit_blob)
 
-                                        # kalman filter is updated with all the blob info
-                                        kf.update_info(new_position=blob.pt,
-                                                       color=get_avg_color(raw_image, blob.pt),
-                                                       size=blob.size, blob=blob,
-                                                       last_frame_update=frame_number, score=scores[blob_index])
-
-                                        blob_to_remove_in_item.append(unassigned_blobs_ind[j])
-                                        kf_to_remove_in_item.append(kfs_to_compare_by_color_ind[kf_ind])
-
-                                    else:
-                                        # may be more than one non assigned blob:
-                                        # this one and, maybe, the worst fit blob
-                                        pass  # TODO: what to do if there is more than one non assigned blob...
-                                else:
-                                    # this blob has to be kept in the group, with the remaining kalman filters
-                                    # nothing has to be done here
-                                    pass
+                            kf_to_remove_in_item.extend(aux_kfs_to_remove)
+                            blob_to_remove_in_item.extend(aux_blobs_to_remove)
 
                         kf_to_remove_in_item.sort()
                         # Remove the moved tracked objects
@@ -382,33 +315,8 @@ class Tracker:
                             items_to_remove.append(i)
                         else:
                             # kalman filters are updated only with the blob position
-                            kf_to_remove_in_item = []
-                            for j, kf in enumerate(item_kf):
-                                # Amount of frames it has been without a one to one relationship
-                                frames_without_one_to_one = self.last_frame - kf.last_frame_update
-                                # Amount of frames since it has been created
-                                frames_since_created = self.last_frame - kf.created_frame
-                                if frames_without_one_to_one > self.valid_frames_without_update:
-                                    # If TrackInfo is too old, remove it forever
-                                    kf_to_remove_in_item.append({"index": j, "kf": kf})
-                                elif frames_without_one_to_one > self.valid_frames_to_predict_position:
-                                    # If it has been without one to one for a long time, correct with the merged blob
-                                    kf.update_pos_info(new_position=item_blobs[0][0].pt, frame_number=frame_number)
-                                elif frames_since_created < self.valid_frames_since_created:
-                                    # it has been created a very short time ago: remove it
-                                    kf_to_remove_in_item.append({"index": j, "kf": kf})
-                                else:
-                                    # It has been with one to one recently. It is left only with prediction.
-                                    kf.update_not_alone_frame_number(frame_number)
-
-                            kf_to_remove.extend(kf_to_remove_in_item)
-
-                            # Remove the old tracked objects
-                            for x in reversed(kf_to_remove_in_item):
-                                item_kf.pop(x["index"])
-
-                            if len(item_kf) == 0:
-                                items_to_remove.append(i)
+                            self.remove_or_update_kalman_filters(i, frame_number, item_kf, item_blobs[0][0],
+                                                                 kf_to_remove, items_to_remove)
 
                     elif len(item_kf) < len(item_blobs):
                         # this can not happen; each blob must have at least one kalman filter assigned
@@ -434,7 +342,8 @@ class Tracker:
             for kf in self.k_filters:
                 if kf.score > 0.3:
                     journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                                     kf.rectangle, kf.kalman_filter.statePost, False))
+                                     kf.rectangle, kf.kalman_filter.statePost, False,
+                                     self.kfs_per_blob[kf.group_number]['color']))
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}
@@ -449,12 +358,43 @@ class Tracker:
         :return:
         """
         track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob,
-                               frame_number, 0, self.seconds_per_frame)
+                               frame_number, 0, self.seconds_per_frame, self.process_noise_cov)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1
 
         return len(self.k_filters) - 1
+
+    def remove_or_update_kalman_filters(self, item_id, frame_number, kalman_filters, blob,
+                                        kf_to_remove, items_to_remove):
+        # kalman filters are updated only with the blob position
+        kf_to_remove_in_item = []
+        for j, kf in enumerate(kalman_filters):
+            # Amount of frames it has been without a one to one relationship
+            frames_without_one_to_one = self.last_frame - kf.last_frame_update
+            # Amount of frames since it has been created
+            frames_since_created = self.last_frame - kf.created_frame
+            if frames_without_one_to_one > self.valid_frames_without_update:
+                # If TrackInfo is too old, remove it forever
+                kf_to_remove_in_item.append({"index": j, "kf": kf})
+            elif frames_without_one_to_one > self.valid_frames_to_predict_position:
+                # If it has been without one to one for a long time, correct with the merged blob
+                kf.update_pos_info(new_position=blob.pt, frame_number=frame_number)
+            elif frames_since_created < self.valid_frames_since_created:
+                # it has been created a very short time ago: remove it
+                kf_to_remove_in_item.append({"index": j, "kf": kf})
+            else:
+                # It has been with one to one recently. It is left only with prediction.
+                kf.update_not_alone_frame_number(frame_number)
+
+        kf_to_remove.extend(kf_to_remove_in_item)
+
+        # Remove the old tracked objects
+        for x in reversed(kf_to_remove_in_item):
+            kalman_filters.pop(x["index"])
+
+        if len(kalman_filters) == 0:
+            items_to_remove.append(item_id)
 
     def search_nearest_blob(self, kfs_group_item, blobs):
         min_distance = self.INFINITE_DISTANCE
@@ -471,10 +411,74 @@ class Tracker:
         else:
             return -1
 
+    def get_nearest_blobs(self, groups, raw_image, frame_number, scores, blobs, blobs_ind, filters, filters_ind,
+                          best_filter_per_blob, best_filter_per_blob_costs, choose_worst_fit_blob):
+
+        kf_to_remove_in_item = []
+        blob_to_remove_in_item = []
+        filters_to_remove = []
+        blobs_to_remove = []
+
+        worst_fit_blob = -1
+        worst_fit = 100000
+
+        # if more kalman filters than blobs, the worst fitting blob keeps the remaining filters
+        if choose_worst_fit_blob:
+            for j, fit in enumerate(best_filter_per_blob_costs):
+                if fit < worst_fit:
+                    worst_fit_blob = j
+                    worst_fit = fit
+
+        for j, kf_ind in enumerate(best_filter_per_blob):
+            if j != worst_fit_blob:
+                if kf_ind != -1:
+                    blob, blob_index = blobs[j]
+                    kf = filters[kf_ind]
+                    # this blob has to go to a new group, with the assigned kalman filter
+                    groups.\
+                        append({'k_filters': [kf],
+                                'blobs': [(blob, blob_index)],
+                                'color': (random.randint(0, 255),
+                                          random.randint(0, 255),
+                                          random.randint(0, 255))})
+
+                    # kalman filter is updated with all the blob info
+                    kf.update_info(new_position=blob.pt,
+                                   color=get_avg_color(raw_image, blob.pt),
+                                   size=blob.size, blob=blob,
+                                   last_frame_update=frame_number, score=scores[blob_index])
+
+                    blob_to_remove_in_item.append(blobs_ind[j])
+                    kf_to_remove_in_item.append(filters_ind[kf_ind])
+
+                    blobs_to_remove.append(j)
+                    filters_to_remove.append(kf_ind)
+
+                else:
+                    # may be more than one non assigned blob (this one and, maybe, the worst fit blob)
+                    pass  # TODO: what to do if there is more than one non assigned blob...
+            else:
+                # this blob has to be kept in the group, with the remaining kalman filters
+                # nothing has to be done here
+                pass
+
+        # Remove the moved blobs
+        for x in reversed(blobs_to_remove):
+            blobs.pop(x)
+            blobs_ind.pop(x)
+
+        filters_to_remove.sort()
+        # Remove the moved tracked objects
+        for x in reversed(filters_to_remove):
+            filters.pop(x)
+            filters_ind.pop(x)
+
+        return kf_to_remove_in_item, blob_to_remove_in_item
+
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob, frame_number, score, time_interval):
+    def __init__(self, color, size, point, short_id, blob, frame_number, score, time_interval, process_noise_cov):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
@@ -511,13 +515,7 @@ class TrackInfo:
             np.array([[1, 0, 0, 0, 0, 0],
                       [0, 0, 0, 1, 0, 0]], np.float32)
 
-        self.kalman_filter.processNoiseCov = \
-            np.array([[0.013, 0.025, 0.025,     0,     0,     0],
-                      [0.025,  0.05,  0.05,     0,     0,     0],
-                      [0.025,  0.05,  0.05,     0,     0,     0],
-                      [0,         0,     0, 0.013, 0.025, 0.025],
-                      [0,         0,     0, 0.025,  0.05,  0.05],
-                      [0,         0,     0, 0.025,  0.05,  0.05]], np.float32)
+        self.kalman_filter.processNoiseCov = process_noise_cov
 
         self.kalman_filter.measurementNoiseCov = \
             np.array([[1, 0],
