@@ -89,17 +89,8 @@ class Tracker:
 
         q = Q_discrete_white_noise(dim=3, dt=self.seconds_per_frame, var=0.05)  # Var = variation of model between steps
 
-        """
-        q = Q_discrete_white_noise(dim=3, dt=1, var=0.05)  # Var = variation of model between steps
-        """
         aux = block_diag(q, q)
-        self.process_noise_cov = \
-            np.array([[aux[0][0], aux[0][1], aux[0][2], aux[0][3], aux[0][4], aux[0][5]],
-                      [aux[1][0], aux[1][1], aux[1][2], aux[1][3], aux[1][4], aux[1][5]],
-                      [aux[2][0], aux[2][1], aux[2][2], aux[2][3], aux[2][4], aux[2][5]],
-                      [aux[3][0], aux[3][1], aux[3][2], aux[3][3], aux[3][4], aux[3][5]],
-                      [aux[4][0], aux[4][1], aux[4][2], aux[4][3], aux[4][4], aux[4][5]],
-                      [aux[5][0], aux[5][1], aux[5][2], aux[5][3], aux[5][4], aux[5][5]]], np.float32)
+        self.process_noise_cov = np.array(aux, np.float32)
 
     def apply(self, blobs, raw_image, frame_number, scores):
         """
@@ -358,7 +349,7 @@ class Tracker:
         :return:
         """
         track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob,
-                               frame_number, 0, self.seconds_per_frame, self.process_noise_cov)
+                               frame_number, score, self.seconds_per_frame, self.process_noise_cov)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1
@@ -515,7 +506,14 @@ class TrackInfo:
             np.array([[1, 0, 0, 0, 0, 0],
                       [0, 0, 0, 1, 0, 0]], np.float32)
 
-        self.kalman_filter.processNoiseCov = process_noise_cov
+        self.process_noise_cov = process_noise_cov
+        self.initial_position = point
+
+        # Initialize the process noise matrix to the identity, in order to only take into account the measurements...
+        # ... in the first frames.
+        # Process prediction is not taken into account in first frames, as...
+        # ... there is not a good initial velocity prediction
+        self.kalman_filter.processNoiseCov = np.eye(N=6, dtype=np.float32)
 
         self.kalman_filter.measurementNoiseCov = \
             np.array([[1, 0],
@@ -573,12 +571,30 @@ class TrackInfo:
 
         self.number_updates += 1
 
+        if self.number_updates == 5:
+            # Use the information of the initial position and 5th update new_position to...
+            # ... initialize the kalman filter velocity.
+            # Also, initialize the kalman filter process noise matrix.
+            self.kalman_filter.processNoiseCov = self.process_noise_cov
+            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
+            self.kalman_filter.statePost[1] = aux[0]/5.0
+            self.kalman_filter.statePost[4] = aux[1]/5.0
+
     def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
         self.correct(np.array(new_position, np.float32))
         self.last_point = new_position
         self.last_frame_not_alone = frame_number
 
         self.number_updates += 1
+
+        if self.number_updates == 5:
+            # Use the information of the initial position and 5th update new_position to...
+            # ... initialize the kalman filter velocity.
+            # Also, initialize the kalman filter process noise matrix.
+            self.kalman_filter.processNoiseCov = self.process_noise_cov
+            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
+            self.kalman_filter.statePost[1] = aux[0]/5.0
+            self.kalman_filter.statePost[4] = aux[1]/5.0
 
     def update_not_alone_frame_number(self, frame_number):
         self.last_frame_not_alone = frame_number
