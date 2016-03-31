@@ -3,14 +3,13 @@ import numpy as np
 from math import sqrt
 from multiprocessing.pool import Pool
 
+from matplotlib import pyplot as plt
 from imutils.object_detection import non_max_suppression
+
 from trackermaster.config import config
 from utils.tools import rect_size
 from utils.tools import crop_image_for_person_detection
 
-# import matplotlib
-# matplotlib.use('template')
-# from matplotlib import pyplot as plt
 
 class PersonDetector:
     detector = None
@@ -21,16 +20,6 @@ class PersonDetector:
 
     def __init__(self):
 
-        # Configuration parameters
-        self.aspect_ratio = config.getfloat('ASPECT_RATIO')
-        self.padding = (config.getint('PADDING_0'), config.getint('PADDING_1'))
-        self.scale = config.getfloat('SCALE')
-        self.winStride = (config.getint('WINSTRIDE_0'),
-                          config.getint('WINSTRIDE_1'))
-
-        # Initialize the HOG descriptor/person detector
-        self.hog = cv2.HOGDescriptor()
-        self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
         self.confidenceMatrix = np.zeros(shape=(32, 24), dtype=np.int32)
 
     def apply(self, bounding_box, image):
@@ -77,10 +66,8 @@ class PersonDetector:
             np.linspace(0, 240, 24, endpoint=True)
         for cropped_image in cropped_images:
             (rects, weights) = \
-                self.hog.detectMultiScale(cropped_image,
-                                          winStride=self.winStride,
-                                          padding=self.padding,
-                                          scale=self.scale)
+                hog.detectMultiScale(cropped_image, winStride=winStride,
+                                     padding=padding, scale=scale)
             # apply non-maxima suppression to the bounding boxes using a
             # fairly large overlap threshold to try to maintain overlapping
             # boxes that are still people
@@ -113,9 +100,16 @@ class PersonDetector:
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
+# Configuration parameters
+aspect_ratio = config.getfloat('ASPECT_RATIO')
+padding = (config.getint('PADDING_0'), config.getint('PADDING_1'))
+scale = config.getfloat('SCALE')
+winStride = (config.getint('WINSTRIDE_0'),
+             config.getint('WINSTRIDE_1'))
 
 def apply_single(args):
-    bounding_box, image, mult2, orig_f = args
+
+    image, bounding_box, mult2, orig_f = args
 
     (rects, weights) = \
         hog.detectMultiScale(image, winStride=(4, 4), padding=(8, 8), scale=1.1)
@@ -126,26 +120,54 @@ def apply_single(args):
         del rects
 
         if len(person):
-            return person, 1, mult2, orig_f
+            max_person = max(person, key=rect_size)
+            max_person_size = rect_size(max_person)
+
+            min_person = min(person, key=rect_size)
+            min_person_size = rect_size(min_person)
+
+            return person, 1, min_person_size, max_person_size, bounding_box
+            #return person, 1, mult2, orig_f
     else:
         current_aspec_ratio = bounding_box[3] / bounding_box[2]
-        if np.isclose(2.0, current_aspec_ratio, atol=0.5):
+        if np.isclose(aspect_ratio, current_aspec_ratio, atol=0.2):
+
+            max_person = max([bounding_box], key=rect_size)
+            max_person_size = rect_size(max_person)
+
+            min_person = min([bounding_box], key=rect_size)
+            min_person_size = rect_size(min_person)
+
             return [[bounding_box[0], bounding_box[1],
                      bounding_box[0] + bounding_box[2],
                      bounding_box[1]+bounding_box[3]]], \
-                0.7 - abs(2.0 - current_aspec_ratio), mult2, orig_f
+                0.7 - (abs(aspect_ratio - (bounding_box[2] / bounding_box[3]))),\
+                min_person_size, max_person_size, bounding_box
+                # 0.7 - abs(aspect_ratio - current_aspec_ratio), mult2, orig_f
         else:
-            return [], 0, mult2, orig_f
+            return [], 0, 0, 0, bounding_box
 
 pool_person_detectors = Pool()
 
+min_person_size = 1000000
+max_person_size = 0
+
+# TODO: solucionar el tema de este metodo
+person_detector = PersonDetector()
+
 
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
-          frame_resized_copy):
+          frame_resized_copy, number_frame):
+
+    global min_person_size
+    global max_person_size
+    global pool_person_detectors
+    global hog
 
     to_process = []
     blobs = []
     scores = []
+    cropped_images = []
 
     for (x, y, w, h) in rectangles:
 
@@ -157,9 +179,12 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                             h * resolution_multiplier)
 
         # Crop a rectangle around detected blob
-        crop_img, x_orig_f, y_orig_f, w_orig_f, h_orig_f, mult2 = \
+        crop_img = \
             crop_image_for_person_detection(
                 raw_frame_copy, (x_orig, y_orig, w_orig, h_orig))
+
+        # TODO: Solucionar el mult2
+        mult2 = 1
 
         # If there is not cropped image to process
         # (probably because the area is too small)
@@ -170,45 +195,73 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         cv2.rectangle(frame_resized_copy, (x, y), (x + w, y + h),
                       (255, 0, 0), 1)
 
-        to_process.append(((x_orig, y_orig, w_orig, h_orig),
-                           crop_img.copy(), mult2,
-                           (x_orig_f, y_orig_f, w_orig_f, h_orig_f)))
+        cropped_images.append(
+            (crop_img,
+             (x, y, w, h), 1, 1))
     else:
         del rectangles
 
-    if to_process:
+    if number_frame <= 100:
+        person_detector.create_confidence_matrix([x[0] for x in
+                                                  cropped_images])
+    elif cropped_images:
 
-        res = pool_person_detectors.imap_unordered(apply_single, to_process)
+        plt.scatter(person_detector.widths, person_detector.heights,
+                    c=person_detector.c)
+        plt.show()
 
-        # draw the final bounding boxes
+        res = pool_person_detectors.imap_unordered(apply_single, cropped_images)
+
         for xyAB in res:
             score = xyAB[1]
-            mult2 = xyAB[2]
-            x_orig_f, y_orig_f, w_orig_f, h_orig_f = xyAB[3]
+            #mult2 = xyAB[2]
+            #x_orig_f, y_orig_f, w_orig_f, h_orig_f = xyAB[3]
+
+            min_size = xyAB[2]
+            max_size = xyAB[3]
+            (x, y, w, h) = xyAB[4]
+
+            # TODO: recalcular media considerando los historicos
+            # TODO: utilizar media ponderada
+            # (http://www.mathsisfun.com/data/weighted-mean.html)
+            # TODO: combinar con histogramas
+            # (http://progpython.blogspot.com.uy/2011/09/
+            # histogramas-con-python-matplotlib.html)
+            # TODO: https://ernestocrespo13.wordpress.com/2015/01/
+            # 11/generacion-de-un-histograma-de-frecuencia-con-
+            # numpy-scipy-y-matplotlib/
+            if min_size > 0:
+                min_person_size =\
+                    np.median([min_person_size, min_size])
+            if max_size > 0:
+                max_person_size =\
+                    np.median([max_person_size, max_size])
+            # print("Min, max:", (min_person_size, max_person_size))
 
             for person in xyAB[0]:
                 (xA, yA, xB, yB) = person
 
-                xA_p = \
-                    int((x_orig_f + (xA/mult2))/resolution_multiplier)
-                yA_p = \
-                    int((y_orig_f + (yA/mult2))/resolution_multiplier)
-                xB_p = \
-                    int((x_orig_f + (xB/mult2))/resolution_multiplier)
-                yB_p = \
-                    int((y_orig_f + (yB/mult2))/resolution_multiplier)
+                x_1 = int(round((xA * w) / 128))
+                y_1 = int(round((yA * h) / 256))
+                x_2 = int(round((xB * w) / 128))
+                y_2 = int(round((yB * h) / 256))
+
+                x_a = (x - 4) + x_1
+                x_b = (x + 4) + x_2
+                y_a = (y - 8) + y_1
+                y_b = (y + 8) + y_2
 
                 # Amarillo
                 color = 0 if score == 1 else 255
-                cv2.rectangle(frame_resized_copy, (xA_p, yA_p), (xB_p, yB_p),
+                cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
                               (0, color, 255), 2)
 
-                blobs.append(cv2.KeyPoint(round((xA_p + xB_p)/2),
-                                          round((yA_p + yB_p)/2),
-                                          sqrt(xB_p*xB_p + xA_p*xA_p)))
+                blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
+                                          round((y_a + y_b) / 2),
+                                          sqrt(pow(x_b - x_a, 2) +
+                                               pow(y_b - y_a, 2))))
                 scores.append(score)
         else:
             del res
             del to_process
-
     return blobs, scores
