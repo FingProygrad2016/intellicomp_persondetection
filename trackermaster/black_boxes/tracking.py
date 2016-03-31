@@ -102,6 +102,123 @@ class Tracker:
         :return: A list of TrackInfo which journey is greater than 5
         """
 
+        """
+        for each frame:
+            for each kalman filter:
+                if it has not been without one to one for a long time:
+                    predict new state
+            if there are blobs in the frame:
+                unassign any blob assigned to the groups
+                search for nearest kalman filter to each blob with hungarian algorithm
+                for each blob in the frame:
+                    if a nearest kalman filter was found:
+                        assign the blob to the group where the kalman filter belongs
+                    else:
+                        a new kalman filter is created with the data of the blob
+                        the new kalman filter and the blob are added within a new group to the groups
+                for each group that has not assigned blobs:
+                    move its kalman filters to the nearest group (in a given range)
+                for each group:
+                    if there are not assigned blobs:
+                        for each kalman filter in the group:
+                            if it has been unassigned for some time:
+                                delete it
+                            if it has been created a very short time ago:
+                                delete it
+                    elif there is one assigned blob:
+                        if there is one kalman filter:
+                            update kalman filter with blob info
+                        elif there are multiple kalman filters:
+                            remove or update kalman filters
+                    elif there are multiple blobs:
+                        if there are more or same kalman filters than blobs:
+                            compare blobs position distance to kalman filters that have been one on one in a near past
+                            assign the resulting pairs of blob and kalman filter to new groups
+                            if there is more than one unassigned blob:
+                                compare the remaining blobs and kalman filters by color distance
+                                assign the resulting pairs of blob and kalman filter to new groups
+                            if there is more than one kalman filter remaining:
+                                remove or update kalman filters
+                for each group:
+                    if it has no kalman filters or blobs:
+                        remove it
+            return journeys of kalman filters with a score of more than 0.3
+
+        LESS VERBOSE VERSION:
+
+        for each frame:
+            for each filter in kalman filters:
+                if not has_been_without_one_to_one_for_long_time(filter):
+                    predict_new_state(filter)
+            if has_blobs(frame):
+                blobs = frame.blobs
+                unassign_blobs(groups)
+                nearest_filters = search_nearest_filter_per_blob_with_hungarian_algorithm(kalman filters, blobs)
+                for each blob in blobs:
+                    if nearest_filters[blob]:
+                        filter = nearest_filters[blob]
+                        assign_to_group(blob, filter.group_number)
+                    else:
+                        filter = new_kalman_filter(blob)
+                        new_group = make_new_group(filter, blob)
+                        groups.add(new_group)
+                for each group in groups:
+                    if count(group.blobs) = 0:
+                        nearest_group = search_nearest_group_with_blobs_in_given_range(group, groups)
+                        move_from_to(group.filters, nearest_group.filters)
+                for each group in groups:
+                    if count(group.blobs) = 0:
+                        for each filter in group.filters:
+                            if has_been_unassigned_for_some_time(filter):
+                                delete(filter)
+                            elif has_been_created_a_very_short_time_ago(filter):
+                                delete(filter)
+                    elif count(group.blobs) = 1:
+                        if count(group.filters) = 1:
+                            update_measurement(group.filters, blob)
+                        elif count(group.filters) > 1:
+                            for filter in group.filters:
+                                if has_been_unassigned_for_some_time(filter):
+                                    delete(filter)
+                                elif has_been_created_a_very_short_time_ago(filter):
+                                    delete(filter)
+                                elif still_in_time_to_update_position(filter):
+                                    update_position(filter, group.blobs[0])
+                                else
+                                    update_frame_number(filter, frame.number)
+                    elif count(group.blobs) > 1:
+                        if count(group.filters) >= count(group.blobs):
+                            filters = get_filters_with_one_on_one_in_a_near_past(group.filters)
+                            pairs, remaining_filters, remaining_blobs = nearest_by_position(group.blobs, filters)
+                            for pair in pairs:
+                                new_group = make_new_group(pair)
+                                groups.add(new_group)
+                            if count(remaining_blobs) > 1:
+                                pairs, remaining_filters = nearest_by_color(remaining_blobs, remaining_filters)
+                                for pair in pairs:
+                                    new_group = make_new_group(pair)
+                                    groups.add(new_group)
+                            if count(remaining_filters) > 1:
+                                for filter in remaining_filters:
+                                    if has_been_unassigned_for_some_time(filter):
+                                        delete(filter)
+                                    elif has_been_created_a_very_short_time_ago(filter):
+                                        delete(filter)
+                                    elif still_in_time_to_update_position(filter):
+                                        update_position(filter, group.blobs[0])
+                                    else
+                                        update_frame_number(filter, frame.number)
+                for each group in groups:
+                    if count(group.filters) = 0 and count(group.blobs) = 0:
+                        groups.remove(group)
+
+            for filter in kalman filters:
+                if is_considered_a_human(filter):
+                    journeys.add(filter.journey)
+            return journeys
+
+        """
+
         journeys = []
 
         # elapsed_time = (frame_number - self.last_frame) * self.seconds_per_frame
@@ -469,7 +586,8 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob, frame_number, score, time_interval, process_noise_cov):
+    def __init__(self, color, size, point, short_id, blob, frame_number,
+                 score, time_interval, process_noise_cov):
         self.color = color
         self.size = size
         self.created_datetime = datetime.now()
@@ -509,8 +627,8 @@ class TrackInfo:
         self.process_noise_cov = process_noise_cov
         self.initial_position = point
 
-        # Initialize the process noise matrix to the identity, in order to only take into account the measurements...
-        # ... in the first frames.
+        # Initialize the process noise matrix to the identity, in order to
+        # only take into account the measurements in the first frames.
         # Process prediction is not taken into account in first frames, as...
         # ... there is not a good initial velocity prediction
         self.kalman_filter.processNoiseCov = np.eye(N=6, dtype=np.float32)
@@ -520,10 +638,12 @@ class TrackInfo:
                       [0, 1]], np.float32)
 
         self.journey = []
-        self.journey_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        self.journey_color = (random.randint(0, 255), random.randint(0, 255),
+                              random.randint(0, 255))
         self.number_updates = 1
 
-        array_aux = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
+        array_aux = np.array(
+            [[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
         self.kalman_filter.statePost = array_aux
 
         # prediction of next new position
@@ -550,7 +670,8 @@ class TrackInfo:
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
 
-    def update_info(self, new_position, color, size, blob, last_frame_update, score):
+    def update_info(self, new_position, color, size,
+                    blob, last_frame_update, score):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
         self.color = color
@@ -560,7 +681,8 @@ class TrackInfo:
         self.last_update = datetime.now()
         self.last_point = new_position
 
-        self.score = (self.score * self.number_updates + score) / (self.number_updates + 1)
+        self.score = (self.score * self.number_updates + score) /\
+                     (self.number_updates + 1)
 
         xt = int(round(blob.pt[0] - (blob.size / 4)))
         yt = int(round(blob.pt[1] - (blob.size / 2)))
@@ -572,11 +694,12 @@ class TrackInfo:
         self.number_updates += 1
 
         if self.number_updates == 5:
-            # Use the information of the initial position and 5th update new_position to...
-            # ... initialize the kalman filter velocity.
+            # Use the information of the initial position and 5th update
+            # new_position to initialize the kalman filter velocity.
             # Also, initialize the kalman filter process noise matrix.
             self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
+            aux = (new_position[0] - self.initial_position[0],
+                   new_position[1] - self.initial_position[1])
             self.kalman_filter.statePost[1] = aux[0]/5.0
             self.kalman_filter.statePost[4] = aux[1]/5.0
 
@@ -588,13 +711,14 @@ class TrackInfo:
         self.number_updates += 1
 
         if self.number_updates == 5:
-            # Use the information of the initial position and 5th update new_position to...
-            # ... initialize the kalman filter velocity.
+            # Use the information of the initial position and 5th update
+            # new_position to initialize the kalman filter velocity.
             # Also, initialize the kalman filter process noise matrix.
             self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0], new_position[1] - self.initial_position[1])
-            self.kalman_filter.statePost[1] = aux[0]/5.0
-            self.kalman_filter.statePost[4] = aux[1]/5.0
+            aux = (new_position[0] - self.initial_position[0],
+                   new_position[1] - self.initial_position[1])
+            self.kalman_filter.statePost[1] = aux[0] / 5.0
+            self.kalman_filter.statePost[4] = aux[1] / 5.0
 
     def update_not_alone_frame_number(self, frame_number):
         self.last_frame_not_alone = frame_number
