@@ -4,7 +4,6 @@ Modulo que contiene funciones de ayuda generales
 import base64
 import cv2
 import numpy as np
-from math import sqrt, pow
 
 MAX_WIDTH = 320
 MAX_HEIGHT = 240
@@ -96,15 +95,10 @@ def crop_image_for_person_detection(image, rect):
 
     (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
 
-    if (128 / w) > (256 / h):
-        fact = (128 / w)
+    if h >= (2 * w):
+        w = h / 2
     else:
-        fact = (256 / h)
-    resize = (int(round(w * fact)), int(round(h * fact)))
-    # if h >= (2 * w):
-    #     w = h / 2
-    # else:
-    #     h = 2 * w
+        h = 2 * w
 
     if (y - (h / 4)) > 0:
         y -= (h / 4)
@@ -117,13 +111,8 @@ def crop_image_for_person_detection(image, rect):
 
     # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
     return cv2.resize((image[y: (y + (h / 4)) + (h + (h / 4)),
-                       x: (x + (w / 4)) + (w + (w / 4))]), resize)
-
-
-def rect_size(rect):
-    return sqrt(pow(rect[2], 2) + pow(rect[3], 2))
+                       x: (x + (w / 4)) + (w + (w / 4))]), (128, 256))
 
 
 def frame2base64png(frame):
     return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
-

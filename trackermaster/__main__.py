@@ -7,7 +7,6 @@ import time
 from hashlib import sha1
 from imutils.object_detection import non_max_suppression
 from math import pow, sqrt
-from numpy.ma.core import min_filler
 from datetime import datetime as dt
 import numpy as np
 import cv2
@@ -56,6 +55,7 @@ def draw_journeys(journeys, outputs):
         rectangle_points = journey[3]
         prediction = journey[4]
         has_big_blob = journey[5]
+        group_color = journey[6]
 
         if NUM_OF_POINTS > len(journey_data):
             num_of_points = len(journey_data)
@@ -185,9 +185,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     has_more_images = True
 
-    min_person_size = 1000000
-    max_person_size = 0
-
     # Start the main loop
     while has_more_images:
 
@@ -209,9 +206,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # Get a new frame
         has_more_images, frame = cap.read()
 
-        original = frame.copy()
-        cv2.imshow("Original", original)
-
         number_frame += 1
         read_time += time.time() - t0
 
@@ -228,8 +222,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             to_show = bg_substraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
             bg_sub_time += time.time() - t0
             t0 = time.time()
-            blobs_points = blobs_detector.apply(bg_sub, min_person_size,
-                                                max_person_size)
+            blobs_points = blobs_detector.apply(bg_sub)
 
             if blobs_points:
                 bounding_boxes = find_blobs_bounding_boxes(bg_sub)
@@ -244,56 +237,41 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                                            overlapThresh=0.3)])
 
                 blobs = []
-                cropped_images = []
                 for (x, y, w, h) in rectangles:
                     # Crop a rectangle around detected blob
-                    # crop_img = \
-                    cropped_images.append(crop_image_for_person_detection(
-                        frame_copy2, (x * resolution_multiplier,
-                                      y * resolution_multiplier,
-                                      w * resolution_multiplier,
-                                      h * resolution_multiplier)))
+                    crop_img = \
+                        crop_image_for_person_detection(
+                            frame_copy2, (x * resolution_multiplier,
+                                          y * resolution_multiplier,
+                                          w * resolution_multiplier,
+                                          h * resolution_multiplier))
 
-                if number_frame <= 100:
-                    person_detector.create_confidence_matrix(cropped_images)
-                else:
-                    for crop_img in cropped_images:
-                        cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
-                                      (255, 0, 0), 2)
-                        cv2.imshow('crop_img', crop_img)
+                    cv2.rectangle(frame_copy, (x, y), (x + w, y + h),
+                                  (255, 0, 0), 2)
 
-                        #pos_x, pos_y =
-                        persons, score, min_size, max_size = \
-                            person_detector.apply((x, y, w, h), crop_img)
+                    cv2.imshow('crop_img', crop_img)
 
-                        # TODO: recalcular media considerando los historicos
-                        # TODO: utilizar media ponderada (http://www.mathsisfun.com/data/weighted-mean.html)
-                        # TODO: combinar con histogramas (http://progpython.blogspot.com.uy/2011/09/histogramas-con-python-matplotlib.html)
-                        # TODO: https://ernestocrespo13.wordpress.com/2015/01/11/generacion-de-un-histograma-de-frecuencia-con-numpy-scipy-y-matplotlib/
-                        if min_size > 0:
-                            min_person_size = np.median([min_person_size, min_size])
-                        if max_size > 0:
-                            max_person_size = np.median([max_person_size, max_size])
-                        print("Min, max:", (min_person_size, max_person_size))
+                    persons, score = \
+                        person_detector.apply((x, y, w, h), crop_img)
 
-                        # draw the final bounding boxes
-                        for (xA, yA, xB, yB) in persons:
-                            x_1 = int(round((xA * w) / 128))
-                            y_1 = int(round((yA * h) / 256))
-                            x_2 = int(round((xB * w) / 128))
-                            y_2 = int(round((yB * h) / 256))
+                    # draw the final bounding boxes
+                    for (xA, yA, xB, yB) in persons:
+                        x_1 = int(round((xA * w) / 128))
+                        y_1 = int(round((yA * h) / 256))
+                        x_2 = int(round((xB * w) / 128))
+                        y_2 = int(round((yB * h) / 256))
 
-                            x_a = (x - 4) + x_1
-                            x_b = (x + 4) + x_2
-                            y_a = (y - 8) + y_1
-                            y_b = (y + 8) + y_2
-                            cv2.rectangle(frame_copy, (x_a, y_a), (x_b, y_b),
-                                          (0, 255, 0), 2)
-                            blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
-                                                      round((y_a + y_b) / 2),
-                                                      sqrt(pow(x_b - x_a, 2) +
-                                                           pow(y_b - y_a, 2))))
-                            scores.append(score)
+                        x_a = (x - 4) + x_1
+                        x_b = (x + 4) + x_2
+                        y_a = (y - 8) + y_1
+                        y_b = (y + 8) + y_2
+                        cv2.rectangle(frame_copy, (x_a, y_a), (x_b, y_b),
+                                      (0, 255, 0), 2)
+                        blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
+                                                  round((y_a + y_b) / 2),
+                                                  sqrt(pow(x_b - x_a, 2) +
+                                                       pow(y_b - y_a, 2))))
+                        scores.append(score)
 
                 blob_det_time += time.time() - t0
                 t0 = time.time()
