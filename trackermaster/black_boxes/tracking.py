@@ -349,7 +349,7 @@ class Tracker:
         :return:
         """
         track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob,
-                               frame_number, score, self.seconds_per_frame, self.process_noise_cov)
+                               frame_number, 0, self.seconds_per_frame, self.process_noise_cov)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1

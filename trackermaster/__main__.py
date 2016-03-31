@@ -11,6 +11,7 @@ from numpy.ma.core import min_filler
 from datetime import datetime as dt
 import numpy as np
 import cv2
+from imutils.object_detection import non_max_suppression
 
 from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
@@ -40,7 +41,7 @@ def send_patternrecognition_config(communicator, identifier,
                            routing_key='processing_settings')
 
 
-NUM_OF_POINTS = 40
+NUM_OF_POINTS = 25
 
 
 def draw_journeys(journeys, outputs):
@@ -56,16 +57,16 @@ def draw_journeys(journeys, outputs):
     for journey in journeys:
         journey_data = journey[0]
         journey_color = journey[1]
-        journey_id = journey[2]
-        rectangle_points = journey[3]
+        # journey_id = journey[2]
+        # rectangle_points = journey[3]
         prediction = journey[4]
-        has_big_blob = journey[5]
+        # has_big_blob = journey[5]
 
         if NUM_OF_POINTS > len(journey_data):
             num_of_points = len(journey_data)
         else:
             num_of_points = NUM_OF_POINTS
-        num_of_points_2 = num_of_points/2
+        # num_of_points_2 = num_of_points/2
 
         # Draw the lines
         for i, (stretch_start, stretch_end) in \
@@ -75,17 +76,9 @@ def draw_journeys(journeys, outputs):
             point_end = (stretch_end[0], stretch_end[3])
             for output in outputs:
                 cv2.line(output, point_start, point_end, journey_color,
-                         thickness=2 if i > num_of_points_2 else 1)
-
-        if has_big_blob:
-            thickness = 2
-        else:
-            thickness = 1
+                         thickness=1)
 
         for output in outputs:
-            cv2.rectangle(
-                output, rectangle_points[0], rectangle_points[1], journey_color,
-                thickness=thickness)
             cv2.circle(output, (prediction[0], prediction[3]), 3,
                        journey_color, -1)
 
@@ -180,6 +173,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     read_time = 0
     bg_sub_time = 0
     blob_det_time = 0
+    person_detection_time = 0
     t_time = 0
     pattern_recogn_time = 0
     show_info_time = 0
@@ -211,9 +205,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         t0 = time.time()
         # Get a new frame
-        has_more_images, frame = cap.read()
+        has_more_images, raw_frame = cap.read()
 
-        original = frame.copy()
+        original = raw_frame.copy()
         cv2.imshow("Original", original)
 
         number_frame += 1
@@ -221,23 +215,45 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         if has_more_images:
             # resize to a manageable work resolution
-            raw_frame = cv2.resize(frame, (work_w, work_h))
-            frame = raw_frame.copy()
-            frame_copy = frame.copy()
-            frame_copy2 = frame.copy()
+            frame_resized = cv2.resize(raw_frame, (work_w, work_h))
+            frame_resized_copy = frame_resized.copy()
+            raw_frame_copy = raw_frame.copy()
+            frame_copy2 = raw_frame.copy()
 
-            # Black boxes process
+            #############################
+            #############################
+            # ## BLACK BOXES PROCESSES ##
+            # ######################## ##
+            # ######################## ##
+
+            # ########################## ##
+            # ## BACKGROUND SUBTRACTOR # ##
+            # ########################## ##
+
             t0 = time.time()
-            bg_sub = background_subtractor.apply(frame)
-            to_show = bg_substraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
+
+            bg_sub = background_subtractor.apply(frame_resized)
+            bg_substraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
+            to_show = bg_substraction.copy()
+
             bg_sub_time += time.time() - t0
-            t0 = time.time()
-            blobs_points = blobs_detector.apply(bg_sub, min_person_size,
-                                                max_person_size)
 
-            if blobs_points:
-                bounding_boxes = find_blobs_bounding_boxes(bg_sub)
-                scores = []
+            # ################### ##
+            # ## BLOBS DETECTOR # ##
+            # ################### ##
+
+            t0 = time.time()
+
+            # blobs_points = blobs_detector.apply(bg_sub)
+            bounding_boxes = find_blobs_bounding_boxes(bg_sub)
+
+            blob_det_time += time.time() - t0
+            t0 = time.time()
+
+            blobs = []
+            to_process = []
+            scores = []
+            if bounding_boxes:
 
                 rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in
                                   bounding_boxes])
@@ -246,6 +262,39 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                        non_max_suppression(rects,
                                                            probs=None,
                                                            overlapThresh=0.3)])
+
+                # TODO: Remove!
+                if len(rectangles) > 50:
+                    # Skip the cycle when it's full of small blobs
+                    print("TOO MUCH RECTANGLES!!!!")
+                    continue
+
+                # ##################### ##
+                # ## PERSONS DETECTOR # ##
+                # ##################### ##
+
+
+
+                # blobs, scores = \
+                #     person_detection.apply(rectangles, resolution_multiplier,
+                #                            raw_frame_copy, frame_resized_copy)
+
+                # person_detection_time += time.time() - t0
+                # t0 = time.time()
+
+
+
+
+
+                blobs = []
+                for (x, y, w, h) in rectangles:
+                    # Crop a rectangle around detected blob
+                    crop_img = \
+                        crop_image_for_person_detection(
+                            frame_copy2, (x * resolution_multiplier,
+                                          y * resolution_multiplier,
+                                          w * resolution_multiplier,
+                                          h * resolution_multiplier))
 
                 blobs = []
                 cropped_images = []
@@ -307,18 +356,36 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                                            pow(y_b - y_a, 2))))
                             scores.append(score)
 
-                blob_det_time += time.time() - t0
-                t0 = time.time()
-                trayectos, info_to_send, tracklets = \
-                    tracker.apply(blobs, frame, number_frame, scores)
-                t_time += time.time() - t0
 
+
+
+
+                person_detection_time += time.time() - t0
                 t0 = time.time()
+
+                # ############ ##
+                # ## TRACKER # ##
+                # ############ ##
+
+                trayectos, info_to_send, tracklets = \
+                    tracker.apply(blobs, frame_resized, number_frame, scores)
+                del blobs
+                del scores
+
+                t_time += time.time() - t0
+                t0 = time.time()
+
+
+
+
+                # ################################################# ##
+                # ## COMMUNICATION WITH PATTERN MASTER AND OTHERS # ##
+                # ################################################# ##
 
                 if number_frame % FPS_OVER_2 == 0:
                     for info in info_to_send:
                         info['tracker_id'] = identifier
-                        info['img'] = frame2base64png(raw_frame).decode()
+                        info['img'] = frame2base64png(frame_resized).decode()
                     # Send info to the pattern recognition every half second
                     communicator.apply(json.dumps(info_to_send),
                                        routing_key='track_info')
@@ -327,13 +394,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     # Renew the config in pattern recognition every 10 seconds
                     send_patternrecognition_config(communicator, identifier,
                                                    patternmaster_conf)
-
-                # Draw circles in each blob
-                to_show = \
-                    cv2.drawKeypoints(
-                        to_show, blobs_points,
-                        outImage=np.array([]), color=(0, 0, 255),
-                        flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
                 # Write FPS in the frame to show
                 cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
@@ -357,15 +417,18 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                             tracklet.last_rule = None
 
                 # Draw the journeys of the tracked persons
-                draw_journeys(trayectos, [frame, to_show])
+                draw_journeys(trayectos, [frame_resized_copy, to_show])
 
                 show_info_time += time.time() - t0
 
-                t0 = time.time()
+            # #################### ##
+            # ## DISPLAY RESULTS # ##
+            # #################### ##
 
-            # Display the frames
+            t0 = time.time()
+
             big_frame = np.vstack((np.hstack((bg_substraction, to_show)),
-                                   np.hstack((frame, frame_copy))))
+                                   np.hstack((frame_resized, frame_resized_copy))))
             big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
             cv2.imshow('result', big_frame)
 
@@ -390,6 +453,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     print("Background subtraction time " + str(bg_sub_time))
     blob_det_time = blob_det_time / number_frame
     print("Blob detector time " + str(blob_det_time))
+    person_detection_time = person_detection_time / number_frame
+    print("Person detector time " + str(person_detection_time))
     t_time = t_time / number_frame
     print("Tracker time " + str(t_time))
     pattern_recogn_time = pattern_recogn_time / number_frame
@@ -408,7 +473,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     comm_info.send_message(json.dumps(dict(
         info_id="EXIT", id=identifier,
         content="CAUSE: " + exit_cause,
-        img=frame2base64png(raw_frame).decode())),
+        img=frame2base64png(frame_resized).decode())),
         routing_key='info')
 
     exit()

@@ -92,6 +92,7 @@ def crop_image_for_person_detection(image, rect):
     :param image: the original image
     :param rect: rectangle to crop
     :return: the image cropped with the frame (border) around
+        None is the area if the rectangle is 0
     """
 
     (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
@@ -101,10 +102,6 @@ def crop_image_for_person_detection(image, rect):
     else:
         fact = (256 / h)
     resize = (int(round(w * fact)), int(round(h * fact)))
-    # if h >= (2 * w):
-    #     w = h / 2
-    # else:
-    #     h = 2 * w
 
     if (y - (h / 4)) > 0:
         y -= (h / 4)
@@ -120,10 +117,60 @@ def crop_image_for_person_detection(image, rect):
                        x: (x + (w / 4)) + (w + (w / 4))]), resize)
 
 
+def crop_image_for_person_detection2(image, rect):
+    """
+    Crop an image generating a frame (border) around
+    :param image: the original image
+    :param rect: rectangle to crop
+    :return: the image cropped with the frame (border) around
+        None is the area if the rectangle is 0
+    """
+
+    (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
+
+    if w < 8 or h < 8:
+        return None, 0, 0, 0, 0, 0
+    # Add a frame around the rectangle
+    h_frame = h / 4
+    w_frame = w / 4
+    y_top = int(max(y - h_frame, 0))
+    x_top = int(max(x - w_frame, 0))
+    y_bottom = int(min((y + h + h_frame), image.shape[0]))
+    x_bottom = int(min(x + w + w_frame, image.shape[1]))
+
+    height = abs(y_top - y_bottom)
+    width = abs(x_top - x_bottom)
+
+    if width < 10 or height < 10:
+        return None, 0, 0, 0, 0, 0
+
+    d128_width = (128/width)
+    d256_height = (256/height)
+
+    # If width and height are greater than the looked rectangle, process it
+    # as it is
+    if d128_width <= 1 and d256_height <= 1:
+        mult = 1
+    elif d128_width > d256_height:
+        mult = d128_width
+    else:
+        mult = d256_height
+
+    mult = 1 if mult < 1 else mult
+    # print("WIDTH: %s HEIGHT: %s" % (width, height))
+
+    cropped_image = image[y_top:y_bottom, x_top:x_bottom]
+
+    return cv2.resize(cropped_image, (int(width*mult), int(height*mult))), \
+        x_top, y_top, width, height, mult
+
+    # return cv2.resize(cropped_image, (128, 256)), \
+    #     x_top, y_top, width, height, mult
+
+
 def rect_size(rect):
     return sqrt(pow(rect[2], 2) + pow(rect[3], 2))
 
 
 def frame2base64png(frame):
     return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
-
