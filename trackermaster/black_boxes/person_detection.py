@@ -35,7 +35,7 @@ def apply_single(args):
             return person, 1, bounding_box
     else:
         current_aspec_ratio = bounding_box[3] / bounding_box[2]
-        if np.isclose(ASPECT_RATIO, current_aspec_ratio, atol=0.2):
+        if np.isclose(ASPECT_RATIO, current_aspec_ratio, atol=0.4):
 
             return [[bounding_box[0], bounding_box[1],
                      bounding_box[0] + bounding_box[2],
@@ -116,13 +116,13 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         for xyAB in res:
 
             (x, y, w, h) = xyAB[2]
+            score = xyAB[1]
 
             if number_frame <= 100:
-                HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
+                if score == 1:
+                    HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
 
             else:
-
-                score = xyAB[1]
 
                 for person in xyAB[0]:
                     (xA, yA, xB, yB) = person

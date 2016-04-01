@@ -331,10 +331,13 @@ class Tracker:
 
             # Prepare the return data
             for kf in self.k_filters:
-                if kf.score > 0.3:
-                    journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                                     kf.rectangle, kf.kalman_filter.statePost, False,
-                                     self.kfs_per_blob[kf.group_number]['color']))
+
+                # TODO: ¡¡¡Resolver como calcular el score y como afecta a esta
+                # TODO: parte!!!
+                # if kf.score > 0.3:
+                journeys.append((kf.journey, kf.journey_color, kf.short_id,
+                                 kf.rectangle, kf.kalman_filter.statePost, False,
+                                 self.kfs_per_blob[kf.group_number]['color']))
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}

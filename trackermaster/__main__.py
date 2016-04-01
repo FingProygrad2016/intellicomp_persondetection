@@ -202,13 +202,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # Get a new frame
         has_more_images, raw_frame = cap.read()
 
-        original = raw_frame.copy()
-        cv2.imshow("Original", original)
-
         number_frame += 1
         read_time += time.time() - t0
 
         if has_more_images:
+
+            original = raw_frame.copy()
+            cv2.imshow("Original", original)
+
             # resize to a manageable work resolution
             frame_resized = cv2.resize(raw_frame, (work_w, work_h))
             frame_resized_copy = frame_resized.copy()
