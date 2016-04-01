@@ -16,7 +16,7 @@ from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
-from trackermaster.black_boxes.person_detection import PersonDetector
+from trackermaster.black_boxes.person_detection import Histogram2D
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
 from utils.tools import find_resolution_multiplier, \
@@ -36,7 +36,7 @@ def send_patternrecognition_config(communicator, identifier,
                            routing_key='processing_settings')
 
 
-NUM_OF_POINTS = 25
+NUM_OF_POINTS = 40
 
 
 def draw_journeys(journeys, outputs):
@@ -156,7 +156,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     background_subtractor = BackgroundSubtractorKNN()
 
     blobs_detector = BlobDetector()
-    person_detector = PersonDetector()
+    person_detector = Histogram2D()
     tracker = Tracker(SEC_PER_FRAME)
 
     loop_time = time.time()
@@ -248,6 +248,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             blobs = []
             to_process = []
             scores = []
+
+            if not bounding_boxes:
+                print("que locoooooooooooooooooo!")
+
             if bounding_boxes:
 
                 rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in
