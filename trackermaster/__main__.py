@@ -20,8 +20,8 @@ from trackermaster.black_boxes.person_detection import Histogram2D
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
 from utils.tools import find_resolution_multiplier, \
-    find_blobs_bounding_boxes, frame2base64png
-
+    find_blobs_bounding_boxes, frame2base64png, x1y1wh_to_x1y1x2y2, \
+    x1y1x2y2_to_x1y1wh
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
@@ -211,16 +211,13 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             cv2.imshow("Original", original)
 
             # resize to a manageable work resolution
+            raw_frame_copy = raw_frame.copy()
             frame_resized = cv2.resize(raw_frame, (work_w, work_h))
             frame_resized_copy = frame_resized.copy()
-            raw_frame_copy = raw_frame.copy()
-            frame_copy2 = raw_frame.copy()
 
-            #############################
-            #############################
-            # ## BLACK BOXES PROCESSES ##
-            # ######################## ##
-            # ######################## ##
+            # ################################################################ #
+            # ##                  BLACK BOXES PROCESSES                     ## #
+            # ################################################################ #
 
             # ########################## ##
             # ## BACKGROUND SUBTRACTOR # ##
@@ -246,22 +243,11 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             blob_det_time += time.time() - t0
             t0 = time.time()
 
-            blobs = []
-            to_process = []
-            scores = []
-
-            if not bounding_boxes:
-                print("que locoooooooooooooooooo!")
-
             if bounding_boxes:
 
-                rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in
-                                  bounding_boxes])
-                rectangles = np.array([[x1, y1, x2 - x1, y2 - y1] for
-                                       (x1, y1, x2, y2) in
-                                       non_max_suppression(rects,
-                                                           probs=None,
-                                                           overlapThresh=0.3)])
+                rectangles = x1y1x2y2_to_x1y1wh(
+                    non_max_suppression(x1y1wh_to_x1y1x2y2(bounding_boxes),
+                                        overlapThresh=0.3))
 
                 # TODO: Remove!
                 if len(rectangles) > 50:
@@ -273,8 +259,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ## PERSONS DETECTOR # ##
                 # ##################### ##
 
-
-
                 blobs, scores = \
                     person_detection.apply(rectangles, resolution_multiplier,
                                            raw_frame_copy, frame_resized_copy,
@@ -282,8 +266,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                 person_detection_time += time.time() - t0
                 t0 = time.time()
-
-
 
                 # blobs = []
                 # cropped_images = []
@@ -351,13 +333,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 #                                       sqrt(pow(x_b - x_a, 2) +
                 #                                            pow(y_b - y_a, 2))))
                 #             scores.append(score)
-
-
-
-
-
-                person_detection_time += time.time() - t0
-                t0 = time.time()
+                # person_detection_time += time.time() - t0
+                # t0 = time.time()
 
                 # ############ ##
                 # ## TRACKER # ##
@@ -370,9 +347,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                 t_time += time.time() - t0
                 t0 = time.time()
-
-
-
 
                 # ################################################# ##
                 # ## COMMUNICATION WITH PATTERN MASTER AND OTHERS # ##

@@ -6,7 +6,8 @@ from multiprocessing.pool import Pool
 # from matplotlib import pyplot as plt
 from imutils.object_detection import non_max_suppression
 
-from utils.tools import crop_image_for_person_detection
+from utils.tools import crop_image_for_person_detection, x1y1x2y2_to_x1y1wh, \
+    x1y1wh_to_x1y1x2y2
 from trackermaster.config import config
 from trackermaster.black_boxes.histogram2d import Histogram2D
 
@@ -20,30 +21,55 @@ WIN_STRIDE = (config.getint('WINSTRIDE_0'),
 
 def apply_single(args):
 
-    image, bounding_box, mult2, orig_f = args
+    image, bounding_box, mult2 = args[0]
+    resolution_multiplier = args[1]
 
-    (rects, weights) = \
-        HOG.detectMultiScale(image, winStride=WIN_STRIDE, padding=PADDING,
-                             scale=SCALE)
+    persons = []
+    score = 0
+
+    (rects, weights) = HOG.detectMultiScale(
+        image, winStride=WIN_STRIDE, padding=PADDING, scale=SCALE)
 
     if len(rects):
-        rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in rects])
-        person = non_max_suppression(rects, probs=None, overlapThresh=0.65)
-        del rects
-
-        if len(person):
-            return person, 1, bounding_box
+        persons = non_max_suppression(x1y1wh_to_x1y1x2y2(rects),
+                                      overlapThresh=0.65)
+        if len(persons):
+            score = 1
     else:
         current_aspec_ratio = bounding_box[3] / bounding_box[2]
         if np.isclose(ASPECT_RATIO, current_aspec_ratio, atol=0.4):
+            # persons = x1y1wh_to_x1y1x2y2([bounding_box])
+            persons = x1y1wh_to_x1y1x2y2([[0, 0, bounding_box[2], bounding_box[3]]])
+            score = 0.7 - \
+                (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
 
-            return [[bounding_box[0], bounding_box[1],
-                     bounding_box[0] + bounding_box[2],
-                     bounding_box[1]+bounding_box[3]]], \
-                0.7 - (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3]))),\
-                bounding_box
+    (x, y, w, h) = bounding_box
+    persons_resize = []
+    for person in persons:
 
-    return [], 0, bounding_box
+        # person son coordenadas tomando boundingbox como el todo
+        # si xA es 10, es 10 desde el valor x de boundingbox
+        # (xA, yA, xB, yB) = np.apply_along_axis(lambda val: val/mult2, 0, person)
+        (xA, yA, xB, yB) = person
+
+        # x_1 = (xA * w) / 128
+        # y_1 = (yA * h) / 256
+        # x_2 = (xB * w) / 128
+        # y_2 = (yB * h) / 256
+        #
+        # x_a = int((x + x_1) / resolution_multiplier)
+        # x_b = int((x + x_2) / resolution_multiplier)
+        # y_a = int((y + y_1) / resolution_multiplier)
+        # y_b = int((y + y_2) / resolution_multiplier)
+
+        x_a = int(((x + xA) / mult2) / resolution_multiplier)
+        y_a = int(((y + yA) / mult2) / resolution_multiplier)
+        x_b = int(((x + xB) / mult2) / resolution_multiplier)
+        y_b = int(((y + yB) / mult2) / resolution_multiplier)
+
+        persons_resize.append((x_a, y_a, x_b, y_b))
+
+    return persons_resize, score, bounding_box
 
 
 # HOG unique instance
@@ -57,18 +83,10 @@ HISTOGRAM_2D = Histogram2D()
 PROCESSES_POOL = Pool()
 
 
-
-
-
-
-
-
-
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
           frame_resized_copy, number_frame):
 
     global PROCESSES_POOL
-    global apply_single
 
     blobs = []
     scores = []
@@ -88,21 +106,11 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             crop_image_for_person_detection(
                 raw_frame_copy, (x_orig, y_orig, w_orig, h_orig))
 
-        # TODO: Solucionar el mult2
-        mult2 = 1
-
-        # If there is not cropped image to process
-        # (probably because the area is too small)
-        if crop_img is None or mult2 == 0:
-            continue
-
         # Draw in blue candidate blob
         cv2.rectangle(frame_resized_copy, (x, y), (x + w, y + h),
                       (255, 0, 0), 1)
 
-        cropped_images.append((crop_img, (x, y, w, h), 1, 1))
-    else:
-        del rectangles
+        cropped_images.append((crop_img, resolution_multiplier))
 
     if cropped_images:
 
@@ -115,29 +123,20 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
         for xyAB in res:
 
-            (x, y, w, h) = xyAB[2]
+            # (x, y, w, h) = xyAB[2]
             score = xyAB[1]
 
-            if number_frame <= 100:
+            if number_frame <= 10:
                 if score == 1:
                     HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
 
             else:
 
                 for person in xyAB[0]:
-                    (xA, yA, xB, yB) = person
 
-                    x_1 = int(round((xA * w) / 128))
-                    y_1 = int(round((yA * h) / 256))
-                    x_2 = int(round((xB * w) / 128))
-                    y_2 = int(round((yB * h) / 256))
+                    x_a, y_a, x_b, y_b = person
 
-                    x_a = (x - 4) + x_1
-                    x_b = (x + 4) + x_2
-                    y_a = (y - 8) + y_1
-                    y_b = (y + 8) + y_2
-
-                    # Amarillo
+                    # Red and Yellow rectangles
                     color = 0 if score == 1 else 255
                     cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
                                   (0, color, 255), 2)

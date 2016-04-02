@@ -95,7 +95,17 @@ def crop_image_for_person_detection(image, rect):
         None is the area if the rectangle is 0
     """
 
-    (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
+    (x, y, w, h) = rect
+
+    h_frame = h / 4
+    w_frame = w / 4
+    y_top = int(np.max((y - h_frame, 0)))
+    x_top = int(np.max((x - w_frame, 0)))
+    y_bottom = int(np.min((y + h + h_frame, image.shape[0])))
+    x_bottom = int(np.min((x + w + w_frame, image.shape[1])))
+
+    height_with_frame = abs(y_top - y_bottom)
+    width_with_frame = abs(x_top - x_bottom)
 
     if (128 / w) > (256 / h):
         fact = (128 / w)
@@ -103,18 +113,8 @@ def crop_image_for_person_detection(image, rect):
         fact = (256 / h)
     resize = (int(round(w * fact)), int(round(h * fact)))
 
-    if (y - (h / 4)) > 0:
-        y -= (h / 4)
-    else:
-        y = 0
-    if (x - (w / 4)) > 0:
-        x -= (w / 4)
-    else:
-        x = 0
-
-    # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
-    return cv2.resize((image[y: (y + (h / 4)) + (h + (h / 4)),
-                       x: (x + (w / 4)) + (w + (w / 4))]), resize)
+    return cv2.resize((image[y_top:y_bottom, x_top:x_bottom]), resize), \
+        (x_top * fact, y_top * fact, width_with_frame * fact, height_with_frame * factq), fact
 
 
 def crop_image_for_person_detection2(image, rect):
@@ -126,17 +126,17 @@ def crop_image_for_person_detection2(image, rect):
         None is the area if the rectangle is 0
     """
 
-    (x, y, w, h) = (rect[0], rect[1], rect[2], rect[3])
+    (x, y, w, h) = rect
 
     if w < 8 or h < 8:
         return None, 0, 0, 0, 0, 0
     # Add a frame around the rectangle
     h_frame = h / 4
     w_frame = w / 4
-    y_top = int(max(y - h_frame, 0))
-    x_top = int(max(x - w_frame, 0))
-    y_bottom = int(min((y + h + h_frame), image.shape[0]))
-    x_bottom = int(min(x + w + w_frame, image.shape[1]))
+    y_top = int(np.max(y - h_frame, 0))
+    x_top = int(np.max(x - w_frame, 0))
+    y_bottom = int(np.min((y + h + h_frame), image.shape[0]))
+    x_bottom = int(np.min(x + w + w_frame, image.shape[1]))
 
     height = abs(y_top - y_bottom)
     width = abs(x_top - x_bottom)
@@ -174,3 +174,23 @@ def rect_size(rect):
 
 def frame2base64png(frame):
     return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
+
+
+def x1y1x2y2_to_x1y1wh_single(rectangle):
+    # Transform a rectangle expressed as (x1,y1,x2,y2) to (x1,y1, width, height)
+    return rectangle[0], rectangle[1], rectangle[2] - rectangle[0], \
+           rectangle[3] - rectangle[1]
+
+
+def x1y1wh_to_x1y1x2y2_single(rectangle):
+    # Transform a rectangle expressed as (x1,y1, width, height) to (x1,y1,x2,y2)
+    return rectangle[0], rectangle[1], rectangle[0] + rectangle[2], \
+           rectangle[1] + rectangle[3]
+
+
+def x1y1x2y2_to_x1y1wh(rectangles):
+    return np.apply_along_axis(x1y1x2y2_to_x1y1wh_single, 1, rectangles)
+
+
+def x1y1wh_to_x1y1x2y2(rectangles):
+    return np.apply_along_axis(x1y1wh_to_x1y1x2y2_single, 1, rectangles)
