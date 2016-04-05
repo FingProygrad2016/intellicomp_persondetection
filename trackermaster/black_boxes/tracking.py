@@ -634,8 +634,8 @@ class TrackInfo:
         self.kalman_filter.processNoiseCov = np.eye(N=6, dtype=np.float32)
 
         self.kalman_filter.measurementNoiseCov = \
-            np.array([[1, 0],
-                      [0, 1]], np.float32)
+            np.array([[4, 0],
+                      [0, 4]], np.float32)
 
         self.journey = []
         self.journey_color = (random.randint(0, 255), random.randint(0, 255),
@@ -657,11 +657,10 @@ class TrackInfo:
 
     def predict(self):
         self.kalman_filter.predict()
+        self.journey.append(np.array(self.kalman_filter.statePre.copy()))
 
     def correct(self, measurement):
         correction = self.kalman_filter.correct(measurement)
-
-        self.journey.append(np.array(correction.copy()))
 
         return correction
 
