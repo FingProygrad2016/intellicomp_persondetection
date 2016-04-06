@@ -40,9 +40,10 @@ def apply_single(args):
         if len(persons):
             score = 1
     else:
-        current_aspect_ratio = bounding_box[3] / bounding_box[2]
-        if np.isclose(ASPECT_RATIO, current_aspect_ratio, atol=0.4):
-            persons = [[0, 0, bounding_box[2], bounding_box[3]]]
+        current_aspect_ratio = image.shape[0] / image.shape[1]
+        if np.isclose(ASPECT_RATIO, current_aspect_ratio, atol=0.5):
+            persons = [[image.shape[1] * .125, image.shape[0] * .125,
+                        image.shape[1] * .875, image.shape[0] * .875]]
             score = 0.7 - \
                 (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
 
@@ -59,7 +60,7 @@ def apply_single(args):
 
         persons_resize.append((x_a, y_a, x_b, y_b))
 
-    return persons_resize, score,\
+    return persons_resize, score, \
            [(b / resolution_multiplier / mult2) for b in bounding_box]
 
 

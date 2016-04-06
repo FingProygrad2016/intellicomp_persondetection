@@ -1,4 +1,5 @@
 import cv2
+print(cv2)
 
 from utils.tools import euclidean_distance
 from trackermaster.config import config

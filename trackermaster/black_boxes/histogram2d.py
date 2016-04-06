@@ -1,4 +1,5 @@
 import numpy as np
+print(np)
 
 
 class Histogram2D:

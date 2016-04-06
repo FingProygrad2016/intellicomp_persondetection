@@ -3,7 +3,9 @@ from datetime import datetime
 import random
 
 import numpy as np
+print(np)
 import cv2
+print(cv2)
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 

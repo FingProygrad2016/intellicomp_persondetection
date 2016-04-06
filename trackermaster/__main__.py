@@ -8,8 +8,14 @@ from hashlib import sha1
 from datetime import datetime as dt
 
 import numpy as np
+print(np)
 import cv2
+print(cv2)
 from imutils.object_detection import non_max_suppression
+
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
 
 from trackermaster.black_boxes import person_detection
 from trackermaster.config import config, set_custome_config
@@ -22,10 +28,6 @@ from utils.communicator import Communicator
 from utils.tools import find_resolution_multiplier, \
     find_blobs_bounding_boxes, frame2base64png, x1y1wh_to_x1y1x2y2, \
     x1y1x2y2_to_x1y1wh
-
-path = os.path.dirname(sys.modules[__name__].__file__)
-path = os.path.join(path, '..')
-sys.path.insert(0, path)
 
 
 def send_patternrecognition_config(communicator, identifier,
@@ -258,83 +260,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ## PERSONS DETECTOR # ##
                 # ##################### ##
 
-
                 blobs, scores = \
                     person_detection.apply(rectangles, resolution_multiplier,
                                            raw_frame_copy, frame_resized_copy,
                                            number_frame)
+                cant_personas = len(blobs)
 
                 person_detection_time += time.time() - t0
                 t0 = time.time()
-
-                # blobs = []
-                # cropped_images = []
-                # for (x, y, w, h) in rectangles:
-                #     # Crop a rectangle around detected blob
-                #     # crop_img = \
-                #     cropped_images.append((
-                #         crop_image_for_person_detection(
-                #             frame_copy2, (x * resolution_multiplier,
-                #                           y * resolution_multiplier,
-                #                           w * resolution_multiplier,
-                #                           h * resolution_multiplier)),
-                #         (x, y, w, h)))
-                #
-                # if number_frame <= 100:
-                #     person_detector.create_confidence_matrix([x[0] for x in
-                #                                               cropped_images])
-                # else:
-                #     plt.scatter(person_detector.widths, person_detector.heights,
-                #                 c=person_detector.c)
-                #
-                #     plt.show()
-                #     for (crop_img, (x, y, w, h)) in cropped_images:
-                #         cv2.rectangle(
-                #             frame_resized_copy, (x, y), (x + w, y + h),
-                #             (255, 0, 0), 2)
-                #         cv2.imshow('crop_img', crop_img)
-                #
-                #         #pos_x, pos_y =
-                #         persons, score, min_size, max_size = \
-                #             person_detector.apply((x, y, w, h), crop_img)
-                #
-                #         # TODO: recalcular media considerando los historicos
-                #         # TODO: utilizar media ponderada
-                #         # (http://www.mathsisfun.com/data/weighted-mean.html)
-                #         # TODO: combinar con histogramas
-                #         # (http://progpython.blogspot.com.uy/2011/09/
-                #         # histogramas-con-python-matplotlib.html)
-                #         # TODO: https://ernestocrespo13.wordpress.com/2015/01/
-                #         # 11/generacion-de-un-histograma-de-frecuencia-con-
-                #         # numpy-scipy-y-matplotlib/
-                #         if min_size > 0:
-                #             min_person_size =\
-                #                 np.median([min_person_size, min_size])
-                #         if max_size > 0:
-                #             max_person_size =\
-                #                 np.median([max_person_size, max_size])
-                #         print("Min, max:", (min_person_size, max_person_size))
-                #
-                #         # draw the final bounding boxes
-                #         for (xA, yA, xB, yB) in persons:
-                #             x_1 = int(round((xA * w) / 128))
-                #             y_1 = int(round((yA * h) / 256))
-                #             x_2 = int(round((xB * w) / 128))
-                #             y_2 = int(round((yB * h) / 256))
-                #
-                #             x_a = (x - 4) + x_1
-                #             x_b = (x + 4) + x_2
-                #             y_a = (y - 8) + y_1
-                #             y_b = (y + 8) + y_2
-                #             cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
-                #                           (0, 255, 0), 2)
-                #             blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
-                #                                       round((y_a + y_b) / 2),
-                #                                       sqrt(pow(x_b - x_a, 2) +
-                #                                            pow(y_b - y_a, 2))))
-                #             scores.append(score)
-                # person_detection_time += time.time() - t0
-                # t0 = time.time()
 
                 # ############ ##
                 # ## TRACKER # ##
@@ -364,10 +297,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     # Renew the config in pattern recognition every 10 seconds
                     send_patternrecognition_config(communicator, identifier,
                                                    patternmaster_conf)
-
-                # Write FPS in the frame to show
-                cv2.putText(to_show, 'FPS: ' + _fps, (40, 40), font, 1,
-                            (255, 255, 0), 2)
 
                 pattern_recogn_time += time.time() - t0
 
@@ -399,6 +328,22 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             big_frame = np.vstack((np.hstack((bg_substraction, to_show)),
                                    np.hstack((frame_resized, frame_resized_copy))))
+            # TEXT INFORMATION
+            # Write FPS in the frame to show
+
+            cv2.putText(big_frame, 'Current persons detected: ' +
+                        str(cant_personas), (20, 20), font, .5,
+                        (255, 255, 0), 1)
+            cv2.putText(big_frame, 'Current tracklets: ' +
+                        str(len(trayectos)), (20, 40), font, .5,
+                        (255, 255, 0), 1)
+            cv2.putText(big_frame, 'Current tracklets/persons interpol. num: ' +
+                        str(round((len(trayectos)*.85)+(cant_personas*.15))),
+                        (20, 60), font, .5,
+                        (255, 255, 0), 1)
+            cv2.putText(big_frame, 'FPS: ' + _fps, (20, 80), font, .5,
+                        (255, 255, 0), 1)
+
             big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
             cv2.imshow('result', big_frame)
 
