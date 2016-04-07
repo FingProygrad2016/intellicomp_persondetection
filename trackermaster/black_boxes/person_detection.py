@@ -1,72 +1,16 @@
 import cv2
-import numpy as np
-from math import sqrt
 from multiprocessing.pool import Pool
 
 # from matplotlib import pyplot as plt
-from imutils.object_detection import non_max_suppression
 
 from utils.tools import crop_image_for_person_detection, x1y1x2y2_to_x1y1wh, \
     x1y1wh_to_x1y1x2y2
-from trackermaster.config import config
 from trackermaster.black_boxes.histogram2d import Histogram2D
+from trackermaster.black_boxes.person_detection_task import apply_single
 
 import matplotlib
 matplotlib.use('template')
 from matplotlib import pyplot as plt
-
-# Configuration parameters
-ASPECT_RATIO = config.getfloat('ASPECT_RATIO')
-PADDING = (config.getint('PADDING_0'), config.getint('PADDING_1'))
-SCALE = config.getfloat('SCALE')
-WIN_STRIDE = (config.getint('WINSTRIDE_0'),
-              config.getint('WINSTRIDE_1'))
-
-
-def apply_single(args):
-
-    image, bounding_box, mult2 = args[0]
-    resolution_multiplier = args[1]
-
-    persons = []
-    score = 0
-
-    (rects, weights) = HOG.detectMultiScale(
-        image, winStride=WIN_STRIDE, padding=PADDING, scale=SCALE)
-
-    if len(rects):
-        persons = non_max_suppression(x1y1wh_to_x1y1x2y2(rects),
-                                      overlapThresh=0.65)
-        if len(persons):
-            score = 1
-    else:
-        current_aspect_ratio = image.shape[0] / image.shape[1]
-        if np.isclose(ASPECT_RATIO, current_aspect_ratio, atol=0.5):
-            persons = [[image.shape[1] * .125, image.shape[0] * .125,
-                        image.shape[1] * .875, image.shape[0] * .875]]
-            score = 0.7 - \
-                (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
-
-    (x, y, w, h) = bounding_box
-    persons_resize = []
-    for person in persons:
-
-        (xA, yA, xB, yB) = person
-
-        x_a = int(((x + (xA / mult2)) / resolution_multiplier))
-        y_a = int(((y + (yA / mult2)) / resolution_multiplier))
-        x_b = int(((x + (xB / mult2)) / resolution_multiplier))
-        y_b = int(((y + (yB / mult2)) / resolution_multiplier))
-
-        persons_resize.append((x_a, y_a, x_b, y_b))
-
-    return persons_resize, score, \
-           [(b / resolution_multiplier / mult2) for b in bounding_box]
-
-
-# HOG unique instance
-HOG = cv2.HOGDescriptor()
-HOG.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
 # Histogram2D unique instance
 HISTOGRAM_2D = Histogram2D()
@@ -106,7 +50,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
     if cropped_images:
 
-        res = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
+        res = PROCESSES_POOL.imap(apply_single, cropped_images)
 
         for xyAB in res:
 
@@ -129,10 +73,12 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
                                   (0, color, 255), 2)
 
-                    blobs.append(cv2.KeyPoint(round((x_a + x_b) / 2),
-                                              round((y_a + y_b) / 2),
-                                              sqrt(pow(x_b - x_a, 2) +
-                                                   pow(y_b - y_a, 2))))
+                    blobs.append({
+                        "position": cv2.KeyPoint(round((x_a + x_b) / 2),
+                                                 round((y_a + y_b) / 2),
+                                                 (x_b - x_a) * (y_b - y_a)),
+                        "box": ((x_a, y_a), (x_b, y_b))
+                    })
                     scores.append(score)
 
     return blobs, scores

@@ -3,9 +3,7 @@ from datetime import datetime
 import random
 
 import numpy as np
-print(np)
 import cv2
-print(cv2)
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 
@@ -59,7 +57,7 @@ class Tracker:
 
         def position_distance_function(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
-            return euclidean_distance((prediction[0], prediction[3]), blob[0].pt)
+            return euclidean_distance((prediction[0], prediction[3]), blob[0]["position"].pt)
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos = HungarianAlgorithm(position_distance_function, self.threshold_distance,
@@ -67,18 +65,21 @@ class Tracker:
 
         def position_distance_function_ini(blob, k_filter):
             prediction = k_filter.kalman_filter.statePost
-            return euclidean_distance((prediction[0], prediction[3]), blob.pt)
+            return euclidean_distance((prediction[0], prediction[3]), blob["position"].pt)
 
         # Hungarian Algorithm for blob position
         self.hung_alg_blob_pos_ini = HungarianAlgorithm(position_distance_function_ini, self.threshold_distance,
                                                         self.INFINITE_DISTANCE)
 
+        # TODO: IMPLEMENT
+        """
         def blob_size_distance_function(k_filter, blob):
             return abs(blob.size - k_filter.size)
 
         # Hungarian Algorithm for blob size
         self.hung_alg_blob_size = HungarianAlgorithm(blob_size_distance_function, self.threshold_size,
                                                      self.INFINITE_DISTANCE)
+        """
 
         def blob_color_distance_function(color, k_filter):
             return euclidean_distance(color, k_filter.color)
@@ -94,7 +95,7 @@ class Tracker:
         aux = block_diag(q, q)
         self.process_noise_cov = np.array(aux, np.float32)
 
-    def apply(self, blobs, raw_image, frame_number, scores):
+    def apply(self, blobs, raw_image, bg_subtraction_image, frame_number, scores):
         """
         For every blob, detect the corresponded tracked object and update it
         with the new information
@@ -137,8 +138,8 @@ class Tracker:
                 else:
                     # this is the result of a new blob (shaped like a person) in the scene
                     # new kalman filter is created for the blob
-                    best_kf = self.add_new_tracking(blob.pt, get_avg_color(raw_image, blob.pt),
-                                                    blob.size, blob, frame_number, scores[i])
+                    best_kf = self.add_new_tracking(blob["position"].pt, get_avg_color(raw_image, blob["position"].pt),
+                                                    blob["position"].size, blob, frame_number, scores[i])
                     kf = self.k_filters[best_kf]
                     self.kfs_per_blob.append({'k_filters': [kf], 'blobs': [(blob, i)],
                                               'has_been_assigned': True,
@@ -193,9 +194,11 @@ class Tracker:
                         # normal case: one on one
                         # kalman filter is updated with all the blob info
                         kf = item_kf[0]
-                        kf.update_info(new_position=blob.pt,
-                                       color=get_avg_color(raw_image, blob.pt),
-                                       size=blob.size, blob=blob, last_frame_update=frame_number, score=scores[index])
+                        kf.update_info(new_position=blob["position"].pt,
+                                       color=get_avg_color(raw_image, blob["position"].pt),
+                                       size=blob["position"].size, blob=blob, last_frame_update=frame_number,
+                                       score=scores[index], raw_image=raw_image,
+                                       bg_subtraction_image=bg_subtraction_image)
                     elif len(item_kf) > 1:
                         # merged blobs: many kalman filters on one blob
                         # kalman filters are updated only with the blob position
@@ -248,6 +251,7 @@ class Tracker:
                             choose_worst_fit_blob = True
 
                         aux_kfs_to_remove, aux_blobs_to_remove = self.get_nearest_blobs(groups_to_append, raw_image,
+                                                                                        bg_subtraction_image,
                                                                                         frame_number, scores,
                                                                                         unassigned_blobs,
                                                                                         unassigned_blobs_ind,
@@ -272,7 +276,7 @@ class Tracker:
                             # including with kfs with valid position comparison that were not matched
                             average_colors = []
                             for blob in unassigned_blobs:
-                                average_colors.append(get_avg_color(raw_image, blob[0].pt))
+                                average_colors.append(get_avg_color(raw_image, blob[0]["position"].pt))
 
                             best_filter_per_blob, best_filter_per_blob_costs = \
                                 self.hung_alg_blob_color.apply(average_colors, kfs_to_compare)
@@ -282,6 +286,7 @@ class Tracker:
                                 choose_worst_fit_blob = True
 
                             aux_kfs_to_remove, aux_blobs_to_remove = self.get_nearest_blobs(groups_to_append, raw_image,
+                                                                                            bg_subtraction_image,
                                                                                             frame_number, scores,
                                                                                             unassigned_blobs,
                                                                                             unassigned_blobs_ind,
@@ -327,7 +332,7 @@ class Tracker:
             for i, item in enumerate(self.kfs_per_blob):
                 if len(item['blobs']) > 0:
                     blob = item['blobs'][0][0]
-                    item['average_pos'] = blob.pt
+                    item['average_pos'] = blob["position"].pt
                 for kf in item['k_filters']:
                     kf.group_number = i
 
@@ -375,13 +380,13 @@ class Tracker:
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
             elif frames_without_one_to_one > self.valid_frames_to_predict_position:
                 # If it has been without one to one for a long time, correct with the merged blob
-                kf.update_pos_info(new_position=blob.pt, frame_number=frame_number)
+                kf.update_pos_info(new_position=blob["position"].pt, frame_number=frame_number)
             elif frames_since_created < self.valid_frames_since_created:
                 # it has been created a very short time ago: remove it
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
             else:
                 # It has been with one to one recently. It is left only with prediction.
-                kf.update_not_alone_frame_number(frame_number)
+                kf.update_last_frame_not_alone(frame_number)
 
         kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -397,7 +402,7 @@ class Tracker:
         nearest_blob = -1
         for i in range(0, len(blobs)):
             prediction = kfs_group_item['average_pos']
-            distance = euclidean_distance((prediction[0], prediction[1]), blobs[i].pt)
+            distance = euclidean_distance((prediction[0], prediction[1]), blobs[i]["position"].pt)
             if distance < min_distance:
                 min_distance = distance
                 nearest_blob = i
@@ -407,8 +412,9 @@ class Tracker:
         else:
             return -1
 
-    def get_nearest_blobs(self, groups, raw_image, frame_number, scores, blobs, blobs_ind, filters, filters_ind,
-                          best_filter_per_blob, best_filter_per_blob_costs, choose_worst_fit_blob):
+    def get_nearest_blobs(self, groups, raw_image, bg_subtraction_image, frame_number,
+                          scores, blobs, blobs_ind, filters, filters_ind, best_filter_per_blob,
+                          best_filter_per_blob_costs, choose_worst_fit_blob):
 
         kf_to_remove_in_item = []
         blob_to_remove_in_item = []
@@ -439,10 +445,11 @@ class Tracker:
                                           random.randint(0, 255))})
 
                     # kalman filter is updated with all the blob info
-                    kf.update_info(new_position=blob.pt,
-                                   color=get_avg_color(raw_image, blob.pt),
-                                   size=blob.size, blob=blob,
-                                   last_frame_update=frame_number, score=scores[blob_index])
+                    kf.update_info(new_position=blob["position"].pt,
+                                   color=get_avg_color(raw_image, blob["position"].pt),
+                                   size=blob["position"].size, blob=blob,
+                                   last_frame_update=frame_number, score=scores[blob_index],
+                                   raw_image=raw_image, bg_subtraction_image=bg_subtraction_image)
 
                     blob_to_remove_in_item.append(blobs_ind[j])
                     kf_to_remove_in_item.append(filters_ind[kf_ind])
@@ -476,7 +483,7 @@ class TrackInfo:
 
     def __init__(self, color, size, point, short_id, blob, frame_number,
                  score, time_interval, process_noise_cov):
-        self.color = color
+        self.color = None
         self.size = size
         self.created_datetime = datetime.now()
         self.created_frame = frame_number
@@ -489,12 +496,7 @@ class TrackInfo:
         self.group_number = -1
         self.score = score
 
-        xt = int(round(blob.pt[0] - (blob.size / 4)))
-        yt = int(round(blob.pt[1] - (blob.size / 2)))
-        xb = int(round(blob.pt[0] + (blob.size / 4)))
-        yb = int(round(blob.pt[1] + (blob.size / 2)))
-
-        self.rectangle = ((xt, yt), (xb, yb))
+        self.rectangle = blob["box"]
 
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
 
@@ -559,10 +561,11 @@ class TrackInfo:
         self.last_update = datetime.now()
 
     def update_info(self, new_position, color, size,
-                    blob, last_frame_update, score):
+                    blob, last_frame_update, score,
+                    raw_image, bg_subtraction_image):
         # correction with the known new position
         self.correct(np.array(new_position, np.float32))
-        self.color = color
+        # self.color = color
         self.size = size
         self.last_frame_update = last_frame_update
         self.last_frame_not_alone = last_frame_update
@@ -572,12 +575,7 @@ class TrackInfo:
         self.score = (self.score * self.number_updates + score) /\
                      (self.number_updates + 1)
 
-        xt = int(round(blob.pt[0] - (blob.size / 4)))
-        yt = int(round(blob.pt[1] - (blob.size / 2)))
-        xb = int(round(blob.pt[0] + (blob.size / 4)))
-        yb = int(round(blob.pt[1] + (blob.size / 2)))
-
-        self.rectangle = ((xt, yt), (xb, yb))
+        self.rectangle = blob["box"]
 
         self.number_updates += 1
 
@@ -590,6 +588,10 @@ class TrackInfo:
                    new_position[1] - self.initial_position[1])
             self.kalman_filter.statePost[1] = aux[0]/5.0
             self.kalman_filter.statePost[4] = aux[1]/5.0
+
+        # if color has not been set and there are at least 5 updates, calculate and set color
+        if (self.color is None) and (self.number_updates >= 5):
+            self.color = color
 
     def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
         self.correct(np.array(new_position, np.float32))
@@ -608,7 +610,7 @@ class TrackInfo:
             self.kalman_filter.statePost[1] = aux[0] / 5.0
             self.kalman_filter.statePost[4] = aux[1] / 5.0
 
-    def update_not_alone_frame_number(self, frame_number):
+    def update_last_frame_not_alone(self, frame_number):
         self.last_frame_not_alone = frame_number
 
     def to_dict(self):

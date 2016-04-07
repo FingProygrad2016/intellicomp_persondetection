@@ -18,6 +18,23 @@ def get_avg_color(raw_image, point, square_half_width=2):
     :param square: width of the square where to take the average
     :return:
     """
+
+    """
+    r = 0
+    g = 0
+    b = 0
+    count = 0
+    for pixel in raw_image:
+        if pixel != [0, 0, 0] and pixel != [255, 255, 255]:
+            r += pixel[0]
+            g += pixel[1]
+            b += pixel[2]
+            count += 1
+    average = (r/count, g/count, b/count)
+
+    return average
+    """
+
     return raw_image[point[1]-square_half_width-1:point[1]+square_half_width,
                      point[1]-square_half_width-1:point[1]+square_half_width].\
         mean(axis=0).mean(axis=0)

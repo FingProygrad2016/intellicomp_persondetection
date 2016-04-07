@@ -228,8 +228,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             bg_sub = background_subtractor.apply(frame_resized)
-            bg_substraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
-            to_show = bg_substraction.copy()
+            bg_subtraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
+            to_show = bg_subtraction.copy()
+
+            bg_subtraction_resized = cv2.resize(bg_subtraction, (work_w, work_h))
 
             bg_sub_time += time.time() - t0
 
@@ -274,7 +276,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ############ ##
 
                 trayectos, info_to_send, tracklets = \
-                    tracker.apply(blobs, frame_resized, number_frame, scores)
+                    tracker.apply(blobs, frame_resized, bg_subtraction_resized, number_frame, scores)
                 del blobs
                 del scores
 
@@ -326,7 +328,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             t0 = time.time()
 
-            big_frame = np.vstack((np.hstack((bg_substraction, to_show)),
+            big_frame = np.vstack((np.hstack((bg_subtraction, to_show)),
                                    np.hstack((frame_resized, frame_resized_copy))))
             # TEXT INFORMATION
             # Write FPS in the frame to show
