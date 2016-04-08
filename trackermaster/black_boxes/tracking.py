@@ -138,8 +138,9 @@ class Tracker:
                 else:
                     # this is the result of a new blob (shaped like a person) in the scene
                     # new kalman filter is created for the blob
-                    best_kf = self.add_new_tracking(blob["position"].pt, get_avg_color(raw_image, blob["position"].pt),
-                                                    blob["position"].size, blob, frame_number, scores[i])
+                    best_kf = self.add_new_tracking(blob["position"].pt,
+                                                    blob["position"].size, blob, frame_number, scores[i],
+                                                    raw_image, bg_subtraction_image)
                     kf = self.k_filters[best_kf]
                     self.kfs_per_blob.append({'k_filters': [kf], 'blobs': [(blob, i)],
                                               'has_been_assigned': True,
@@ -195,7 +196,6 @@ class Tracker:
                         # kalman filter is updated with all the blob info
                         kf = item_kf[0]
                         kf.update_info(new_position=blob["position"].pt,
-                                       color=get_avg_color(raw_image, blob["position"].pt),
                                        size=blob["position"].size, blob=blob, last_frame_update=frame_number,
                                        score=scores[index], raw_image=raw_image,
                                        bg_subtraction_image=bg_subtraction_image)
@@ -276,7 +276,8 @@ class Tracker:
                             # including with kfs with valid position comparison that were not matched
                             average_colors = []
                             for blob in unassigned_blobs:
-                                average_colors.append(get_avg_color(raw_image, blob[0]["position"].pt))
+                                average_colors.append(get_avg_color(raw_image, bg_subtraction_image,
+                                                                    blob[0]["box"]))
 
                             best_filter_per_blob, best_filter_per_blob_costs = \
                                 self.hung_alg_blob_color.apply(average_colors, kfs_to_compare)
@@ -349,7 +350,7 @@ class Tracker:
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}
 
-    def add_new_tracking(self, point, color, size, blob, frame_number, score):
+    def add_new_tracking(self, point, size, blob, frame_number, score, raw_image, bg_subtraction_image):
         """
         Add a new instance of KalmanFilter and the corresponding metadata
         to the control collection.
@@ -358,8 +359,9 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(color, size, point, self.tracklets_short_id, blob,
-                               frame_number, 0, self.seconds_per_frame, self.process_noise_cov)
+        track_info = TrackInfo(size, point, self.tracklets_short_id, blob,
+                               frame_number, score, self.seconds_per_frame, self.process_noise_cov,
+                               raw_image, bg_subtraction_image)
         self.k_filters.append(track_info)
 
         self.tracklets_short_id += 1
@@ -446,7 +448,6 @@ class Tracker:
 
                     # kalman filter is updated with all the blob info
                     kf.update_info(new_position=blob["position"].pt,
-                                   color=get_avg_color(raw_image, blob["position"].pt),
                                    size=blob["position"].size, blob=blob,
                                    last_frame_update=frame_number, score=scores[blob_index],
                                    raw_image=raw_image, bg_subtraction_image=bg_subtraction_image)
@@ -481,9 +482,9 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, color, size, point, short_id, blob, frame_number,
-                 score, time_interval, process_noise_cov):
-        self.color = None
+    def __init__(self, size, point, short_id, blob, frame_number,
+                 score, time_interval, process_noise_cov, raw_image, bg_subtraction_image):
+
         self.size = size
         self.created_datetime = datetime.now()
         self.created_frame = frame_number
@@ -497,6 +498,7 @@ class TrackInfo:
         self.score = score
 
         self.rectangle = blob["box"]
+        self.color = get_avg_color(raw_image, bg_subtraction_image, self.rectangle)
 
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
 
@@ -528,8 +530,13 @@ class TrackInfo:
                       [0, 1]], np.float32)
 
         self.journey = []
-        self.journey_color = (random.randint(0, 255), random.randint(0, 255),
-                              random.randint(0, 255))
+
+        if config.getboolean("JOURNEYS_RANDOM_COLOR"):
+            self.journey_color = (random.randint(0, 255), random.randint(0, 255),
+                                  random.randint(0, 255))
+        else:
+            self.journey_color = self.color
+
         self.number_updates = 1
 
         array_aux = np.array(
@@ -560,7 +567,7 @@ class TrackInfo:
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
 
-    def update_info(self, new_position, color, size,
+    def update_info(self, new_position, size,
                     blob, last_frame_update, score,
                     raw_image, bg_subtraction_image):
         # correction with the known new position
@@ -590,8 +597,10 @@ class TrackInfo:
             self.kalman_filter.statePost[4] = aux[1]/5.0
 
         # if color has not been set and there are at least 5 updates, calculate and set color
-        if (self.color is None) and (self.number_updates >= 5):
-            self.color = color
+        if (self.color is None) and (self.number_updates % 10 == 0):
+            self.color = get_avg_color(raw_image, bg_subtraction_image, self.rectangle)
+            if not config.getboolean("JOURNEYS_RANDOM_COLOR"):
+                self.journey_color = self.color
 
     def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
         self.correct(np.array(new_position, np.float32))

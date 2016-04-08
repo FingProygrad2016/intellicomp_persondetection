@@ -42,8 +42,8 @@ class CustomConfig(object):
     @classmethod
     def getboolean(cls, name):
         if custome_config:
-            return bool(custome_config[name.lower()])
-        return bool(cls.data[name])
+            return custome_config[name.lower()] == 'True'
+        return cls.data[name] == 'True'
 
 
 def set_custome_config(data):

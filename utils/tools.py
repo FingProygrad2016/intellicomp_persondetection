@@ -10,34 +10,57 @@ MAX_WIDTH = 320
 MAX_HEIGHT = 240
 
 
-def get_avg_color(raw_image, point, square_half_width=2):
+def get_avg_color(image, bg_subtraction_image, rect):
     """
-    Returns the average color in the square with center x and y.
-    :param raw_image:
-    :param point: Tuple (x, y) with the center of the square
-    :param square: width of the square where to take the average
+    Returns the average color in the rectangle.
+    :param image:
+    :param bg_subtraction_image:
+    :param rect: coordinates of rectangle containing pixels to average color
     :return:
     """
 
+    return get_avg_color_in_pixels(
+        apply_inverted_mask_to_image(
+            crop_image_with_rect(image, rect),
+            crop_image_with_rect(bg_subtraction_image, rect)
+        )
+    )
+
+
+def get_avg_color_in_pixels(pixels):
+    """
+    Returns the average color in the pixels.
+    :param pixels:
+    :return:
     """
     r = 0
     g = 0
     b = 0
     count = 0
-    for pixel in raw_image:
-        if pixel != [0, 0, 0] and pixel != [255, 255, 255]:
+    for pixel in pixels:
+        if not (np.array_equal(pixel, [0, 0, 0]) or np.array_equal(pixel, [255, 255, 255])):
             r += pixel[0]
             g += pixel[1]
             b += pixel[2]
             count += 1
-    average = (r/count, g/count, b/count)
+    if count > 0:
+        average = (r/count, g/count, b/count)
+    else:
+        average = (0, 0, 0)
 
     return average
-    """
 
-    return raw_image[point[1]-square_half_width-1:point[1]+square_half_width,
-                     point[1]-square_half_width-1:point[1]+square_half_width].\
-        mean(axis=0).mean(axis=0)
+
+def apply_inverted_mask_to_image(image, inverted_mask):
+    """
+    Returns the pixels of the image with the inverted mask applied on it
+    :param image:
+    :param inverted_mask: matrix with the same size as the image, containing 0s and higher values
+    :return: image pixels which overlaps with non 0s in the inverted mask
+    """
+    m = np.ma.masked_where(inverted_mask == 0, inverted_mask)
+    pixels_left = np.ma.masked_array(image, m.mask)
+    return np.ma.filled(np.ma.concatenate(pixels_left), 0)
 
 
 def euclidean_distance(point1, point2):
@@ -101,6 +124,20 @@ def find_blobs_bounding_boxes(bg_image):
     for contour in contours:
         bounding_boxes.append(cv2.boundingRect(contour))
     return bounding_boxes
+
+
+def crop_image_with_rect(image, rect):
+    """
+    Crop an image
+    :param image: the original image
+    :param rect: rectangle to crop
+    :return: the image cropped
+        None is the area if the rectangle is 0
+    """
+
+    ((x1, y1), (x2, y2)) = rect
+
+    return image[y1:y2, x1:x2]
 
 
 def crop_image_for_person_detection(image, rect):

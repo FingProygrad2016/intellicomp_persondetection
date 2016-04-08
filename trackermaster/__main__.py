@@ -75,9 +75,10 @@ def draw_journeys(journeys, outputs):
                 cv2.line(output, point_start, point_end, journey_color,
                          thickness=1)
 
-        for output in outputs:
-            cv2.circle(output, (prediction[0], prediction[3]), 3,
-                       journey_color, -1)
+        if config.getboolean("SHOW_PREDICTION_DOTS"):
+            for output in outputs:
+                cv2.circle(output, (prediction[0], prediction[3]), 3,
+                           journey_color, -1)
 
 
 def track_source(identifier=None, source=None, trackermaster_conf=None,
