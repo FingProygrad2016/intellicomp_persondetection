@@ -1,9 +1,10 @@
 import cv2
 print(cv2)
 
-from math import sin, cos
 from trackermaster.config import config
-from utils.tools import euclidean_distance
+from utils.tools import euclidean_distance, x1y1x2y2_to_x1y1wh,\
+    x1y1wh_to_x1y1x2y2
+from imutils.object_detection import non_max_suppression
 
 # Referencias en:
 # http://www.learnopencv.com/blob-detection-using-opencv-python-c/
@@ -143,22 +144,20 @@ class BlobDetector:
         return result
 
     def apply(self, background, min_person_size, max_person_size):
+        blobs = []
         if self.detect_blobs_by_bounding_boxes:
             blobs = find_blobs_bounding_boxes(background)
         else:
-            surf = cv2.xfeatures2d.SURF_create(hessianThreshold=50000)
-            (kps, descs) = surf.detectAndCompute(background, None)
-            # blobs = self.detector.detect(background)
-            blobs = []
-
-            for k in kps:
-                x = abs(sin(k.angle) * k.size)
-                y = abs(cos(k.angle) * k.size)
-                x1 = int(max(k.pt[0] - x, 0))
-                y1 = int(max(k.pt[1] - y, 0))
-                x2 = int(min(k.pt[0] + x, background.shape[1]))
-                y2 = int(min(k.pt[1] + y, background.shape[0]))
+            for keyPoint in self.detector.detect(background):
+                x1 = int(max(keyPoint.pt[0] - keyPoint.size, 0))
+                y1 = int(max(keyPoint.pt[1] - keyPoint.size, 0))
+                x2 = int(min(keyPoint.pt[0] + keyPoint.size, background.shape[1]))
+                y2 = int(min(keyPoint.pt[1] + keyPoint.size, background.shape[0]))
                 blobs.append((x1, y1, x2, y2))
+            if blobs:
+                blobs = non_max_suppression(x1y1wh_to_x1y1x2y2(blobs),
+                                            overlapThresh=0.3)
+
             # for blob in blobs:
             #     if (blob.size > (max_person_size * 1.1)) or \
             #             (blob.size < (min_person_size * 0.9)):

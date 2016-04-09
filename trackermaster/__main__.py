@@ -6,6 +6,7 @@ import json
 import time
 from hashlib import sha1
 from datetime import datetime as dt
+from cv2 import imshow
 
 import numpy as np
 print(np)
@@ -255,11 +256,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             cant_personas = 0
             trayectos = []
 
-            if bounding_boxes:
-
-                rectangles = x1y1x2y2_to_x1y1wh(
-                    non_max_suppression(x1y1wh_to_x1y1x2y2(bounding_boxes),
-                                        overlapThresh=0.3))
+            if len(bounding_boxes):
+                rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
 
                 # TODO: Remove!
                 if len(rectangles) > 50:
