@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from math import sqrt
 
 from imutils.object_detection import non_max_suppression
 from trackermaster.config import config
