@@ -111,19 +111,19 @@ def find_resolution_multiplier(w, h):
         return 1
 
 
-def find_blobs_bounding_boxes(bg_image):
-    """
-    Find bounding boxes for each element of 'blobs'
-    :param bg_image: the image containing the blobs
-    :return: a list of rectangles representing the bounding boxes
-    """
-    # Bounding boxes for each blob
-    im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE,
-                                                cv2.CHAIN_APPROX_SIMPLE)
-    bounding_boxes = []
-    for contour in contours:
-        bounding_boxes.append(cv2.boundingRect(contour))
-    return bounding_boxes
+# def find_blobs_bounding_boxes(bg_image):
+#     """
+#     Find bounding boxes for each element of 'blobs'
+#     :param bg_image: the image containing the blobs
+#     :return: a list of rectangles representing the bounding boxes
+#     """
+#     # Bounding boxes for each blob
+#     im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE,
+#                                                 cv2.CHAIN_APPROX_SIMPLE)
+#     bounding_boxes = []
+#     for contour in contours:
+#         bounding_boxes.append(cv2.boundingRect(contour))
+#     return bounding_boxes
 
 
 def crop_image_with_rect(image, rect):

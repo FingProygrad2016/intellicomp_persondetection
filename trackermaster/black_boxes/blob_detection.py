@@ -1,11 +1,27 @@
 import cv2
 print(cv2)
 
-from utils.tools import euclidean_distance
+from math import sin, cos
 from trackermaster.config import config
+from utils.tools import euclidean_distance
 
 # Referencias en:
 # http://www.learnopencv.com/blob-detection-using-opencv-python-c/
+
+
+def find_blobs_bounding_boxes(bg_image):
+        """
+        Find bounding boxes for each element of 'blobs'
+        :param bg_image: the image containing the blobs
+        :return: a list of rectangles representing the bounding boxes
+        """
+        # Bounding boxes for each blob
+        im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE,
+                                                    cv2.CHAIN_APPROX_SIMPLE)
+        bounding_boxes = []
+        for contour in contours:
+            bounding_boxes.append(cv2.boundingRect(contour))
+        return bounding_boxes
 
 
 class BlobDetector:
@@ -40,6 +56,8 @@ class BlobDetector:
             config.getint('SMALL_BLOBS_SIZE_THRESHOLD')
         self.small_blobs_size_distance_threshold = \
             config.getint('SMALL_BLOBS_SIZE_DISTANCE_THRESHOLD')
+        self.detect_blobs_by_bounding_boxes = \
+            config.getboolean('DETECT_BLOBS_BY_BOUNDING_BOXES')
 
         # Setup SimpleBlobDetector parameters
         params = cv2.SimpleBlobDetector_Params()
@@ -125,11 +143,26 @@ class BlobDetector:
         return result
 
     def apply(self, background, min_person_size, max_person_size):
-        blobs = self.detector.detect(background)
-        for blob in blobs:
-            if (blob.size > (max_person_size * 1.1)) or \
-                    (blob.size < (min_person_size * 0.9)):
-                blobs.remove(blob)
+        if self.detect_blobs_by_bounding_boxes:
+            blobs = find_blobs_bounding_boxes(background)
+        else:
+            surf = cv2.xfeatures2d.SURF_create(hessianThreshold=50000)
+            (kps, descs) = surf.detectAndCompute(background, None)
+            # blobs = self.detector.detect(background)
+            blobs = []
+
+            for k in kps:
+                x = abs(sin(k.angle) * k.size)
+                y = abs(cos(k.angle) * k.size)
+                x1 = int(max(k.pt[0] - x, 0))
+                y1 = int(max(k.pt[1] - y, 0))
+                x2 = int(min(k.pt[0] + x, background.shape[1]))
+                y2 = int(min(k.pt[1] + y, background.shape[0]))
+                blobs.append((x1, y1, x2, y2))
+            # for blob in blobs:
+            #     if (blob.size > (max_person_size * 1.1)) or \
+            #             (blob.size < (min_person_size * 0.9)):
+            #         blobs.remove(blob)
         return blobs
         # self.big_blobs = []
         # self.small_blobs = []

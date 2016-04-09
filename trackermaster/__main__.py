@@ -25,9 +25,8 @@ from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.person_detection import Histogram2D
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, \
-    find_blobs_bounding_boxes, frame2base64png, x1y1wh_to_x1y1x2y2, \
-    x1y1x2y2_to_x1y1wh
+from utils.tools import find_resolution_multiplier, frame2base64png,\
+    x1y1wh_to_x1y1x2y2, x1y1x2y2_to_x1y1wh
 
 
 def send_patternrecognition_config(communicator, identifier,
@@ -247,12 +246,18 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             # blobs_points = blobs_detector.apply(bg_sub)
-            bounding_boxes = find_blobs_bounding_boxes(bg_sub)
+            # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
+            bounding_boxes =\
+                blobs_detector.apply(bg_sub, min_person_size, max_person_size)
 
             blob_det_time += time.time() - t0
             t0 = time.time()
 
+            cant_personas = 0
+            trayectos = []
+
             if bounding_boxes:
+
                 rectangles = x1y1x2y2_to_x1y1wh(
                     non_max_suppression(x1y1wh_to_x1y1x2y2(bounding_boxes),
                                         overlapThresh=0.3))
