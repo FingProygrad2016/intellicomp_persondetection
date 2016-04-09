@@ -2,7 +2,7 @@ import cv2
 from multiprocessing.pool import Pool
 
 # from matplotlib import pyplot as plt
-
+from trackermaster.config import config
 from utils.tools import crop_image_for_person_detection, x1y1x2y2_to_x1y1wh, \
     x1y1wh_to_x1y1x2y2
 from trackermaster.black_boxes.histogram2d import Histogram2D
@@ -16,7 +16,10 @@ from matplotlib import pyplot as plt
 HISTOGRAM_2D = None
 
 # Pool of processes for process person detection in parallel
-PROCESSES_POOL = Pool()
+PERSON_DETECTION_PARALLEL_MODE = \
+    config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+if PERSON_DETECTION_PARALLEL_MODE:
+    PROCESSES_POOL = Pool()
 
 
 def set_histogram_size(shape):
@@ -55,7 +58,11 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         cropped_images.append((crop_img, resolution_multiplier))
 
     if cropped_images:
-        res = PROCESSES_POOL.imap(apply_single, cropped_images)
+
+        if PERSON_DETECTION_PARALLEL_MODE:
+            res = PROCESSES_POOL.imap(apply_single, cropped_images)
+        else:
+            res = map(apply_single, cropped_images)
 
         for xyAB in res:
             score = xyAB[1]
