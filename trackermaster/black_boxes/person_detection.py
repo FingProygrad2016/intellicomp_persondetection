@@ -55,8 +55,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                 raw_frame_copy, (x_orig, y_orig, w_orig, h_orig))
 
         # Draw in blue candidate blob
-        cv2.rectangle(frame_resized_copy, (x, y), (x + w, y + h),
-                      (255, 0, 0), 1)
+        cv2.rectangle(frame_resized_copy, (x, y),
+                      (x + w, y + h), (255, 0, 0), 1)
 
         cropped_images.append((crop_img, resolution_multiplier))
 

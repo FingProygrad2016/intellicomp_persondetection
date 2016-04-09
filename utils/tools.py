@@ -161,7 +161,7 @@ def crop_image_for_person_detection(image, rect):
     height_with_frame = abs(y_top - y_bottom)
     width_with_frame = abs(x_top - x_bottom)
 
-    if (128 / w) > (256 / h):
+    if (128 / width_with_frame) > (256 / height_with_frame):
         fact = (128 / width_with_frame)
     else:
         fact = (256 / height_with_frame)
