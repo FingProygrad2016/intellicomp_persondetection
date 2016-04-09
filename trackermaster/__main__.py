@@ -22,7 +22,6 @@ from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
     BackgroundSubtractorKNN
 from trackermaster.black_boxes.blob_detection import BlobDetector
-from trackermaster.black_boxes.person_detection import Histogram2D
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
 from utils.tools import find_resolution_multiplier, frame2base64png,\

@@ -1,5 +1,4 @@
 import cv2
-from multiprocessing.pool import Pool
 
 # from matplotlib import pyplot as plt
 from trackermaster.config import config
@@ -19,6 +18,10 @@ HISTOGRAM_2D = None
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
 if PERSON_DETECTION_PARALLEL_MODE:
+    import multiprocessing as mp
+    from multiprocessing.pool import Pool
+    import logging
+    mp.log_to_stderr(logging.DEBUG)
     PROCESSES_POOL = Pool()
 
 
@@ -60,7 +63,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
     if cropped_images:
 
         if PERSON_DETECTION_PARALLEL_MODE:
-            res = PROCESSES_POOL.imap(apply_single, cropped_images)
+            res = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
         else:
             res = map(apply_single, cropped_images)
 
