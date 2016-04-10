@@ -50,6 +50,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
     blobs = []
     cropped_images = []
+    confidence = []
 
     update_confidence_matrix = \
         (number_frame > MIN_NUMBER_FRAMES_HISTOGRAM) and \
@@ -69,23 +70,31 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
         if (number_frame <= MIN_NUMBER_FRAMES_HISTOGRAM) or \
                 update_confidence_matrix or \
-                verify_blob((x_bin, y_bin),
-                            HISTOGRAM_2D.normalizedConfidenceMatrix):
-            # Translate from minimized work image to the original
-            (x_orig, y_orig,
-             w_orig, h_orig) = (x * resolution_multiplier,
-                                y * resolution_multiplier,
-                                w * resolution_multiplier,
-                                h * resolution_multiplier)
+                0 < HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] < 0.2:
+                    # Translate from minimized work image to the original
+                    (x_orig, y_orig,
+                     w_orig, h_orig) = (x * resolution_multiplier,
+                                        y * resolution_multiplier,
+                                        w * resolution_multiplier,
+                                        h * resolution_multiplier)
 
-            # Crop a rectangle around detected blob
-            crop_img = \
-                crop_image_for_person_detection(raw_frame_copy,
-                                                (x_orig, y_orig,
-                                                 w_orig, h_orig),
-                                                BORDER_AROUND_BLOB)
+                    # Crop a rectangle around detected blob
+                    crop_img = \
+                        crop_image_for_person_detection(raw_frame_copy,
+                                                        (x_orig, y_orig,
+                                                         w_orig, h_orig),
+                                                        BORDER_AROUND_BLOB)
 
-            cropped_images.append((crop_img, resolution_multiplier, (w, h)))
+                    cropped_images.append((crop_img, resolution_multiplier, (w, h)))
+        else:
+            if HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] >= 0.2:
+                blobs.append({
+                    "position": cv2.KeyPoint(round((x + w) / 2),
+                                             round((y + h) / 2),
+                                             w * h),
+                    "box": ((x, y), (x + w, y + h)),
+                    "score": 1
+                })
 
     if cropped_images:
         if PERSON_DETECTION_PARALLEL_MODE:
@@ -106,8 +115,6 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                          persons_data[3][0], persons_data[3][1]),  # ,W  , H)
                         len(persons_data[0]))
                 else:
-                    # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
-                    # plt.savefig('lala.png')
                     for person in persons_data[0]:
                         x_a, y_a, x_b, y_b = person
 

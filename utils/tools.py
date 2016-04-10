@@ -288,9 +288,9 @@ def normalize_matrix(matrix):
 
 def verify_blob(pos, normalized_confidence_matrix):
     if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.3):
-        return False
+        return False, True
     else:
         if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.8):
-            return True
+            return True, False
         else:
-            return False
+            return False, False
