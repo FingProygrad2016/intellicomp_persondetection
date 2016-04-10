@@ -74,7 +74,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         for xyAB in res:
             score = xyAB[1]
 
-            if number_frame <= 100:
+            if number_frame <= 10:
                 if score == 1:
                     HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
 
@@ -87,8 +87,11 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
                     # Red and Yellow rectangles
                     color = 0 if score == 1 else 255
-                    cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
-                                  (0, color, 255), 2)
+                    cv2.circle(img=frame_resized_copy,
+                               center=(int((x_a + x_b)/2), int((y_a + y_b)/2)),
+                               radius=0, color=(0, color, 255), thickness=3)
+                    # cv2.rectangle(frame_resized_copy, (x_a, y_a), (x_b, y_b),
+                    #               (0, color, 255), 2)
 
                     blobs.append({
                         "position": cv2.KeyPoint(round((x_a + x_b) / 2),
