@@ -12,6 +12,8 @@ PADDING = (config.getint('PADDING_0'), config.getint('PADDING_1'))
 SCALE = config.getfloat('SCALE')
 WIN_STRIDE = (config.getint('WINSTRIDE_0'),
               config.getint('WINSTRIDE_1'))
+BORDER_AROUND_BLOB = (config.getfloat('BORDER_AROUND_BLOB_0'),
+                      config.getfloat('BORDER_AROUND_BLOB_1'))
 
 first_time = True
 
@@ -45,8 +47,10 @@ def apply_single(args):
     else:
         current_aspect_ratio = image.shape[0] / image.shape[1]
         if np.isclose(ASPECT_RATIO, current_aspect_ratio, atol=0.5):
-            persons = [[image.shape[1] * .125, image.shape[0] * .125,
-                        image.shape[1] * .875, image.shape[0] * .875]]
+            persons = [[image.shape[1] * BORDER_AROUND_BLOB[0],
+                        image.shape[0] * BORDER_AROUND_BLOB[0],
+                        image.shape[1] * (1 - BORDER_AROUND_BLOB[1]),
+                        image.shape[0] * (1 - BORDER_AROUND_BLOB[1])]]
             score = 0.7 - \
                 (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
 

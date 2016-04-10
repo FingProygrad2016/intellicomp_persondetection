@@ -4,8 +4,18 @@ import sys
 import os
 import json
 import time
+
 from hashlib import sha1
 from datetime import datetime as dt
+from trackermaster.black_boxes import person_detection
+from trackermaster.config import config, set_custome_config
+from trackermaster.black_boxes.background_substraction import \
+    BackgroundSubtractorKNN
+from trackermaster.black_boxes.blob_detection import BlobDetector
+from trackermaster.black_boxes.tracking import Tracker
+from utils.communicator import Communicator
+from utils.tools import find_resolution_multiplier,\
+                        frame2base64png, x1y1x2y2_to_x1y1wh
 
 import numpy as np
 import cv2
@@ -25,8 +35,8 @@ from utils.tools import find_resolution_multiplier, \
     frame2base64png, x1y1wh_to_x1y1x2y2, x1y1x2y2_to_x1y1wh
 
 
-def send_patternrecognition_config(communicator, identifier,
-                                   patternmaster_conf):
+def send_patternrecognition_config(communicator,
+                                   identifier, patternmaster_conf):
     if patternmaster_conf:
         communicator.apply(json.dumps({'config': patternmaster_conf,
                                       'identifier': identifier}),

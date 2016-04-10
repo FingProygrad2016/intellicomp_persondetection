@@ -1,9 +1,7 @@
 import cv2
 
-# from matplotlib import pyplot as plt
 from trackermaster.config import config
-from utils.tools import crop_image_for_person_detection, x1y1x2y2_to_x1y1wh, \
-    x1y1wh_to_x1y1x2y2
+from utils.tools import crop_image_for_person_detection
 from trackermaster.black_boxes.histogram2d import Histogram2D
 from trackermaster.black_boxes.person_detection_task import apply_single
 
@@ -13,6 +11,9 @@ from matplotlib import pyplot as plt
 
 # Histogram2D unique instance
 HISTOGRAM_2D = None
+
+BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
+                      config.getfloat("BORDER_AROUND_BLOB_1"))
 
 # Pool of processes for process person detection in parallel
 PERSON_DETECTION_PARALLEL_MODE = \
@@ -52,8 +53,10 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
         # Crop a rectangle around detected blob
         crop_img = \
-            crop_image_for_person_detection(
-                raw_frame_copy, (x_orig, y_orig, w_orig, h_orig))
+            crop_image_for_person_detection(raw_frame_copy,
+                                            (x_orig, y_orig,
+                                             w_orig, h_orig),
+                                            BORDER_AROUND_BLOB)
 
         # Draw in blue candidate blob
         cv2.rectangle(frame_resized_copy, (x, y),
