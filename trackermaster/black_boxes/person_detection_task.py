@@ -3,7 +3,6 @@ import numpy as np
 
 from imutils.object_detection import non_max_suppression
 from trackermaster.config import config
-
 from utils.tools import x1y1wh_to_x1y1x2y2
 
 # Configuration parameters
@@ -52,7 +51,7 @@ def apply_single(args):
                         image.shape[1] * (1 - BORDER_AROUND_BLOB[1]),
                         image.shape[0] * (1 - BORDER_AROUND_BLOB[1])]]
             score = 0.7 - \
-                (abs(ASPECT_RATIO - (bounding_box[2] / bounding_box[3])))
+                (abs(ASPECT_RATIO - current_aspect_ratio))
 
     (x, y, w, h) = bounding_box
     persons_resize = []
@@ -67,5 +66,5 @@ def apply_single(args):
 
         persons_resize.append((x_a, y_a, x_b, y_b))
 
-    return persons_resize, score,\
-           [(b / resolution_multiplier / mult2) for b in bounding_box]
+    return persons_resize, score, \
+           [(b / resolution_multiplier) for b in bounding_box], args[2]
