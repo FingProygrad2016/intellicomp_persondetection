@@ -121,6 +121,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
         source = videos_path + '/../Videos/Video_003.avi'
+        # source = "http://live3.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjExODcxODgmcmFuZG9tPUhRNDFpWHRtVWQmYy1pcD0xOTAuNjQuNDkuMjcsNWRjYjM2YmRjMDNhOWFjNmI1YzMwMzkzYzQ3NmU5NDAyNWJmYzU2ZjAxMmZmNDYzODVjOGM1ZTU2MmNmNWRjZQ==/hls/var1320000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
     has_at_least_one_frame, _ = cap.read()
@@ -192,8 +193,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     has_more_images = True
 
-    person_detection.set_histogram_size(shape=(int(work_w / 10),
-                                               int(work_h / 10)))
+    person_detection.set_histogram_size(shape=(work_w, work_h))
 
     fps = 0
     comparisons_by_color_image = []

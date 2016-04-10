@@ -1,7 +1,7 @@
 import cv2
 
 from trackermaster.config import config
-from utils.tools import crop_image_for_person_detection
+from utils.tools import crop_image_for_person_detection, verify_blob
 from trackermaster.black_boxes.histogram2d import Histogram2D
 from trackermaster.black_boxes.person_detection_task import apply_single
 
@@ -58,15 +58,19 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
          ((CONFIDENCE_MATRIX_UPDATE_TIME / 1000) * int(round(fps))))
 
     for (x, y, w, h) in rectangles:
-        x_bin = int(w / 10) \
-            if int(w / 10) < int(frame_resized_copy.shape[1] / 10) \
-            else int(w / 10) - 1
-        y_bin = int(h / 10) \
-            if int(h / 10) < int(frame_resized_copy.shape[0] / 10) \
-            else int(h / 10) - 1
+        x_bin = int(round(w / float(10))) \
+            if int(round(w / float(10))) < \
+               int(frame_resized_copy.shape[1] / 10) \
+            else int(round(w / float(10))) - 1
+        y_bin = int(round(h / float(10))) \
+            if int(round(h / float(10))) < \
+               int(frame_resized_copy.shape[0] / 10) \
+            else int(round(h / float(10))) - 1
+
         if (number_frame <= MIN_NUMBER_FRAMES_HISTOGRAM) or \
                 update_confidence_matrix or \
-                (HISTOGRAM_2D.confidenceMatrix[x_bin][y_bin] > 0):
+                verify_blob((x_bin, y_bin),
+                            HISTOGRAM_2D.normalizedConfidenceMatrix):
             # Translate from minimized work image to the original
             (x_orig, y_orig,
              w_orig, h_orig) = (x * resolution_multiplier,

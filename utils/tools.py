@@ -280,3 +280,17 @@ def x1y1x2y2_to_x1y1wh(rectangles):
 
 def x1y1wh_to_x1y1x2y2(rectangles):
     return np.apply_along_axis(x1y1wh_to_x1y1x2y2_single, 1, rectangles)
+
+
+def normalize_matrix(matrix):
+    return matrix / np.max(matrix)
+
+
+def verify_blob(pos, normalized_confidence_matrix):
+    if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.3):
+        return False
+    else:
+        if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.8):
+            return True
+        else:
+            return False
