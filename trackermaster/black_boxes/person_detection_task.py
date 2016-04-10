@@ -53,13 +53,11 @@ def apply_single(args):
                         image.shape[0] * BORDER_AROUND_BLOB[0],
                         image.shape[1] * (1 - BORDER_AROUND_BLOB[1]),
                         image.shape[0] * (1 - BORDER_AROUND_BLOB[1])]]
-            score = 0.7 - \
-                (abs(ASPECT_RATIO - current_aspect_ratio))
+            score = 0.7 - (abs(ASPECT_RATIO - current_aspect_ratio))
 
     x, y, w, h = bounding_box
     persons_resize = []
     for person in persons:
-
         xA, yA, xB, yB = person
 
         x_a = int(((x + (xA / mult2)) / resolution_multiplier))

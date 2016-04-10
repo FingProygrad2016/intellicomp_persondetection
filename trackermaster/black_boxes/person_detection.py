@@ -88,7 +88,6 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             cropped_images.append((crop_img, resolution_multiplier, (w, h)))
 
     if cropped_images:
-
         if PERSON_DETECTION_PARALLEL_MODE:
             results = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
         else:
@@ -110,7 +109,6 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
                     # plt.savefig('lala.png')
                     for person in persons_data[0]:
-
                         x_a, y_a, x_b, y_b = person
 
                         blobs.append({
