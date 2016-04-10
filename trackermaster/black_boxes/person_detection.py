@@ -53,9 +53,13 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
          ((CONFIDENCE_MATRIX_UPDATE_TIME / 1000) * int(round(fps))))
 
     for (x, y, w, h) in rectangles:
-        x_bin = int(w / 10)
-        y_bin = int(h / 10)
-        if (number_frame <= 100) or \
+        x_bin = int(w / 10) \
+            if int(w / 10) < int(frame_resized_copy.shape[1] / 10) \
+            else int(w / 10) - 1
+        y_bin = int(h / 10) \
+            if int(h / 10) < int(frame_resized_copy.shape[0] / 10) \
+            else int(h / 10) - 1
+        if (number_frame <= 100) or update_confidence_matrix or \
                 (HISTOGRAM_2D.confidenceMatrix[x_bin][y_bin] > 0):
             # Translate from minimized work image to the original
             (x_orig, y_orig,
@@ -91,10 +95,9 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     HISTOGRAM_2D.create_confidence_matrix((xyAB[2][0],      # x
                                                            xyAB[2][1],      # y
                                                            xyAB[3][0],      # w
-                                                           xyAB[3][1]))     # h
+                                                           xyAB[3][1]),     # h
+                                                          len(xyAB[0]))
             else:
-                # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
-                # plt.savefig('lala.png')
                 for person in xyAB[0]:
                     x_a, y_a, x_b, y_b = person
 
@@ -116,5 +119,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             HISTOGRAM_2D.update_confidence_matrix(res)
             last_update_frame = number_frame
             update_confidence_matrix = False
+            # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+            # plt.savefig('lala.png')
 
     return blobs, scores

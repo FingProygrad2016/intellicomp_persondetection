@@ -14,7 +14,7 @@ class Histogram2D:
             np.linspace(0, self.confidenceMatrix.shape[1] * 10,
                         self.confidenceMatrix.shape[1] + 1, endpoint=True)
 
-    def create_confidence_matrix(self, blob):
+    def create_confidence_matrix(self, blob, count):
         widths, heights = [], []
 
         widths.append(blob[2])
@@ -24,7 +24,8 @@ class Histogram2D:
             np.histogram2d(widths, heights, (self.xedges, self.yedges))
 
         if hist.any():
-            np.add(self.confidenceMatrix, hist, out=self.confidenceMatrix)
+            np.add(self.confidenceMatrix, hist * count,
+                   out=self.confidenceMatrix)
 
         return self.confidenceMatrix
 
@@ -32,11 +33,12 @@ class Histogram2D:
         print("Update histogram!!!")
         for row_index, row in enumerate(self.confidenceMatrix):
             self.confidenceMatrix[row_index] = \
-                np.array(list(map(lambda x: x - 1 if x else x, row)))
+                np.array(list(map(lambda x: max(x - 1, 0), row)))
 
         for blob in blobs:
             if blob[1] > 0:
                 self.confidenceMatrix = \
                     self.create_confidence_matrix((blob[2][0], blob[2][1],
-                                                   blob[3][0], blob[3][1]))
+                                                   blob[3][0], blob[3][1]),
+                                                  len(blob[0]))
         return self.confidenceMatrix
