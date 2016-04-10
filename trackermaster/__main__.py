@@ -180,9 +180,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     has_more_images = True
 
-    min_person_size = 1000000
-    max_person_size = 0
-
     person_detection.set_histogram_size(shape=(int(work_w / 10),
                                                int(work_h / 10)))
 
@@ -248,7 +245,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             # blobs_points = blobs_detector.apply(bg_sub)
             # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
             bounding_boxes =\
-                blobs_detector.apply(bg_sub, min_person_size, max_person_size)
+                blobs_detector.apply(bg_sub)
 
             blob_det_time += time.time() - t0
             t0 = time.time()
@@ -283,7 +280,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ############ ##
 
                 trayectos, info_to_send, tracklets = \
-                    tracker.apply(blobs, frame_resized, bg_subtraction_resized, number_frame, scores)
+                    tracker.apply(blobs, frame_resized, bg_subtraction_resized,
+                                  number_frame, scores)
                 del blobs
                 del scores
 
@@ -335,8 +333,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             t0 = time.time()
 
-            big_frame = np.vstack((np.hstack((bg_subtraction, to_show)),
-                                   np.hstack((frame_resized, frame_resized_copy))))
+            big_frame = \
+                np.vstack((np.hstack((bg_subtraction, to_show)),
+                           np.hstack((frame_resized, frame_resized_copy))))
             # TEXT INFORMATION
             # Write FPS in the frame to show
 

@@ -143,7 +143,7 @@ class BlobDetector:
 
         return result
 
-    def apply(self, background, min_person_size, max_person_size):
+    def apply(self, background):
         blobs = []
         if self.detect_blobs_by_bounding_boxes:
             blobs = find_blobs_bounding_boxes(background)
@@ -153,10 +153,10 @@ class BlobDetector:
                 y1 = int(max(keyPoint.pt[1] - keyPoint.size, 0))
                 x2 = int(min(keyPoint.pt[0] + keyPoint.size, background.shape[1]))
                 y2 = int(min(keyPoint.pt[1] + keyPoint.size, background.shape[0]))
-                blobs.append((x1, y1, x2, y2))
-            if blobs:
-                blobs = non_max_suppression(x1y1wh_to_x1y1x2y2(blobs),
-                                            overlapThresh=0.3)
+                blobs.append((x1, y1, x2 - x1, y2 - y1))
+        if blobs:
+            blobs = non_max_suppression(x1y1wh_to_x1y1x2y2(blobs),
+                                        overlapThresh=0.4)
 
             # for blob in blobs:
             #     if (blob.size > (max_person_size * 1.1)) or \
