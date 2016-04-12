@@ -6,11 +6,9 @@ import json
 import time
 from hashlib import sha1
 from datetime import datetime as dt
-from cv2 import imshow
 
 import numpy as np
 import cv2
-from imutils.object_detection import non_max_suppression
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
