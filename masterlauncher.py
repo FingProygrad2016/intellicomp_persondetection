@@ -77,9 +77,9 @@ if __name__ == '__main__':
                     if len(cmd) > 5 else None
 
                 streamings[identifier] = Process(
-                    target=track_source, args=[identifier, cmd[2],
-                                               trackermaster_conf,
-                                               patternmaster_conf])
+                    target=track_source,
+                    args=[identifier, cmd[2], trackermaster_conf,
+                          patternmaster_conf], daemon=False)
                 streamings[identifier].start()
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':

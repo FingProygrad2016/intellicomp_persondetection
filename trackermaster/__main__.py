@@ -9,9 +9,7 @@ from datetime import datetime as dt
 from cv2 import imshow
 
 import numpy as np
-print(np)
 import cv2
-print(cv2)
 from imutils.object_detection import non_max_suppression
 
 path = os.path.dirname(sys.modules[__name__].__file__)
@@ -25,8 +23,8 @@ from trackermaster.black_boxes.background_substraction import \
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, frame2base64png,\
-    x1y1wh_to_x1y1x2y2, x1y1x2y2_to_x1y1wh
+from utils.tools import find_resolution_multiplier, \
+    frame2base64png, x1y1wh_to_x1y1x2y2, x1y1x2y2_to_x1y1wh
 
 
 def send_patternrecognition_config(communicator, identifier,
@@ -251,7 +249,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             cant_personas = 0
-            trayectos = []
+            interpol_cant_persons_prev = cant_personas
 
             if len(bounding_boxes):
                 rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
@@ -345,6 +343,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             cv2.putText(big_frame, 'Current tracklets: ' +
                         str(len(trayectos)), (20, 40), font, .5,
                         (255, 255, 0), 1)
+            interpol_cant_persons = round(
+                ((len(trayectos) * .7) + (cant_personas * .3)) * .35 +
+                interpol_cant_persons_prev * .65)
+            interpol_cant_persons_prev = interpol_cant_persons
             cv2.putText(big_frame, 'Current tracklets/persons interpol. num: ' +
                         str(round((len(trayectos)*.85)+(cant_personas*.15))),
                         (20, 60), font, .5,

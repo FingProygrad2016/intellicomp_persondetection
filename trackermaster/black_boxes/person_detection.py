@@ -74,10 +74,12 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             if number_frame <= 100:
                 if score == 1:
                     HISTOGRAM_2D.create_confidence_matrix(xyAB[2])
+
             else:
                 # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
                 # plt.savefig('lala.png')
                 for person in xyAB[0]:
+
                     x_a, y_a, x_b, y_b = person
 
                     # Red and Yellow rectangles
