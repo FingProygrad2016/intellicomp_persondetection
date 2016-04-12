@@ -18,11 +18,12 @@ HISTOGRAM_2D = None
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
 if PERSON_DETECTION_PARALLEL_MODE:
-    import multiprocessing as mp
-    from multiprocessing.pool import Pool
-    import logging
-    mp.log_to_stderr(logging.DEBUG)
-    PROCESSES_POOL = Pool()
+    # import multiprocessing as mp
+    # from multiprocessing.pool import Pool
+    # import logging
+    # mp.log_to_stderr(logging.DEBUG)
+    from concurrent.futures import ProcessPoolExecutor
+    PROCESSES_POOL = ProcessPoolExecutor()
 
 
 def set_histogram_size(shape):
@@ -63,7 +64,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
     if cropped_images:
 
         if PERSON_DETECTION_PARALLEL_MODE:
-            res = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
+            res = PROCESSES_POOL.map(apply_single, cropped_images)
         else:
             res = map(apply_single, cropped_images)
 
