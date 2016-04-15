@@ -4,10 +4,55 @@ Modulo que contiene funciones de ayuda generales
 import base64
 import cv2
 import numpy as np
+from scipy.spatial import distance as dist
 from math import sqrt, pow
+from enum import Enum
 
 MAX_WIDTH = 320
 MAX_HEIGHT = 240
+
+
+class HistogramComparisonMethods(Enum):
+    # METHOD #1: UTILIZING OPENCV
+    CORRELATION = cv2.HISTCMP_CORREL
+    CHI_SQUARED = cv2.HISTCMP_CHISQR
+    CHI_SQUARED_ALT = cv2.HISTCMP_CHISQR_ALT
+    INTERSECTION = cv2.HISTCMP_INTERSECT
+    HELLINGER = cv2.HISTCMP_BHATTACHARYYA
+    KL_DIV = cv2.HISTCMP_KL_DIV
+    # METHOD #2: UTILIZING SCIPY
+    EUCLIDEAN = dist.euclidean
+    MANHATTAN = dist.cityblock
+    CHEBYSEV = dist.chebyshev
+
+
+def compare_color(color1, color2):
+    return euclidean_distance(color1, color2)
+
+
+def compare_color_histogram(method, hist1, hist2):
+    if method in (HistogramComparisonMethods.CORRELATION,
+                  HistogramComparisonMethods.CHI_SQUARED,
+                  HistogramComparisonMethods.CHI_SQUARED_ALT,
+                  HistogramComparisonMethods.INTERSECTION,
+                  HistogramComparisonMethods.HELLINGER,
+                  HistogramComparisonMethods.KL_DIV):
+        reverse = False
+
+        # if we are using the correlation or intersection
+        # method, then sort the results in reverse order
+        if method in (HistogramComparisonMethods.CORRELATION, HistogramComparisonMethods.INTERSECTION):
+            reverse = True
+
+        result = cv2.compareHist(hist1, hist2, method.value)
+
+        if reverse:
+            result = 1/result
+
+    else:
+        result = method(hist1, hist2)
+
+    return result
 
 
 def get_avg_color(image, bg_subtraction_image, rect):
@@ -27,28 +72,58 @@ def get_avg_color(image, bg_subtraction_image, rect):
     )
 
 
+def get_color_histogram(image, bg_subtraction_image, rect):
+    """
+    Returns the color histogram in the rectangle.
+    :param image:
+    :param bg_subtraction_image:
+    :param rect: coordinates of rectangle containing pixels to average color
+    :return:
+    """
+
+    return get_color_histogram_aux(
+        crop_image_with_rect(image, rect),
+        crop_image_with_rect(bg_subtraction_image, rect)[0:, 0:, 0]
+    )
+
+
 def get_avg_color_in_pixels(pixels):
     """
     Returns the average color in the pixels.
     :param pixels:
     :return:
     """
-    r = 0
-    g = 0
     b = 0
+    g = 0
+    r = 0
     count = 0
     for pixel in pixels:
         if not (np.array_equal(pixel, [0, 0, 0]) or np.array_equal(pixel, [255, 255, 255])):
-            r += pixel[0]
+            b += pixel[0]
             g += pixel[1]
-            b += pixel[2]
+            r += pixel[2]
             count += 1
     if count > 0:
-        average = (r/count, g/count, b/count)
+        average = (b/count, g/count, r/count)
     else:
         average = (0, 0, 0)
 
     return average
+
+
+def get_color_histogram_aux(image, mask):
+    # OpenCV stores images in BGR format rather than RGB
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # extract a 3D RGB color histogram from the image,
+    # using 8 bins per channel, normalize, and update
+    # the index
+    hist = cv2.calcHist([image], [0, 1, 2], mask, [8, 8, 8],
+                        [0, 256, 0, 256, 0, 256])
+    cv2.normalize(hist, hist)
+    hist = hist.flatten()
+
+    return hist
 
 
 def apply_inverted_mask_to_image(image, inverted_mask):
@@ -58,9 +133,20 @@ def apply_inverted_mask_to_image(image, inverted_mask):
     :param inverted_mask: matrix with the same size as the image, containing 0s and higher values
     :return: image pixels which overlaps with non 0s in the inverted mask
     """
-    m = np.ma.masked_where(inverted_mask == 0, inverted_mask)
+
+    # ONE POSSIBLE WAY #
+    m = inverted_mask[0:, 0:, 0]
+    pixels_left = cv2.bitwise_and(image, image, mask=m)
+    pixels_left = np.ma.masked_equal(pixels_left, [0, 0, 0])
+    return np.ma.compress_rowcols(np.ma.concatenate(pixels_left), 0)
+
+
+    # ANOTHER WAY #
+    """
+    m = np.ma.masked_equal(inverted_mask, [0, 0, 0])
     pixels_left = np.ma.masked_array(image, m.mask)
-    return np.ma.filled(np.ma.concatenate(pixels_left), 0)
+    return np.ma.compress_rowcols(np.ma.concatenate(pixels_left), 0)
+    """
 
 
 def euclidean_distance(point1, point2):

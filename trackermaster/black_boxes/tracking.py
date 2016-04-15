@@ -7,7 +7,8 @@ import cv2
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 
-from utils.tools import get_avg_color, euclidean_distance
+from utils.tools import get_avg_color, euclidean_distance, compare_color,\
+    compare_color_histogram, HistogramComparisonMethods, get_color_histogram
 from trackermaster.black_boxes.blob_assignment import HungarianAlgorithm
 from trackermaster.config import config
 
@@ -82,7 +83,7 @@ class Tracker:
         """
 
         def blob_color_distance_function(color, k_filter):
-            return euclidean_distance(color, k_filter.color)
+            return compare_color_aux(color, k_filter.color)
 
         # Hungarian Algorithm for blob color
         self.hung_alg_blob_color = HungarianAlgorithm(blob_color_distance_function, self.threshold_color,
@@ -276,7 +277,7 @@ class Tracker:
                             # including with kfs with valid position comparison that were not matched
                             average_colors = []
                             for blob in unassigned_blobs:
-                                average_colors.append(get_avg_color(raw_image, bg_subtraction_image,
+                                average_colors.append(get_color_aux(raw_image, bg_subtraction_image,
                                                                     blob[0]["box"]))
 
                             best_filter_per_blob, best_filter_per_blob_costs = \
@@ -498,7 +499,7 @@ class TrackInfo:
         self.score = score
 
         self.rectangle = blob["box"]
-        self.color = get_avg_color(raw_image, bg_subtraction_image, self.rectangle)
+        self.color = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
 
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
 
@@ -598,7 +599,7 @@ class TrackInfo:
 
         # if color has not been set and there are at least 5 updates, calculate and set color
         if (self.color is None) and (self.number_updates % 10 == 0):
-            self.color = get_avg_color(raw_image, bg_subtraction_image, self.rectangle)
+            self.color = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
             if not config.getboolean("JOURNEYS_RANDOM_COLOR"):
                 self.journey_color = self.color
 
@@ -633,3 +634,20 @@ class TrackInfo:
                 self.last_update.isoformat(),
             "last_position": self.last_point
         }
+
+
+def compare_color_aux(color1, color2):
+    if config.getboolean('USE_HISTOGRAMS'):
+        result = compare_color_histogram(HistogramComparisonMethods[config.get('HISTOGRAM_COMPARISON_METHOD')],
+                                         color1, color2)
+    else:
+        result = compare_color(color1, color2)
+    return result
+
+
+def get_color_aux(image, bg_subtraction_image, rect):
+    if config.getboolean('USE_HISTOGRAMS'):
+        color = get_color_histogram(image, bg_subtraction_image, rect)
+    else:
+        color = get_avg_color(image, bg_subtraction_image, rect)
+    return color

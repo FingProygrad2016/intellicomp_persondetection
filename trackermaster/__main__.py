@@ -248,6 +248,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             cant_personas = 0
             interpol_cant_persons_prev = cant_personas
+            trayectos = []
 
             if len(bounding_boxes):
                 rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
