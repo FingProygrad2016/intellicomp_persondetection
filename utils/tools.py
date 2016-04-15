@@ -197,21 +197,6 @@ def find_resolution_multiplier(w, h):
         return 1
 
 
-# def find_blobs_bounding_boxes(bg_image):
-#     """
-#     Find bounding boxes for each element of 'blobs'
-#     :param bg_image: the image containing the blobs
-#     :return: a list of rectangles representing the bounding boxes
-#     """
-#     # Bounding boxes for each blob
-#     im2, contours, hierarchy = cv2.findContours(bg_image, cv2.RETR_TREE,
-#                                                 cv2.CHAIN_APPROX_SIMPLE)
-#     bounding_boxes = []
-#     for contour in contours:
-#         bounding_boxes.append(cv2.boundingRect(contour))
-#     return bounding_boxes
-
-
 def crop_image_with_rect(image, rect):
     """
     Crop an image
@@ -226,7 +211,7 @@ def crop_image_with_rect(image, rect):
     return image[y1:y2, x1:x2]
 
 
-def crop_image_for_person_detection(image, rect):
+def crop_image_for_person_detection(image, rect, border_around_blob):
     """
     Crop an image generating a frame (border) around
     :param image: the original image
@@ -237,12 +222,12 @@ def crop_image_for_person_detection(image, rect):
 
     (x, y, w, h) = rect
 
-    h_frame = h / 8
-    w_frame = w / 8
-    y_top = int(np.max((y - h_frame, 0)))
-    x_top = int(np.max((x - w_frame, 0)))
-    x_bottom = int(np.min((x + w + w_frame, image.shape[1])))
-    y_bottom = int(np.min((y + h + h_frame, image.shape[0])))
+    h_frame = h * border_around_blob[0]
+    w_frame = w * border_around_blob[1]
+    y_top = np.max((y - h_frame, 0))
+    x_top = np.max((x - w_frame, 0))
+    x_bottom = np.min((x + w + w_frame, image.shape[1]))
+    y_bottom = np.min((y + h + h_frame, image.shape[0]))
 
     height_with_frame = abs(y_top - y_bottom)
     width_with_frame = abs(x_top - x_bottom)
@@ -254,59 +239,13 @@ def crop_image_for_person_detection(image, rect):
     resize = (int(round(width_with_frame * fact)),
               int(round(height_with_frame * fact)))
 
+    y_top = int(y_top)
+    x_top = int(x_top)
+    x_bottom = int(x_bottom)
+    y_bottom = int(y_bottom)
+
     return cv2.resize((image[y_top:y_bottom, x_top:x_bottom]), resize), \
         (x_top, y_top, width_with_frame, height_with_frame), fact
-
-
-def crop_image_for_person_detection2(image, rect):
-    """
-    Crop an image generating a frame (border) around
-    :param image: the original image
-    :param rect: rectangle to crop
-    :return: the image cropped with the frame (border) around
-        None is the area if the rectangle is 0
-    """
-
-    (x, y, w, h) = rect
-
-    if w < 8 or h < 8:
-        return None, 0, 0, 0, 0, 0
-    # Add a frame around the rectangle
-    h_frame = h / 4
-    w_frame = w / 4
-    y_top = int(np.max(y - h_frame, 0))
-    x_top = int(np.max(x - w_frame, 0))
-    y_bottom = int(np.min((y + h + h_frame), image.shape[0]))
-    x_bottom = int(np.min(x + w + w_frame, image.shape[1]))
-
-    height = abs(y_top - y_bottom)
-    width = abs(x_top - x_bottom)
-
-    if width < 10 or height < 10:
-        return None, 0, 0, 0, 0, 0
-
-    d128_width = (128/width)
-    d256_height = (256/height)
-
-    # If width and height are greater than the looked rectangle, process it
-    # as it is
-    if d128_width <= 1 and d256_height <= 1:
-        mult = 1
-    elif d128_width > d256_height:
-        mult = d128_width
-    else:
-        mult = d256_height
-
-    mult = 1 if mult < 1 else mult
-    # print("WIDTH: %s HEIGHT: %s" % (width, height))
-
-    cropped_image = image[y_top:y_bottom, x_top:x_bottom]
-
-    return cv2.resize(cropped_image, (int(width*mult), int(height*mult))), \
-        x_top, y_top, width, height, mult
-
-    # return cv2.resize(cropped_image, (128, 256)), \
-    #     x_top, y_top, width, height, mult
 
 
 def rect_size(rect):

@@ -1,19 +1,14 @@
 from __future__ import print_function
+import cv2
 import inspect
-import sys
-import os
 import json
+import numpy as np
+import os
+import sys
 import time
+
 from hashlib import sha1
 from datetime import datetime as dt
-
-import numpy as np
-import cv2
-
-path = os.path.dirname(sys.modules[__name__].__file__)
-path = os.path.join(path, '..')
-sys.path.insert(0, path)
-
 from trackermaster.black_boxes import person_detection
 from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
@@ -21,12 +16,16 @@ from trackermaster.black_boxes.background_substraction import \
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
-from utils.tools import find_resolution_multiplier, \
-    frame2base64png, x1y1wh_to_x1y1x2y2, x1y1x2y2_to_x1y1wh
+from utils.tools import \
+    find_resolution_multiplier, frame2base64png, x1y1x2y2_to_x1y1wh
+
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
 
 
-def send_patternrecognition_config(communicator, identifier,
-                                   patternmaster_conf):
+def send_patternrecognition_config(communicator,
+                                   identifier, patternmaster_conf):
     if patternmaster_conf:
         communicator.apply(json.dumps({'config': patternmaster_conf,
                                       'identifier': identifier}),
@@ -179,6 +178,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     person_detection.set_histogram_size(shape=(int(work_w / 10),
                                                int(work_h / 10)))
 
+    fps = 0
+
     # Start the main loop
     while has_more_images:
 
@@ -204,10 +205,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         read_time += time.time() - t0
 
         if has_more_images:
-
-            original = raw_frame.copy()
-            cv2.imshow("Original", original)
-
             # resize to a manageable work resolution
             raw_frame_copy = raw_frame.copy()
             frame_resized = cv2.resize(raw_frame, (work_w, work_h))
@@ -240,12 +237,12 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             # blobs_points = blobs_detector.apply(bg_sub)
             # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
-            bounding_boxes =\
-                blobs_detector.apply(bg_sub)
+            bounding_boxes = blobs_detector.apply(bg_sub)
 
             blob_det_time += time.time() - t0
             t0 = time.time()
 
+            trayectos = []
             cant_personas = 0
             interpol_cant_persons_prev = cant_personas
             trayectos = []
@@ -266,7 +263,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 blobs, scores = \
                     person_detection.apply(rectangles, resolution_multiplier,
                                            raw_frame_copy, frame_resized_copy,
-                                           number_frame)
+                                           number_frame, fps)
                 cant_personas = len(blobs)
 
                 person_detection_time += time.time() - t0
