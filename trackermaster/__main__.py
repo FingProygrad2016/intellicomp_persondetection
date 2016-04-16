@@ -180,6 +180,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     fps = 0
 
+    comparisons_by_color_image = []
+
     # Start the main loop
     while has_more_images:
 
@@ -246,6 +248,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             cant_personas = 0
             interpol_cant_persons_prev = cant_personas
             trayectos = []
+            comparisons_by_color_image_aux = []
 
             if len(bounding_boxes):
                 rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
@@ -273,9 +276,13 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ## TRACKER # ##
                 # ############ ##
 
-                trayectos, info_to_send, tracklets = \
+                trayectos, info_to_send, tracklets, comparisons_by_color_image_aux = \
                     tracker.apply(blobs, frame_resized, bg_subtraction_resized,
                                   number_frame, scores)
+
+                if len(comparisons_by_color_image_aux) > 0:
+                    comparisons_by_color_image = comparisons_by_color_image_aux
+
                 del blobs
                 del scores
 
@@ -352,6 +359,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
             cv2.imshow('result', big_frame)
+
+            if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
+                if len(comparisons_by_color_image) > 0:
+                    cv2.imshow('comparisons by color', comparisons_by_color_image)
 
             display_time += time.time() - t0
 

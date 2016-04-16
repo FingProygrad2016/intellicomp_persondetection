@@ -3,6 +3,7 @@ from datetime import datetime
 import random
 
 import numpy as np
+import imutils
 import cv2
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
@@ -108,7 +109,6 @@ class Tracker:
 
         journeys = []
 
-        # elapsed_time = (frame_number - self.last_frame) * self.seconds_per_frame
         self.last_frame = frame_number
 
         for kf in self.k_filters:
@@ -117,6 +117,43 @@ class Tracker:
             if frames_without_one_to_one <= self.valid_frames_to_predict_position:
                 # predict position of kfs without one at one relationship for a valid time frame
                 kf.predict()
+
+        comparisons_by_color = []
+        if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
+            if len(blobs) > 0:
+                colors = []
+                images = []
+                min_height = config.getint('INFINITE_DISTANCE')
+                min_width = min_height
+                for blob in blobs:
+                    height  = blob["box"][1][1] - blob["box"][0][1]
+                    width   = blob["box"][1][0] - blob["box"][0][0]
+                    if height < min_height:
+                        min_height = height
+                    if width < min_width:
+                        min_width = width
+                    color, image = get_color_aux(raw_image, bg_subtraction_image, blob["box"])
+                    colors.append(color)
+                    images.append(image)
+
+                resized_images = []
+                for image in images:
+                    resized_images.append(cv2.resize(image, (60, 120)))  # (min_width, min_height)))
+
+                comparisons_by_color_aux = []
+                for kf in self.k_filters:
+                    resized_kf_image = cv2.resize(kf.image, (60, 120))  # (min_width, min_height)))
+                    x_axis_images = [resized_kf_image]
+                    color_comparisons = []
+                    for i, color in enumerate(colors):
+                        res = compare_color_aux(kf.color, color)
+                        color_comparisons.append((i, res))
+                    for comp in sorted(color_comparisons, key=lambda comp_item: comp_item[1]):
+                        x_axis_images.append(resized_images[comp[0]])
+                    comparisons_by_color_aux.append(np.hstack(x_axis_images))
+
+                if len(comparisons_by_color_aux) > 0:
+                    comparisons_by_color = np.vstack(comparisons_by_color_aux)
 
         if len(blobs) > 0:
             for item in self.kfs_per_blob:
@@ -278,7 +315,7 @@ class Tracker:
                             average_colors = []
                             for blob in unassigned_blobs:
                                 average_colors.append(get_color_aux(raw_image, bg_subtraction_image,
-                                                                    blob[0]["box"]))
+                                                                    blob[0]["box"])[0])
 
                             best_filter_per_blob, best_filter_per_blob_costs = \
                                 self.hung_alg_blob_color.apply(average_colors, kfs_to_compare)
@@ -349,7 +386,7 @@ class Tracker:
                                  self.kfs_per_blob[kf.group_number]['color']))
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
-            {k.id: k for k in self.k_filters}
+            {k.id: k for k in self.k_filters}, comparisons_by_color
 
     def add_new_tracking(self, point, size, blob, frame_number, score, raw_image, bg_subtraction_image):
         """
@@ -499,7 +536,7 @@ class TrackInfo:
         self.score = score
 
         self.rectangle = blob["box"]
-        self.color = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
+        self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
 
         self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
 
@@ -598,8 +635,8 @@ class TrackInfo:
             self.kalman_filter.statePost[4] = aux[1]/5.0
 
         # if color has not been set and there are at least 5 updates, calculate and set color
-        if (self.color is None) and (self.number_updates % 10 == 0):
-            self.color = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
+        if (self.color is None) or (self.number_updates % 10 == 0):
+            self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
             if not config.getboolean("JOURNEYS_RANDOM_COLOR"):
                 self.journey_color = self.color
 
@@ -647,7 +684,7 @@ def compare_color_aux(color1, color2):
 
 def get_color_aux(image, bg_subtraction_image, rect):
     if config.getboolean('USE_HISTOGRAMS'):
-        color = get_color_histogram(image, bg_subtraction_image, rect)
+        color, cropped_image = get_color_histogram(image, bg_subtraction_image, rect)
     else:
-        color = get_avg_color(image, bg_subtraction_image, rect)
-    return color
+        color, cropped_image = get_avg_color(image, bg_subtraction_image, rect)
+    return color, cropped_image

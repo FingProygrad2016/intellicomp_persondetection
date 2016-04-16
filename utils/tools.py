@@ -64,12 +64,14 @@ def get_avg_color(image, bg_subtraction_image, rect):
     :return:
     """
 
+    cropped_image = crop_image_with_rect(image, rect)
+
     return get_avg_color_in_pixels(
         apply_inverted_mask_to_image(
-            crop_image_with_rect(image, rect),
+            cropped_image,
             crop_image_with_rect(bg_subtraction_image, rect)
         )
-    )
+    ), cropped_image
 
 
 def get_color_histogram(image, bg_subtraction_image, rect):
@@ -81,10 +83,12 @@ def get_color_histogram(image, bg_subtraction_image, rect):
     :return:
     """
 
+    cropped_image = crop_image_with_rect(image, rect)
+
     return get_color_histogram_aux(
-        crop_image_with_rect(image, rect),
+        cropped_image,
         crop_image_with_rect(bg_subtraction_image, rect)[0:, 0:, 0]
-    )
+    ), cropped_image
 
 
 def get_avg_color_in_pixels(pixels):
