@@ -101,7 +101,7 @@ class Tracker:
         self.color_comparison_correct_matches = 0
         self.color_comparison_amount = 0
 
-    def apply(self, blobs, raw_image, bg_subtraction_image, frame_number, scores):
+    def apply(self, blobs, raw_image, bg_subtraction_image, frame_number):
         """
         For every blob, detect the corresponded tracked object and update it
         with the new information
