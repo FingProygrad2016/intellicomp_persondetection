@@ -6,24 +6,23 @@ import cv2
 import numpy as np
 from scipy.spatial import distance as dist
 from math import sqrt, pow
-from enum import Enum
 
 MAX_WIDTH = 320
 MAX_HEIGHT = 240
 
-
-class HistogramComparisonMethods(Enum):
+HistogramComparisonMethods = {
     # METHOD #1: UTILIZING OPENCV
-    CORRELATION = cv2.HISTCMP_CORREL
-    CHI_SQUARED = cv2.HISTCMP_CHISQR
-    CHI_SQUARED_ALT = cv2.HISTCMP_CHISQR_ALT
-    INTERSECTION = cv2.HISTCMP_INTERSECT
-    HELLINGER = cv2.HISTCMP_BHATTACHARYYA
-    KL_DIV = cv2.HISTCMP_KL_DIV
+    "CORRELATION": cv2.HISTCMP_CORREL,
+    "CHI_SQUARED": cv2.HISTCMP_CHISQR,
+    "CHI_SQUARED_ALT": cv2.HISTCMP_CHISQR_ALT,
+    "INTERSECTION": cv2.HISTCMP_INTERSECT,
+    "HELLINGER": cv2.HISTCMP_BHATTACHARYYA,
+    "KL_DIV": cv2.HISTCMP_KL_DIV,
     # METHOD #2: UTILIZING SCIPY
-    EUCLIDEAN = dist.euclidean
-    MANHATTAN = dist.cityblock
-    CHEBYSEV = dist.chebyshev
+    "EUCLIDEAN": dist.euclidean,
+    "MANHATTAN": dist.cityblock,
+    "CHEBYSEV": dist.chebyshev
+}
 
 
 def compare_color(color1, color2):
@@ -31,26 +30,29 @@ def compare_color(color1, color2):
 
 
 def compare_color_histogram(method, hist1, hist2):
-    if method in (HistogramComparisonMethods.CORRELATION,
-                  HistogramComparisonMethods.CHI_SQUARED,
-                  HistogramComparisonMethods.CHI_SQUARED_ALT,
-                  HistogramComparisonMethods.INTERSECTION,
-                  HistogramComparisonMethods.HELLINGER,
-                  HistogramComparisonMethods.KL_DIV):
+    if method in ("CORRELATION",
+                  "CHI_SQUARED",
+                  "CHI_SQUARED_ALT",
+                  "INTERSECTION",
+                  "HELLINGER",
+                  "KL_DIV"):
         reverse = False
 
         # if we are using the correlation or intersection
         # method, then sort the results in reverse order
-        if method in (HistogramComparisonMethods.CORRELATION, HistogramComparisonMethods.INTERSECTION):
+        if method in ("CORRELATION", "INTERSECTION"):
             reverse = True
 
-        result = cv2.compareHist(hist1, hist2, method.value)
+        result = cv2.compareHist(hist1, hist2, HistogramComparisonMethods[method])
 
         if reverse:
-            result = 1/result
+            if result != 0:
+                result = 1/result
+            else:
+                result = 99999
 
     else:
-        result = method(hist1, hist2)
+        result = HistogramComparisonMethods[method](hist1, hist2)
 
     return result
 

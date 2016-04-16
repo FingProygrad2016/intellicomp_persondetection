@@ -9,7 +9,7 @@ from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 
 from utils.tools import get_avg_color, euclidean_distance, compare_color,\
-    compare_color_histogram, HistogramComparisonMethods, get_color_histogram
+    compare_color_histogram, get_color_histogram
 from trackermaster.black_boxes.blob_assignment import HungarianAlgorithm
 from trackermaster.config import config
 
@@ -97,6 +97,10 @@ class Tracker:
         aux = block_diag(q, q)
         self.process_noise_cov = np.array(aux, np.float32)
 
+        # Debug/Evaluation Parameters
+        self.color_comparison_correct_matches = 0
+        self.color_comparison_amount = 0
+
     def apply(self, blobs, raw_image, bg_subtraction_image, frame_number, scores):
         """
         For every blob, detect the corresponded tracked object and update it
@@ -118,43 +122,6 @@ class Tracker:
                 # predict position of kfs without one at one relationship for a valid time frame
                 kf.predict()
 
-        comparisons_by_color = []
-        if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
-            if len(blobs) > 0:
-                colors = []
-                images = []
-                min_height = config.getint('INFINITE_DISTANCE')
-                min_width = min_height
-                for blob in blobs:
-                    height  = blob["box"][1][1] - blob["box"][0][1]
-                    width   = blob["box"][1][0] - blob["box"][0][0]
-                    if height < min_height:
-                        min_height = height
-                    if width < min_width:
-                        min_width = width
-                    color, image = get_color_aux(raw_image, bg_subtraction_image, blob["box"])
-                    colors.append(color)
-                    images.append(image)
-
-                resized_images = []
-                for image in images:
-                    resized_images.append(cv2.resize(image, (60, 120)))  # (min_width, min_height)))
-
-                comparisons_by_color_aux = []
-                for kf in self.k_filters:
-                    resized_kf_image = cv2.resize(kf.image, (60, 120))  # (min_width, min_height)))
-                    x_axis_images = [resized_kf_image]
-                    color_comparisons = []
-                    for i, color in enumerate(colors):
-                        res = compare_color_aux(kf.color, color)
-                        color_comparisons.append((i, res))
-                    for comp in sorted(color_comparisons, key=lambda comp_item: comp_item[1]):
-                        x_axis_images.append(resized_images[comp[0]])
-                    comparisons_by_color_aux.append(np.hstack(x_axis_images))
-
-                if len(comparisons_by_color_aux) > 0:
-                    comparisons_by_color = np.vstack(comparisons_by_color_aux)
-
         if len(blobs) > 0:
             for item in self.kfs_per_blob:
                 item['blobs'] = []
@@ -167,6 +134,7 @@ class Tracker:
 
             # Blobs are assigned to the nearest kalman filter (one kalman filter per blob)
             for i, blob in enumerate(blobs):
+                blob["id"] = i
                 best_kf = best_kf_per_blob_pos[i]
                 if best_kf != -1:
                     kf = self.k_filters[best_kf]
@@ -384,6 +352,84 @@ class Tracker:
                 journeys.append((kf.journey, kf.journey_color, kf.short_id,
                                  kf.rectangle, kf.kalman_filter.statePost, False,
                                  self.kfs_per_blob[kf.group_number]['color']))
+
+        comparisons_by_color = []
+        if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
+            if len(blobs) > 0:
+                colors = []
+                images = []
+                """
+                min_height = config.getint('INFINITE_DISTANCE')
+                min_width = min_height
+                """
+                for blob in blobs:
+                    """
+                    height = blob["box"][1][1] - blob["box"][0][1]
+                    width = blob["box"][1][0] - blob["box"][0][0]
+                    if height < min_height:
+                        min_height = height
+                    if width < min_width:
+                        min_width = width
+                    """
+                    color, image = get_color_aux(raw_image, bg_subtraction_image, blob["box"])
+                    colors.append(color)
+                    images.append(image)
+
+                image_to_add_in_width = []
+                image_to_add_in_height = []
+                width_to_add = 540 - len(blobs[:9]) * 60
+                height_to_add = 960 - len(self.k_filters[:8]) * 120
+                if width_to_add > 0:
+                    image_to_add_in_width = np.zeros((120, width_to_add, 3), np.uint8)
+                if height_to_add > 0:
+                    image_to_add_in_height = np.zeros((height_to_add, 600, 3), np.uint8)
+
+                resized_images = []
+                for image in images:
+                    resized_images.append(cv2.resize(image, (60, 120)))  # (min_width, min_height)))
+
+                comparisons_by_color_aux = []
+                for kf in self.k_filters[:8]:
+                    resized_kf_image = cv2.resize(kf.image, (60, 120))  # (min_width, min_height)))
+                    x_axis_images = [resized_kf_image]
+                    color_comparisons = []
+                    for i, color in enumerate(colors):
+                        res = compare_color_aux(kf.color, color)
+                        color_comparisons.append((i, res))
+                    sorted_comparisons = sorted(color_comparisons, key=lambda comp_item: comp_item[1])[:9]
+                    if len(self.kfs_per_blob[kf.group_number]['blobs']) > 0:
+                        self.color_comparison_amount += 1
+                        if sorted_comparisons[0][0] == self.kfs_per_blob[kf.group_number]['blobs'][0][0]['id']:
+                            cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (0, 255, 0), -1)
+                            self.color_comparison_correct_matches += 1
+                        else:
+                            cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (0, 0, 255), -1)
+                    else:
+                        cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (100, 100, 100), -1)
+                    for comp in sorted_comparisons:
+                        x_axis_images.append(resized_images[comp[0]])
+                    if len(image_to_add_in_width) > 0:
+                        x_axis_images.append(image_to_add_in_width)
+                    comparisons_by_color_aux.append(np.hstack(x_axis_images))
+
+                for kf in self.k_filters[8:]:
+                    color_comparisons = []
+                    for i, color in enumerate(colors):
+                        res = compare_color_aux(kf.color, color)
+                        color_comparisons.append((i, res))
+                    best_comparison = sorted(color_comparisons, key=lambda comp_item: comp_item[1])[0]
+                    if len(self.kfs_per_blob[kf.group_number]['blobs']) > 0:
+                        self.color_comparison_amount += 1
+                        if best_comparison[0] == self.kfs_per_blob[kf.group_number]['blobs'][0][0]['id']:
+                            self.color_comparison_correct_matches += 1
+
+                if len(image_to_add_in_height) > 0:
+                    comparisons_by_color_aux.append(image_to_add_in_height)
+                if len(comparisons_by_color_aux) > 0:
+                    comparisons_by_color = np.vstack(comparisons_by_color_aux)
+                    green_percentage = self.color_comparison_correct_matches * 100 / self.color_comparison_amount
+                    cv2.putText(comparisons_by_color, '{0:.2f}%'.format(green_percentage), (200, 300),
+                                cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}, comparisons_by_color
@@ -635,7 +681,7 @@ class TrackInfo:
             self.kalman_filter.statePost[4] = aux[1]/5.0
 
         # if color has not been set and there are at least 5 updates, calculate and set color
-        if (self.color is None) or (self.number_updates % 10 == 0):
+        if (self.color is None) or (self.number_updates % 5 == 0):
             self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
             if not config.getboolean("JOURNEYS_RANDOM_COLOR"):
                 self.journey_color = self.color
@@ -675,7 +721,7 @@ class TrackInfo:
 
 def compare_color_aux(color1, color2):
     if config.getboolean('USE_HISTOGRAMS'):
-        result = compare_color_histogram(HistogramComparisonMethods[config.get('HISTOGRAM_COMPARISON_METHOD')],
+        result = compare_color_histogram(config.get('HISTOGRAM_COMPARISON_METHOD'),
                                          color1, color2)
     else:
         result = compare_color(color1, color2)
