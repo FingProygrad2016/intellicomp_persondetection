@@ -36,7 +36,7 @@ class Histogram2D:
                 np.array(list(map(lambda x: max(x - 1, 0), row)))
 
         for blob in blobs:
-            if blob[1] > 0:
+            if blob[1] == 0:
                 self.confidenceMatrix = \
                     self.create_confidence_matrix((blob[2][0], blob[2][1],
                                                    blob[3][0], blob[3][1]),

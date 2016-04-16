@@ -9,6 +9,11 @@ import time
 
 from hashlib import sha1
 from datetime import datetime as dt
+
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
+
 from trackermaster.black_boxes import person_detection
 from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
@@ -18,10 +23,6 @@ from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
 from utils.tools import \
     find_resolution_multiplier, frame2base64png, x1y1x2y2_to_x1y1wh
-
-path = os.path.dirname(sys.modules[__name__].__file__)
-path = os.path.join(path, '..')
-sys.path.insert(0, path)
 
 
 def send_patternrecognition_config(communicator,
@@ -179,8 +180,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                                int(work_h / 10)))
 
     fps = 0
-
     comparisons_by_color_image = []
+    interpol_cant_persons_prev = 0
+    trayectos = []
+    tracklets = {}
 
     # Start the main loop
     while has_more_images:
@@ -244,14 +247,15 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             blob_det_time += time.time() - t0
             t0 = time.time()
 
-            trayectos = []
             cant_personas = 0
-            interpol_cant_persons_prev = cant_personas
-            trayectos = []
-            comparisons_by_color_image_aux = []
 
             if len(bounding_boxes):
                 rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
+
+                for (x, y, w, h) in rectangles:
+                    # Draw in blue candidate blobs
+                    cv2.rectangle(frame_resized_copy, (x, y),
+                                  (x + w, y + h), (255, 0, 0), 1)
 
                 # TODO: Remove!
                 if len(rectangles) > 50:
@@ -263,11 +267,20 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ## PERSONS DETECTOR # ##
                 # ##################### ##
 
-                blobs, scores = \
+                persons = \
                     person_detection.apply(rectangles, resolution_multiplier,
                                            raw_frame_copy, frame_resized_copy,
                                            number_frame, fps)
-                cant_personas = len(blobs)
+                cant_personas = len(persons)
+
+                for p in persons:
+                    # Red and Yellow rectangles
+                    (x_a, y_a), (x_b, y_b) = p['box']
+                    color = 0 if p['score'] == 1 else 255
+                    cv2.circle(
+                        img=frame_resized_copy,
+                        center=(int((x_a + x_b) / 2), int((y_a + y_b) / 2)),
+                        radius=0, color=(0, color, 255), thickness=3)
 
                 person_detection_time += time.time() - t0
                 t0 = time.time()
@@ -276,15 +289,16 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 # ## TRACKER # ##
                 # ############ ##
 
-                trayectos, info_to_send, tracklets, comparisons_by_color_image_aux = \
-                    tracker.apply(blobs, frame_resized, bg_subtraction_resized,
-                                  number_frame, scores)
+                trayectos_, info_to_send, tracklets, \
+                    comparisons_by_color_image_aux = \
+                    tracker.apply(persons, frame_resized,
+                                  bg_subtraction_resized, number_frame)
+                trayectos = trayectos_ if trayectos_ else trayectos
 
                 if len(comparisons_by_color_image_aux) > 0:
                     comparisons_by_color_image = comparisons_by_color_image_aux
 
-                del blobs
-                del scores
+                del persons
 
                 t_time += time.time() - t0
                 t0 = time.time()
@@ -308,25 +322,25 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                 pattern_recogn_time += time.time() - t0
 
-                t0 = time.time()
+            t0 = time.time()
 
-                for tracklet in tracklets.values():
-                    if getattr(tracklet, 'last_rule', None):
-                        time_pass = dt.now() - \
-                                    getattr(tracklet, 'last_rule_time')
-                        if time_pass.seconds < 9:
-                            cv2.putText(to_show, tracklet.last_rule,
-                                        (int(tracklet.last_point[0]),
-                                         int(tracklet.last_point[1])),
-                                        font, 0.3 -
-                                        (time_pass.seconds/30), (255, 0, 0), 1)
-                        else:
-                            tracklet.last_rule = None
+            for tracklet in tracklets.values():
+                if getattr(tracklet, 'last_rule', None):
+                    time_pass = dt.now() - \
+                                getattr(tracklet, 'last_rule_time')
+                    if time_pass.seconds < 9:
+                        cv2.putText(to_show, tracklet.last_rule,
+                                    (int(tracklet.last_point[0]),
+                                     int(tracklet.last_point[1])),
+                                    font, 0.3 -
+                                    (time_pass.seconds/30), (255, 0, 0), 1)
+                    else:
+                        tracklet.last_rule = None
 
-                # Draw the journeys of the tracked persons
-                draw_journeys(trayectos, [frame_resized_copy, to_show])
+            # Draw the journeys of the tracked persons
+            draw_journeys(trayectos, [frame_resized_copy, to_show])
 
-                show_info_time += time.time() - t0
+            show_info_time += time.time() - t0
 
             # #################### ##
             # ## DISPLAY RESULTS # ##
@@ -362,7 +376,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
                 if len(comparisons_by_color_image) > 0:
-                    cv2.imshow('comparisons by color', comparisons_by_color_image)
+                    cv2.imshow('comparisons by color',
+                               comparisons_by_color_image)
 
             display_time += time.time() - t0
 
@@ -412,5 +427,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
 if __name__ == '__main__':
     print('Start to process images...')
-    track_source()
+    from sys import argv
+    source = None
+    if len(argv) > 1:
+        source = argv[1]
+    track_source(source=source)
     print('END.')

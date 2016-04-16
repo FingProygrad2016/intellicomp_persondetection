@@ -113,6 +113,9 @@ class Tracker:
 
         journeys = []
 
+        # FIXME: Se debe utilizar directo el score en blobs en lugar de esta lista
+        scores = [p['score'] for p in blobs]
+
         self.last_frame = frame_number
 
         for kf in self.k_filters:

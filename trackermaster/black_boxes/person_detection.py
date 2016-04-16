@@ -23,12 +23,29 @@ last_update_frame = 0
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
 if PERSON_DETECTION_PARALLEL_MODE:
-    # import multiprocessing as mp
-    from multiprocessing.pool import Pool
+    import multiprocessing
+    # from multiprocessing.pool import Pool
     # import logging
     # mp.log_to_stderr(logging.DEBUG)
-    from concurrent.futures import ProcessPoolExecutor
-    PROCESSES_POOL = Pool() #ProcessPoolExecutor()
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from multiprocessing.managers import BaseManager
+
+    PROCESSES_POOL = ProcessPoolExecutor()
+    # Dummy sentence to initialize pool
+    PROCESSES_POOL.map(type, [''])
+    pids = PROCESSES_POOL._processes.keys()
+
+    HOG_ORDER_PID = []
+    HOGS = []
+    HOG_MANAGER = BaseManager()
+    HOG_MANAGER.register('HOG', cv2.HOGDescriptor, exposed=['detectMultiScale',
+                                                            'setSVMDetector'])
+    HOG_MANAGER.start()
+    for pid in pids:
+        hog = HOG_MANAGER.HOG()
+        hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+        HOG_ORDER_PID.append(pid)
+        HOGS.append(hog)
 
 
 def set_histogram_size(shape):
@@ -37,17 +54,22 @@ def set_histogram_size(shape):
     HISTOGRAM_2D = Histogram2D(shape=shape)
 
 
+MIN_NUMBER_FRAMES_HISTOGRAM = 100
+
+
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
           frame_resized_copy, number_frame, fps):
 
-    global PROCESSES_POOL, last_update_frame, update_confidence_matrix
+    if PERSON_DETECTION_PARALLEL_MODE:
+        global PROCESSES_POOL
+
+    global last_update_frame, update_confidence_matrix
 
     blobs = []
-    scores = []
     cropped_images = []
 
     update_confidence_matrix = \
-        (number_frame > 100) and \
+        (number_frame > MIN_NUMBER_FRAMES_HISTOGRAM) and \
         (CONFIDENCE_MATRIX_UPDATE_TIME > 0) and \
         ((number_frame - last_update_frame) >
          ((CONFIDENCE_MATRIX_UPDATE_TIME / 1000) * int(round(fps))))
@@ -59,7 +81,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         y_bin = int(h / 10) \
             if int(h / 10) < int(frame_resized_copy.shape[0] / 10) \
             else int(h / 10) - 1
-        if (number_frame <= 100) or update_confidence_matrix or \
+        if (number_frame <= MIN_NUMBER_FRAMES_HISTOGRAM) or \
+                update_confidence_matrix or \
                 (HISTOGRAM_2D.confidenceMatrix[x_bin][y_bin] > 0):
             # Translate from minimized work image to the original
             (x_orig, y_orig,
@@ -75,51 +98,53 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                                                  w_orig, h_orig),
                                                 BORDER_AROUND_BLOB)
 
-            # Draw in blue candidate blob
-            cv2.rectangle(frame_resized_copy, (x, y),
-                          (x + w, y + h), (255, 0, 0), 1)
-
             cropped_images.append((crop_img, resolution_multiplier, (w, h)))
 
     if cropped_images:
+
         if PERSON_DETECTION_PARALLEL_MODE:
-            res = PROCESSES_POOL.map(apply_single, cropped_images)
+            future_data = []
+            for arg in cropped_images:
+                future_data.append(PROCESSES_POOL.submit(apply_single, arg))
+            results = as_completed(future_data, timeout=1)
+            # res = PROCESSES_POOL.map(apply_single, cropped_images)
         else:
-            res = map(apply_single, cropped_images)
+            results = map(apply_single, cropped_images)
 
-        for xyAB in res:
-            score = xyAB[1]
+        try:
+            for persons_data in results:
+                if PERSON_DETECTION_PARALLEL_MODE:
+                    persons_data = persons_data.result()
 
-            if number_frame <= 100:
-                if score == 1:
-                    HISTOGRAM_2D.create_confidence_matrix((xyAB[2][0],      # x
-                                                           xyAB[2][1],      # y
-                                                           xyAB[3][0],      # w
-                                                           xyAB[3][1]),     # h
-                                                          len(xyAB[0]))
-            else:
-                for person in xyAB[0]:
-                    x_a, y_a, x_b, y_b = person
+                score = persons_data[1]
 
-                    # Red and Yellow rectangles
-                    color = 0 if score == 1 else 255
-                    cv2.circle(img=frame_resized_copy,
-                               center=(int((x_a + x_b)/2), int((y_a + y_b)/2)),
-                               radius=0, color=(0, color, 255), thickness=3)
+                if number_frame <= MIN_NUMBER_FRAMES_HISTOGRAM and score == 1:
+                    HISTOGRAM_2D.create_confidence_matrix(
+                        (persons_data[2][0], persons_data[2][1],   # (X  , Y
+                         persons_data[3][0], persons_data[3][1]),  # ,W  , H)
+                        len(persons_data[0]))
+                else:
+                    # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+                    # plt.savefig('lala.png')
+                    for person in persons_data[0]:
 
-                    blobs.append({
-                        "position": cv2.KeyPoint(round((x_a + x_b) / 2),
-                                                 round((y_a + y_b) / 2),
-                                                 (x_b - x_a) * (y_b - y_a)),
-                        "box": ((x_a, y_a), (x_b, y_b))
-                    })
-                    scores.append(score)
+                        x_a, y_a, x_b, y_b = person
+
+                        blobs.append({
+                            "position": cv2.KeyPoint(round((x_a + x_b) / 2),
+                                                     round((y_a + y_b) / 2),
+                                                     (x_b - x_a) * (y_b - y_a)),
+                            "box": ((x_a, y_a), (x_b, y_b)),
+                            "score": score
+                        })
+        except Exception as e:
+            print(e)
 
         if update_confidence_matrix:
-            HISTOGRAM_2D.update_confidence_matrix(res)
+            HISTOGRAM_2D.update_confidence_matrix(results)
             last_update_frame = number_frame
             update_confidence_matrix = False
-            # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
-            # plt.savefig('lala.png')
+            plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+            plt.savefig('lala.png')
 
-    return blobs, scores
+    return blobs
