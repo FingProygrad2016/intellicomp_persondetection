@@ -34,20 +34,20 @@ if PERSON_DETECTION_PARALLEL_MODE:
 
     PROCESSES_POOL = ProcessPoolExecutor()
     # Dummy sentence to initialize pool
-    PROCESSES_POOL.map(type, [''])
-    pids = PROCESSES_POOL._processes.keys()
+    # PROCESSES_POOL.map(type, [''])
+    # pids = PROCESSES_POOL._processes.keys()
 
-    HOG_ORDER_PID = []
-    HOGS = []
-    HOG_MANAGER = BaseManager()
-    HOG_MANAGER.register('HOG', cv2.HOGDescriptor, exposed=['detectMultiScale',
-                                                            'setSVMDetector'])
-    HOG_MANAGER.start()
-    for pid in pids:
-        hog = HOG_MANAGER.HOG()
-        hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-        HOG_ORDER_PID.append(pid)
-        HOGS.append(hog)
+    # HOG_ORDER_PID = []
+    # HOGS = []
+    # HOG_MANAGER = BaseManager()
+    # HOG_MANAGER.register('HOG', cv2.HOGDescriptor, exposed=['detectMultiScale',
+    #                                                         'setSVMDetector'])
+    # HOG_MANAGER.start()
+    # for pid in pids:
+    #     hog = HOG_MANAGER.HOG()
+    #     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+    #     HOG_ORDER_PID.append(pid)
+    #     HOGS.append(hog)
 
 
 def set_histogram_size(shape):
@@ -110,8 +110,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                 # FIXME: esto se hace para cumplir con los parametros, se debe
                 # FIXME: cambiar!
                 arg = list(arg)
-                arg.append(HOGS)
-                arg.append(HOG_ORDER_PID)
+                # arg.append(HOGS)
+                # arg.append(HOG_ORDER_PID)
                 future_data.append(PROCESSES_POOL.submit(apply_single, arg))
             results = as_completed(future_data)
             # res = PROCESSES_POOL.map(apply_single, cropped_images)

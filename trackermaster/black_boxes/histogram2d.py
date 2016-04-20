@@ -30,7 +30,7 @@ class Histogram2D:
         return self.confidenceMatrix
 
     def update_confidence_matrix(self, blobs):
-        print("Update histogram!!!")
+        # print("Update histogram!!!")
         for row_index, row in enumerate(self.confidenceMatrix):
             self.confidenceMatrix[row_index] = \
                 np.array(list(map(lambda x: max(x - 1, 0), row)))
