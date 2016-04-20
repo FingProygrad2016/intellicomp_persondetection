@@ -1,7 +1,5 @@
 import numpy as np
-print(np)
 import cv2
-print(cv2)
 
 from trackermaster.config import config
 

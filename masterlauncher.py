@@ -6,8 +6,8 @@ import json
 from multiprocessing import Process
 import pika
 
+from events import events_listener
 from patternmaster.__main__ import PatternMaster
-from trackermaster.__main__ import track_source
 from utils.communicator import Communicator
 from webmanager import socketio, app
 
@@ -52,16 +52,21 @@ if __name__ == '__main__':
     web_exposer = Process(target=websocket_exposer)
     web_exposer.start()
 
+    log("Starting up events sender...")
+    events_listener_process = Process(target=events_listener)
+    events_listener_process.start()
+
     log("Espero el resultado")
 
     for method, properties, msg in warnings_queue.consume():
         log('(TYPE %s) %s' %
-            (method.routing_key, msg))
+            (method.routing_key, msg[:100]))
         if method.routing_key == 'cmd':
             cmd = msg.decode().split(' ')
             if cmd[0] == 'EXIT':
                 pattern_master.terminate()
                 web_exposer.terminate()
+                events_listener_process.terminate()
                 [x.terminate() for x in streamings]
                 break
             elif cmd[0] == 'SOURCE' and cmd[1] == 'NEW':

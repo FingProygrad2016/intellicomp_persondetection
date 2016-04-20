@@ -1,42 +1,47 @@
 import json
-from threading import Thread
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask.ext.socketio import SocketIO
 
 from utils.communicator import Communicator
 from trackermaster.config import read_conf as configs_tracker
 from patternmaster.config import read_conf as configs_pattern
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
-socketio = SocketIO(app)
-thread = None
 
-warnings_queue = Communicator(queue_name='web_rcv', exchange='to_master',
-                              routing_key='#', exchange_type='topic')
+def create_app():
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
+    app.config['DEBUG'] = True
+    global socketio
+    socketio = SocketIO(app)
+
+    return app, socketio
 
 
-def background_thread():
-    for method, properties, msg in warnings_queue.consume():
-        if method.routing_key == 'cmd':
-            socketio.emit('cmd', {'data': msg.decode()}, broadcast=True)
-        elif method.routing_key == 'warnings':
-            socketio.emit('warning', {'data': msg.decode()}, broadcast=True)
-        elif method.routing_key == 'info':
-            socketio.emit('info', {'data': msg.decode()}, broadcast=True)
-        elif method.routing_key == 'img':
-            socketio.emit('img', {'data': msg.decode()}, broadcast=True)
+app, socketio = create_app()
 
 
 @app.route('/')
 def index():
-    global thread
-    if thread is None:
-        thread = Thread(target=background_thread)
-        thread.daemon = True
-        thread.start()
     return render_template('index.html')
+
+
+@app.route('/events', methods=['POST'])
+def receive_events():
+    data = json.loads(request.data.decode())
+    method = data['method']
+    msg = data['msg']
+    global socketio
+    if method == 'cmd':
+        socketio.emit('cmd', {'data': msg}, broadcast=True)
+    elif method == 'warnings':
+        socketio.emit('warning', {'data': msg}, broadcast=True)
+    elif method == 'info':
+        socketio.emit('info', {'data': msg}, broadcast=True)
+    elif method == 'img':
+        socketio.emit('img', {'data': msg}, broadcast=True)
+
+    return "OK", 200
 
 
 @app.route('/configs')
@@ -60,5 +65,4 @@ def ws_disconn(data):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    # app.run(debug=False)
+    socketio.run(app)
