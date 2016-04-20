@@ -218,9 +218,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         number_frame += 1
         aux_time = time.time() - t0
-        read_time += aux_time
-        if aux_time > max_read_time:
-            max_read_time = aux_time
+        if number_frame > 200:
+            read_time += aux_time
+            if aux_time > max_read_time:
+                max_read_time = aux_time
 
         if has_more_images:
             # resize to a manageable work resolution
@@ -246,9 +247,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 cv2.resize(bg_subtraction, (work_w, work_h))
 
             aux_time = time.time() - t0
-            bg_sub_time += aux_time
-            if aux_time > max_bg_sub_time:
-                max_bg_sub_time = aux_time
+            if number_frame > 200:
+                bg_sub_time += aux_time
+                if aux_time > max_bg_sub_time:
+                    max_bg_sub_time = aux_time
 
             # ################### ##
             # ## BLOBS DETECTOR # ##
@@ -261,9 +263,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             bounding_boxes = blobs_detector.apply(bg_sub)
 
             aux_time = time.time() - t0
-            blob_det_time += aux_time
-            if aux_time > max_blob_det_time:
-                max_blob_det_time = aux_time
+            if number_frame > 200:
+                blob_det_time += aux_time
+                if aux_time > max_blob_det_time:
+                    max_blob_det_time = aux_time
 
             t0 = time.time()
 
@@ -303,9 +306,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         radius=0, color=(0, color, 255), thickness=3)
 
                 aux_time = time.time() - t0
-                person_detection_time += aux_time
-                if aux_time > max_person_detection_time:
-                    max_person_detection_time = aux_time
+                if number_frame > 200:
+                    person_detection_time += aux_time
+                    if aux_time > max_person_detection_time:
+                        max_person_detection_time = aux_time
                     
                 t0 = time.time()
 
@@ -325,9 +329,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 del persons
 
                 aux_time = time.time() - t0
-                t_time += aux_time
-                if aux_time > max_t_time:
-                    max_t_time = aux_time
+                if number_frame > 200:
+                    t_time += aux_time
+                    if aux_time > max_t_time:
+                        max_t_time = aux_time
 
                 t0 = time.time()
 
@@ -349,9 +354,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                                    patternmaster_conf)
 
                 aux_time = time.time() - t0
-                pattern_recogn_time += aux_time
-                if aux_time > max_pattern_recogn_time:
-                    max_pattern_recogn_time = aux_time
+                if number_frame > 200:
+                    pattern_recogn_time += aux_time
+                    if aux_time > max_pattern_recogn_time:
+                        max_pattern_recogn_time = aux_time
 
             t0 = time.time()
 
@@ -372,9 +378,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             draw_journeys(trayectos, [frame_resized_copy, to_show])
 
             aux_time = time.time() - t0
-            show_info_time += aux_time
-            if aux_time > max_show_info_time:
-                max_show_info_time = aux_time
+            if number_frame > 200:
+                show_info_time += aux_time
+                if aux_time > max_show_info_time:
+                    max_show_info_time = aux_time
 
             # #################### ##
             # ## DISPLAY RESULTS # ##
@@ -414,9 +421,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                comparisons_by_color_image)
 
             aux_time = time.time() - t0
-            display_time += aux_time
-            if aux_time > max_display_time:
-                max_display_time = aux_time
+            if number_frame > 200:
+                display_time += aux_time
+                if aux_time > max_display_time:
+                    max_display_time = aux_time
 
             t0 = time.time()
 
@@ -425,38 +433,41 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 break
 
             aux_time = time.time() - t0
-            wait_key_time += aux_time
-            if aux_time > max_wait_key_time:
-                max_wait_key_time = aux_time
+            if number_frame > 200:
+                wait_key_time += aux_time
+                if aux_time > max_wait_key_time:
+                    max_wait_key_time = aux_time
 
             aux_time = time.time() - t_total
-            total_time += aux_time
-            if aux_time > max_total_time:
-                max_total_time = aux_time
+            if number_frame > 200:
+                total_time += aux_time
+                if aux_time > max_total_time:
+                    max_total_time = aux_time
 
     cv2.destroyAllWindows()
 
+    number_frame_skip_first = number_frame - 200
     print("Average times::::")
-    read_time = read_time / number_frame
+    read_time /= number_frame_skip_first
     print("Read time " + str(read_time))
-    bg_sub_time = bg_sub_time / number_frame
+    bg_sub_time /= number_frame_skip_first
     print("Background subtraction time " + str(bg_sub_time))
-    blob_det_time = blob_det_time / number_frame
+    blob_det_time /= number_frame_skip_first
     print("Blob detector time " + str(blob_det_time))
-    person_detection_time = person_detection_time / number_frame
+    person_detection_time /= number_frame_skip_first
     print("Person detector time " + str(person_detection_time))
-    t_time = t_time / number_frame
+    t_time /= number_frame_skip_first
     print("Tracker time " + str(t_time))
-    pattern_recogn_time = pattern_recogn_time / number_frame
+    pattern_recogn_time /= number_frame_skip_first
     print("Communication with pattern recognition time " +
           str(pattern_recogn_time))
-    show_info_time = show_info_time / number_frame
+    show_info_time /= number_frame_skip_first
     print("Text and paths time " + str(show_info_time))
-    display_time = display_time / number_frame
+    display_time /= number_frame_skip_first
     print("Display time " + str(display_time))
-    wait_key_time = wait_key_time / number_frame
+    wait_key_time /= number_frame_skip_first
     print("cv2.waitKey time " + str(wait_key_time))
-    total_time = total_time / number_frame
+    total_time /= number_frame_skip_first
     print("Total time " + str(total_time))
 
     print("")
