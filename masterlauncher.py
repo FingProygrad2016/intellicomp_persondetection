@@ -1,3 +1,4 @@
+import subprocess
 from hashlib import sha1
 from datetime import datetime as dt
 import json
@@ -76,17 +77,22 @@ if __name__ == '__main__':
                 patternmaster_conf = json.loads(cmd[5]) \
                     if len(cmd) > 5 else None
 
-                streamings[identifier] = Process(
-                    target=track_source,
-                    args=[identifier, cmd[2], trackermaster_conf,
-                          patternmaster_conf], daemon=False)
-                streamings[identifier].start()
+                # streamings[identifier] = Process(
+                #     target=track_source,
+                #     args=[identifier, cmd[2], trackermaster_conf,
+                #           patternmaster_conf], daemon=False)
+                # streamings[identifier].start()
+                streamings[identifier] = subprocess.Popen(
+                    ["python3", "trackermaster", identifier, cmd[2],
+                     json.dumps(trackermaster_conf),
+                     json.dumps(patternmaster_conf)])
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':
                 if len(cmd) > 2:
                     source = streamings.get(cmd[2])
                     if source:
-                        source.terminate()
+                        # source.terminate()
+                        source.kill()
                         del streamings[cmd[2]]
             elif cmd[0] == 'SOURCE' and cmd[1] == 'LIST':
                 comm = Communicator(exchange='to_master', exchange_type='topic')

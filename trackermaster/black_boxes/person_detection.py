@@ -30,6 +30,8 @@ if PERSON_DETECTION_PARALLEL_MODE:
     from concurrent.futures import ProcessPoolExecutor, as_completed
     from multiprocessing.managers import BaseManager
 
+    results_aux = []
+
     PROCESSES_POOL = ProcessPoolExecutor()
     # Dummy sentence to initialize pool
     PROCESSES_POOL.map(type, [''])
@@ -105,6 +107,11 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
         if PERSON_DETECTION_PARALLEL_MODE:
             future_data = []
             for arg in cropped_images:
+                # FIXME: esto se hace para cumplir con los parametros, se debe
+                # FIXME: cambiar!
+                arg = list(arg)
+                arg.append(HOGS)
+                arg.append(HOG_ORDER_PID)
                 future_data.append(PROCESSES_POOL.submit(apply_single, arg))
             results = as_completed(future_data, timeout=1)
             # res = PROCESSES_POOL.map(apply_single, cropped_images)
@@ -115,6 +122,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             for persons_data in results:
                 if PERSON_DETECTION_PARALLEL_MODE:
                     persons_data = persons_data.result()
+                    results_aux.append(persons_data)
 
                 score = persons_data[1]
 
@@ -137,14 +145,17 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                             "box": ((x_a, y_a), (x_b, y_b)),
                             "score": score
                         })
+            else:
+                if update_confidence_matrix:
+                    if PERSON_DETECTION_PARALLEL_MODE:
+                        results = results_aux
+                    HISTOGRAM_2D.update_confidence_matrix(results)
+                    last_update_frame = number_frame
+                    update_confidence_matrix = False
+                    # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+                    # plt.savefig('lala.png')
+
         except Exception as e:
             print(e)
-
-        if update_confidence_matrix:
-            HISTOGRAM_2D.update_confidence_matrix(results)
-            last_update_frame = number_frame
-            update_confidence_matrix = False
-            plt.imshow(HISTOGRAM_2D.confidenceMatrix)
-            plt.savefig('lala.png')
 
     return blobs

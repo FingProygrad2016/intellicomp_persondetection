@@ -486,8 +486,15 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 if __name__ == '__main__':
     print('Start to process images...')
     from sys import argv
+    identifier = None
     source = None
+    tmconf = None
+    pmconf = None
     if len(argv) > 1:
-        source = argv[1]
-    track_source(source=source)
+        identifier = argv[1]
+        source = argv[2]
+        tmconf = json.loads(argv[3])
+        pmconf = json.loads(argv[4])
+    track_source(identifier=identifier, source=source,
+                 trackermaster_conf=tmconf, patternmaster_conf=pmconf)
     print('END.')
