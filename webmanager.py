@@ -1,3 +1,5 @@
+
+# To see opened connections, use command: lsof -a -i -c python3.5
 import json
 
 from flask import Flask, render_template, request

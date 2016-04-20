@@ -31,6 +31,8 @@ class BackgroundSubtractorMOG2:
 
         return bg
 
+ones_matrix_for_erode = np.ones((3, 3), np.uint8)
+ones_matrix_for_dilate = np.ones((4, 3), np.uint8)
 
 class BackgroundSubtractorKNN:
 
@@ -95,8 +97,8 @@ class BackgroundSubtractorKNN:
 
         # Erosiono y dilato el resultado para eliminar el ruido
         erode_dilate = \
-            cv2.erode(fgMaskKNN, np.ones((3, 3), np.uint8), iterations=1)
+            cv2.erode(fgMaskKNN, ones_matrix_for_erode, iterations=1)
         erode_dilate = \
-            cv2.dilate(erode_dilate, np.ones((4, 3), np.uint8), iterations=1)
+            cv2.dilate(erode_dilate, ones_matrix_for_dilate, iterations=1)
 
         return erode_dilate

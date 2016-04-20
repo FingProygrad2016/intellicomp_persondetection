@@ -20,6 +20,14 @@ from trackermaster.config import config
 # http://airccse.org/journal/sipij/papers/2211sipij01.pdf
 
 
+SHOW_COMPARISONS_BY_COLOR = config.getboolean('SHOW_COMPARISONS_BY_COLOR')
+SHOW_COMPARISONS_BY_COLOR_GREEN = config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREEN')
+SHOW_COMPARISONS_BY_COLOR_RED = config.getboolean('SHOW_COMPARISONS_BY_COLOR_RED')
+SHOW_COMPARISONS_BY_COLOR_GREY = config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREY')
+JOURNEYS_RANDOM_COLOR = config.getboolean('JOURNEYS_RANDOM_COLOR')
+USE_HISTOGRAMS = config.getboolean('USE_HISTOGRAMS')
+HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
+
 class Tracker:
 
     k_filters = []
@@ -342,81 +350,10 @@ class Tracker:
                                  kf.rectangle, kf.kalman_filter.statePost, False,
                                  self.kfs_per_blob[kf.group_number]['color']))
 
-            if config.getboolean('SHOW_COMPARISONS_BY_COLOR'):
-                colors = []
-                images = []
-                """
-                min_height = config.getint('INFINITE_DISTANCE')
-                min_width = min_height
-                """
-                for blob in blobs:
-                    """
-                    height = blob["box"][1][1] - blob["box"][0][1]
-                    width = blob["box"][1][0] - blob["box"][0][0]
-                    if height < min_height:
-                        min_height = height
-                    if width < min_width:
-                        min_width = width
-                    """
-                    color, image = get_color_aux(raw_image, bg_subtraction_image, blob["box"])
-                    colors.append(color)
-                    images.append(image)
-
-                image_to_add_in_width = []
-                image_to_add_in_height = []
-                width_to_add = 540 - len(blobs[:9]) * 60
-                height_to_add = 960 - len(self.k_filters[:8]) * 120
-                if width_to_add > 0:
-                    image_to_add_in_width = np.zeros((120, width_to_add, 3), np.uint8)
-                if height_to_add > 0:
-                    image_to_add_in_height = np.zeros((height_to_add, 600, 3), np.uint8)
-
-                resized_images = []
-                for image in images:
-                    resized_images.append(cv2.resize(image, (60, 120)))  # (min_width, min_height)))
-
-                comparisons_by_color_aux = []
-                for kf in self.k_filters[:8]:
-                    resized_kf_image = cv2.resize(kf.image, (60, 120))  # (min_width, min_height)))
-                    x_axis_images = [resized_kf_image]
-                    color_comparisons = []
-                    for i, color in enumerate(colors):
-                        res = compare_color_aux(kf.color, color)
-                        color_comparisons.append((i, res))
-                    sorted_comparisons = sorted(color_comparisons, key=lambda comp_item: comp_item[1])[:9]
-                    if len(self.kfs_per_blob[kf.group_number]['blobs']) > 0:
-                        self.color_comparison_amount += 1
-                        if sorted_comparisons[0][0] == self.kfs_per_blob[kf.group_number]['blobs'][0][0]['id']:
-                            cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (0, 255, 0), -1)
-                            self.color_comparison_correct_matches += 1
-                        else:
-                            cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (0, 0, 255), -1)
-                    else:
-                        cv2.rectangle(x_axis_images[0], (0, 0), (3, 120), (100, 100, 100), -1)
-                    for comp in sorted_comparisons:
-                        x_axis_images.append(resized_images[comp[0]])
-                    if len(image_to_add_in_width) > 0:
-                        x_axis_images.append(image_to_add_in_width)
-                    comparisons_by_color_aux.append(np.hstack(x_axis_images))
-
-                for kf in self.k_filters[8:]:
-                    color_comparisons = []
-                    for i, color in enumerate(colors):
-                        res = compare_color_aux(kf.color, color)
-                        color_comparisons.append((i, res))
-                    best_comparison = sorted(color_comparisons, key=lambda comp_item: comp_item[1])[0]
-                    if len(self.kfs_per_blob[kf.group_number]['blobs']) > 0:
-                        self.color_comparison_amount += 1
-                        if best_comparison[0] == self.kfs_per_blob[kf.group_number]['blobs'][0][0]['id']:
-                            self.color_comparison_correct_matches += 1
-
-                if len(image_to_add_in_height) > 0:
-                    comparisons_by_color_aux.append(image_to_add_in_height)
-                if len(comparisons_by_color_aux) > 0:
-                    comparisons_by_color = np.vstack(comparisons_by_color_aux)
-                    green_percentage = self.color_comparison_correct_matches * 100 / self.color_comparison_amount
-                    cv2.putText(comparisons_by_color, '{0:.2f}%'.format(green_percentage), (200, 300),
-                                cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
+            if SHOW_COMPARISONS_BY_COLOR:
+                comparisons_by_color = self.get_image_of_comparisons_by_color(raw_image,
+                                                                              bg_subtraction_image,
+                                                                              blobs)
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}, comparisons_by_color
@@ -548,6 +485,74 @@ class Tracker:
 
         return kf_to_remove_in_item, blob_to_remove_in_item
 
+    def get_image_of_comparisons_by_color(self, raw_image, bg_subtraction_image, blobs):
+        colors = []
+        images = []
+        for blob in blobs:
+            color, image = get_color_aux(raw_image, bg_subtraction_image, blob["box"])
+            colors.append(color)
+            images.append(image)
+
+        image_to_add_in_width = []
+        width_to_add = 540 - len(blobs[:9]) * 60
+        if width_to_add > 0:
+            image_to_add_in_width = np.zeros((120, width_to_add, 3), np.uint8)
+
+        resized_images = []
+        for image in images:
+            resized_images.append(cv2.resize(image, (60, 120)))  # (min_width, min_height)))
+
+        rows_filled = 0
+        comparisons_by_color_aux = []
+        for kf in self.k_filters[:8]:
+            resized_kf_image = cv2.resize(kf.image, (60, 120))
+            color_comparisons = []
+            for i, color in enumerate(colors):
+                res = compare_color_aux(kf.color, color)
+                color_comparisons.append((i, res))
+            sorted_comparisons = sorted(color_comparisons, key=lambda comp_item: comp_item[1])[:9]
+
+            show = True
+            if len(self.kfs_per_blob[kf.group_number]['blobs']) > 0:
+                self.color_comparison_amount += 1
+                if sorted_comparisons[0][0] == self.kfs_per_blob[kf.group_number]['blobs'][0][0]['id']:
+                    cv2.rectangle(resized_kf_image, (0, 0), (3, 120), (0, 255, 0), -1)
+                    self.color_comparison_correct_matches += 1
+                    if not SHOW_COMPARISONS_BY_COLOR_GREEN:
+                        show = False
+                else:
+                    cv2.rectangle(resized_kf_image, (0, 0), (3, 120), (0, 0, 255), -1)
+                    if not SHOW_COMPARISONS_BY_COLOR_RED:
+                        show = False
+            else:
+                cv2.rectangle(resized_kf_image, (0, 0), (3, 120), (100, 100, 100), -1)
+                if not SHOW_COMPARISONS_BY_COLOR_GREY:
+                    show = False
+
+            if show:
+                rows_filled += 1
+                x_axis_images = [resized_kf_image]
+                for comp in sorted_comparisons:
+                    x_axis_images.append(resized_images[comp[0]])
+                if len(image_to_add_in_width) > 0:
+                    x_axis_images.append(image_to_add_in_width)
+                comparisons_by_color_aux.append(np.hstack(x_axis_images))
+
+        image_to_add_in_height = []
+        height_to_add = 960 - rows_filled * 120
+        if height_to_add > 0:
+            image_to_add_in_height = np.zeros((height_to_add, 600, 3), np.uint8)
+
+        if len(image_to_add_in_height) > 0:
+            comparisons_by_color_aux.append(image_to_add_in_height)
+        if len(comparisons_by_color_aux) > 0:
+            comparisons_by_color = np.vstack(comparisons_by_color_aux[:8])
+            green_percentage = self.color_comparison_correct_matches * 100 / self.color_comparison_amount
+            cv2.putText(comparisons_by_color, '{0:.2f}%'.format(green_percentage), (200, 300),
+                        cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
+
+        return comparisons_by_color
+
 
 class TrackInfo:
 
@@ -600,7 +605,7 @@ class TrackInfo:
 
         self.journey = []
 
-        if config.getboolean("JOURNEYS_RANDOM_COLOR"):
+        if JOURNEYS_RANDOM_COLOR:
             self.journey_color = (random.randint(0, 255), random.randint(0, 255),
                                   random.randint(0, 255))
         else:
@@ -668,7 +673,7 @@ class TrackInfo:
         # if color has not been set and there are at least 5 updates, calculate and set color
         if (self.color is None) or (self.number_updates % 5 == 0):
             self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
-            if not config.getboolean("JOURNEYS_RANDOM_COLOR"):
+            if not JOURNEYS_RANDOM_COLOR:
                 self.journey_color = self.color
 
     def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
@@ -705,8 +710,8 @@ class TrackInfo:
 
 
 def compare_color_aux(color1, color2):
-    if config.getboolean('USE_HISTOGRAMS'):
-        result = compare_color_histogram(config.get('HISTOGRAM_COMPARISON_METHOD'),
+    if USE_HISTOGRAMS:
+        result = compare_color_histogram(HISTOGRAM_COMPARISON_METHOD,
                                          color1, color2)
     else:
         result = compare_color(color1, color2)
@@ -714,7 +719,7 @@ def compare_color_aux(color1, color2):
 
 
 def get_color_aux(image, bg_subtraction_image, rect):
-    if config.getboolean('USE_HISTOGRAMS'):
+    if USE_HISTOGRAMS:
         color, cropped_image = get_color_histogram(image, bg_subtraction_image, rect)
     else:
         color, cropped_image = get_avg_color(image, bg_subtraction_image, rect)
