@@ -11,7 +11,7 @@ from patternmaster.config import read_conf as configs_pattern
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = '#$%*(0987654@#$%_top_secret_key_*&$#@'
-    app.config['DEBUG'] = True
+    app.config['DEBUG'] = False
     global socketio
     socketio = SocketIO(app)
 
@@ -64,5 +64,8 @@ def ws_disconn(data):
     comm.send_message(data['data'], routing_key='cmd')
 
 
-if __name__ == '__main__':
+def run_app():
     socketio.run(app)
+
+if __name__ == '__main__':
+    run_app()

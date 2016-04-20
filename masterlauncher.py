@@ -8,8 +8,9 @@ import pika
 
 from events import events_listener
 from patternmaster.__main__ import PatternMaster
+from streamcontroller import StreamController as SC
 from utils.communicator import Communicator
-from webmanager import socketio, app
+from webmanager import run_app as run_webmanager
 
 # REFERENCIAS
 # https://docs.python.org/3.5/library/multiprocessing.html#multiprocessing.pool.Pool
@@ -21,7 +22,7 @@ def log(msg):
 
 
 def websocket_exposer():
-    socketio.run(app, port=5000)
+    run_webmanager()
 
 
 def pattern_recognition_launcher():
@@ -34,9 +35,10 @@ def create_queue(q_name):
     channel = connection.channel()
     return channel.basic_get(q_name)
 
-if __name__ == '__main__':
 
-    streamings = {}
+stream_controller = SC()
+
+if __name__ == '__main__':
 
     # Starting up the base
 
@@ -59,6 +61,7 @@ if __name__ == '__main__':
     log("Espero el resultado")
 
     for method, properties, msg in warnings_queue.consume():
+        print(":::: STREAM CONTROLLER %s" % stream_controller)
         log('(TYPE %s) %s' %
             (method.routing_key, msg[:100]))
         if method.routing_key == 'cmd':
@@ -67,7 +70,7 @@ if __name__ == '__main__':
                 pattern_master.terminate()
                 web_exposer.terminate()
                 events_listener_process.terminate()
-                [x.terminate() for x in streamings]
+                stream_controller.remove_all()
                 break
             elif cmd[0] == 'SOURCE' and cmd[1] == 'NEW':
                 if len(cmd) > 3:
@@ -82,27 +85,20 @@ if __name__ == '__main__':
                 patternmaster_conf = json.loads(cmd[5]) \
                     if len(cmd) > 5 else None
 
-                # streamings[identifier] = Process(
-                #     target=track_source,
-                #     args=[identifier, cmd[2], trackermaster_conf,
-                #           patternmaster_conf], daemon=False)
-                # streamings[identifier].start()
-                streamings[identifier] = subprocess.Popen(
+                stream_controller.add(identifier, subprocess.Popen(
                     ["python3", "trackermaster", identifier, cmd[2],
                      json.dumps(trackermaster_conf),
-                     json.dumps(patternmaster_conf)])
+                     json.dumps(patternmaster_conf)]))
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':
                 if len(cmd) > 2:
-                    source = streamings.get(cmd[2])
-                    if source:
-                        # source.terminate()
-                        source.kill()
-                        del streamings[cmd[2]]
+                    source_id = cmd[2]
+                    stream_controller.remove(source_id)
             elif cmd[0] == 'SOURCE' and cmd[1] == 'LIST':
                 comm = Communicator(exchange='to_master', exchange_type='topic')
                 comm.send_message(json.dumps(dict(
-                    info_id="SOURCE LIST", content=list(streamings.keys()))),
+                    info_id="SOURCE LIST",
+                    content=list(stream_controller.get_identidiers()))),
                     routing_key='info')
 
     del warnings_queue

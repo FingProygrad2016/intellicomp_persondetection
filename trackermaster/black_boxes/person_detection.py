@@ -113,7 +113,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                 arg.append(HOGS)
                 arg.append(HOG_ORDER_PID)
                 future_data.append(PROCESSES_POOL.submit(apply_single, arg))
-            results = as_completed(future_data, timeout=1)
+            results = as_completed(future_data)
             # res = PROCESSES_POOL.map(apply_single, cropped_images)
         else:
             results = map(apply_single, cropped_images)
