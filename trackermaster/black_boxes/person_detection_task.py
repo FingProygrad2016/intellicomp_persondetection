@@ -20,10 +20,6 @@ first_time = True
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
 
-HOG = cv2.HOGDescriptor()
-aux = cv2.HOGDescriptor_getDefaultPeopleDetector()
-HOG.setSVMDetector(aux)
-
 
 def apply_single(args):
 
@@ -34,23 +30,13 @@ def apply_single(args):
     score = 0
 
     global HOG
+    global first_time
 
-    # if PERSON_DETECTION_PARALLEL_MODE:
-    #     HOG_POOL = args[3]
-    #     HOG_ORDER_PID = args[4]
-    #     # HOG unique instance
-    #     # if first_time:
-    #     for pos, pid in enumerate(HOG_ORDER_PID):
-    #         if pid == multiprocessing.current_process().pid:
-    #             HOG = HOG_POOL[pos]
-    #             break
-    # else:
-    #     global HOG, first_time
-        # if first_time:
-        #     first_time = False
-        #     HOG = cv2.HOGDescriptor()
-        #     aux = cv2.HOGDescriptor_getDefaultPeopleDetector()
-        #     HOG.setSVMDetector(aux)
+    if first_time:
+        HOG = cv2.HOGDescriptor()
+        aux = cv2.HOGDescriptor_getDefaultPeopleDetector()
+        HOG.setSVMDetector(aux)
+        first_time = False
 
     (rects, weights) = HOG.detectMultiScale(
         image, winStride=WIN_STRIDE, padding=PADDING, scale=SCALE)

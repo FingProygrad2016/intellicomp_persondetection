@@ -22,32 +22,13 @@ last_update_frame = 0
 # Pool of processes for process person detection in parallel
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+
 if PERSON_DETECTION_PARALLEL_MODE:
-    import multiprocessing
-    # from multiprocessing.pool import Pool
-    # import logging
-    # mp.log_to_stderr(logging.DEBUG)
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-    from multiprocessing.managers import BaseManager
+    from multiprocessing.pool import Pool
 
     results_aux = []
 
-    PROCESSES_POOL = ProcessPoolExecutor()
-    # Dummy sentence to initialize pool
-    # PROCESSES_POOL.map(type, [''])
-    # pids = PROCESSES_POOL._processes.keys()
-
-    # HOG_ORDER_PID = []
-    # HOGS = []
-    # HOG_MANAGER = BaseManager()
-    # HOG_MANAGER.register('HOG', cv2.HOGDescriptor, exposed=['detectMultiScale',
-    #                                                         'setSVMDetector'])
-    # HOG_MANAGER.start()
-    # for pid in pids:
-    #     hog = HOG_MANAGER.HOG()
-    #     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-    #     HOG_ORDER_PID.append(pid)
-    #     HOGS.append(hog)
+    PROCESSES_POOL = Pool()
 
 
 def set_histogram_size(shape):
@@ -105,23 +86,13 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
     if cropped_images:
 
         if PERSON_DETECTION_PARALLEL_MODE:
-            future_data = []
-            for arg in cropped_images:
-                # FIXME: esto se hace para cumplir con los parametros, se debe
-                # FIXME: cambiar!
-                arg = list(arg)
-                # arg.append(HOGS)
-                # arg.append(HOG_ORDER_PID)
-                future_data.append(PROCESSES_POOL.submit(apply_single, arg))
-            results = as_completed(future_data)
-            # res = PROCESSES_POOL.map(apply_single, cropped_images)
+            results = PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
         else:
             results = map(apply_single, cropped_images)
 
         try:
             for persons_data in results:
                 if PERSON_DETECTION_PARALLEL_MODE:
-                    persons_data = persons_data.result()
                     results_aux.append(persons_data)
 
                 score = persons_data[1]
