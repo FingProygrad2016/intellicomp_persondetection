@@ -1,13 +1,13 @@
 import cv2
 
-from trackermaster.config import config
-from utils.tools import crop_image_for_person_detection
-from trackermaster.black_boxes.histogram2d import Histogram2D
-from trackermaster.black_boxes.person_detection_task import apply_single
-
 import matplotlib
 matplotlib.use('template')
+
 from matplotlib import pyplot as plt
+from trackermaster.config import config
+from trackermaster.black_boxes.histogram2d import Histogram2D
+from trackermaster.black_boxes.person_detection_task import apply_single
+from utils.tools import crop_image_for_person_detection, verify_blob
 
 # LOAD CONFIG. PARAMETERS
 BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
@@ -19,7 +19,6 @@ FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS = \
 CONFIDENCE_MATRIX_UPDATE_TIME = config.getint("CONFIDENCE_MATRIX_UPDATE_TIME")
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
-MIN_NUMBER_FRAMES_HISTOGRAM = 100
 
 # GLOBAL VARIABLES DECLARATION
 last_update_frame = 0
@@ -59,7 +58,7 @@ def must_update_histograms(number_frame, fps):
 
 
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
-          frame_resized_copy, number_frame, fps):
+          frame_resize_copy, number_frame, fps):
 
     global last_update_frame, update_confidence_matrix
 
@@ -75,25 +74,23 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
     for (x, y, w, h) in rectangles:
         x_bin = min(int(round(w / 10.)),
-                    int(frame_resized_copy.shape[1] / 10) - 1)
+                    int(frame_resize_copy.shape[1] / 10) - 1)
         y_bin = min(int(round(h / 10.)),
-                    int(frame_resized_copy.shape[0] / 10) - 1)
+                    int(frame_resize_copy.shape[0] / 10) - 1)
 
         if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
             if (number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS) or \
-                update_confidence_matrix or \
-                    0 < HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] <\
-                    0.2:
+                    update_confidence_matrix:
                 crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                        resolution_multiplier)
 
                 # Add cropped image
                 cropped_images.append((crop_img, resolution_multiplier, (w, h)))
             else:
-                if HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] >= 0.2:
+                if HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] > 0:
                     blobs.append({
-                        "position": cv2.KeyPoint(round((x + w) / 2),
-                                                 round((y + h) / 2),
+                        "position": cv2.KeyPoint(x + round(w / 2),
+                                                 y + round(h / 2),
                                                  w * h),
                         "box": ((x, y), (x + w, y + h)),
                         "score": 1
@@ -112,7 +109,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             results = \
                 PROCESSES_POOL.imap_unordered(apply_single, cropped_images)
         else:
-            results = map(apply_single, cropped_images)
+            results = list(map(apply_single, cropped_images))
 
         for persons_data in results:
             if PERSON_DETECTION_PARALLEL_MODE:
@@ -120,13 +117,24 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
             score = persons_data[1]
 
-            if USE_HISTOGRAMS_FOR_PERSON_DETECTION and \
-               number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS and \
-               score == 1:
-                HISTOGRAM_2D.create_confidence_matrix(
-                    (persons_data[2][0], persons_data[2][1],   # (X  , Y
-                     persons_data[3][0], persons_data[3][1]),  # ,W  , H)
-                    len(persons_data[0]))
+            if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
+                if number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS:
+                    if score == 1:
+                        HISTOGRAM_2D.create_confidence_matrix(
+                            (persons_data[2][0], persons_data[2][1],   # (X, Y
+                             persons_data[3][0], persons_data[3][1]),  # ,W, H)
+                            len(persons_data[0]))
+                else:
+                    for person in persons_data[0]:
+                        x_a, y_a, x_b, y_b = person
+
+                        blobs.append({
+                            "position": cv2.KeyPoint(round((x_a + x_b) / 2),
+                                                     round((y_a + y_b) / 2),
+                                                     (x_b - x_a) * (y_b - y_a)),
+                            "box": ((x_a, y_a), (x_b, y_b)),
+                            "score": score
+                        })
             else:
                 for person in persons_data[0]:
                     x_a, y_a, x_b, y_b = person
