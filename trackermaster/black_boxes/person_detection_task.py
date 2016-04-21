@@ -1,5 +1,3 @@
-import multiprocessing
-
 import cv2
 import numpy as np
 
@@ -15,10 +13,12 @@ WIN_STRIDE = (config.getint('WINSTRIDE_0'),
               config.getint('WINSTRIDE_1'))
 BORDER_AROUND_BLOB = (config.getfloat('BORDER_AROUND_BLOB_0'),
                       config.getfloat('BORDER_AROUND_BLOB_1'))
-
-first_time = True
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+
+first_time = True
+HOG = None
+
 
 
 def apply_single(args):

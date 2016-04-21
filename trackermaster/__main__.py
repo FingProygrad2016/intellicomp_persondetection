@@ -1,4 +1,3 @@
-from __future__ import print_function
 import cv2
 import inspect
 import json
@@ -38,7 +37,8 @@ def send_patternrecognition_config(communicator,
                                       'identifier': identifier}),
                            routing_key='processing_settings')
 
-# TODO: NOTE: al aumentar/disminuir lo siguiente, el "Text and paths time" cambia proporcionalmente.
+# NOTE: al aumentar/disminuir lo siguiente, el "Text and paths time"
+#   cambia proporcionalmente.
 NUM_OF_POINTS = 40
 
 
@@ -227,8 +227,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         aux_time = time.time() - t0
         if number_frame > 200:
             read_time += aux_time
-            if aux_time > max_read_time:
-                max_read_time = aux_time
+            max_read_time = max(aux_time, max_read_time)
 
         if has_more_images:
             # ################################################################ #
@@ -256,8 +255,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             aux_time = time.time() - t0
             if number_frame > 200:
                 bg_sub_time += aux_time
-                if aux_time > max_bg_sub_time:
-                    max_bg_sub_time = aux_time
+                max_bg_sub_time = max(aux_time, max_bg_sub_time)
 
             # ################### ##
             # ## BLOBS DETECTOR # ##
@@ -272,8 +270,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             aux_time = time.time() - t0
             if number_frame > 200:
                 blob_det_time += aux_time
-                if aux_time > max_blob_det_time:
-                    max_blob_det_time = aux_time
+                max_blob_det_time = max(aux_time, max_blob_det_time)
 
             t0 = time.time()
 
@@ -281,6 +278,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             if len(bounding_boxes):
                 rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
+                del bounding_boxes
 
                 for (x, y, w, h) in rectangles:
                     # Draw in blue candidate blobs
@@ -315,8 +313,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 aux_time = time.time() - t0
                 if number_frame > 200:
                     person_detection_time += aux_time
-                    if aux_time > max_person_detection_time:
-                        max_person_detection_time = aux_time
+                    max_person_detection_time = \
+                        max(aux_time, max_person_detection_time)
                     
                 t0 = time.time()
 
@@ -328,18 +326,16 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     comparisons_by_color_image_aux = \
                     tracker.apply(persons, frame_resized,
                                   bg_subtraction_resized, number_frame)
+                del persons
                 trayectos = trayectos_ if trayectos_ else trayectos
 
                 if len(comparisons_by_color_image_aux) > 0:
                     comparisons_by_color_image = comparisons_by_color_image_aux
 
-                del persons
-
                 aux_time = time.time() - t0
                 if number_frame > 200:
                     t_time += aux_time
-                    if aux_time > max_t_time:
-                        max_t_time = aux_time
+                    max_t_time = max(aux_time, max_t_time)
 
                 t0 = time.time()
 
@@ -364,8 +360,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 aux_time = time.time() - t0
                 if number_frame > 200:
                     pattern_recogn_time += aux_time
-                    if aux_time > max_pattern_recogn_time:
-                        max_pattern_recogn_time = aux_time
+                    max_pattern_recogn_time = \
+                        max(aux_time, max_pattern_recogn_time)
 
             t0 = time.time()
 
@@ -391,8 +387,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             aux_time = time.time() - t0
             if number_frame > 200:
                 show_info_time += aux_time
-                if aux_time > max_show_info_time:
-                    max_show_info_time = aux_time
+                max_show_info_time = max(aux_time, max_show_info_time)
 
             if SHOW_VIDEO_OUTPUT:
                 # #################### ##
@@ -435,8 +430,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 aux_time = time.time() - t0
                 if number_frame > 200:
                     display_time += aux_time
-                    if aux_time > max_display_time:
-                        max_display_time = aux_time
+                    max_display_time = max(aux_time, max_display_time)
 
                 t0 = time.time()
 
@@ -447,16 +441,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 aux_time = time.time() - t0
                 if number_frame > 200:
                     wait_key_time += aux_time
-                    if aux_time > max_wait_key_time:
-                        max_wait_key_time = aux_time
+                    max_wait_key_time = max(aux_time, max_wait_key_time)
             else:
                 print("fps: ", str(_fps))
 
             aux_time = time.time() - t_total
             if number_frame > 200:
                 total_time += aux_time
-                if aux_time > max_total_time:
-                    max_total_time = aux_time
+                max_total_time = max(aux_time, max_total_time)
 
     cv2.destroyAllWindows()
 
