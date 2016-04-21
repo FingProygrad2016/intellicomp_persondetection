@@ -1,12 +1,13 @@
 import cv2
-import matplotlib
-matplotlib.use('template')
 
-from matplotlib import pyplot as plt
 from trackermaster.config import config
+from utils.tools import crop_image_for_person_detection
 from trackermaster.black_boxes.histogram2d import Histogram2D
 from trackermaster.black_boxes.person_detection_task import apply_single
-from utils.tools import crop_image_for_person_detection, verify_blob
+
+import matplotlib
+matplotlib.use('template')
+from matplotlib import pyplot as plt
 
 # LOAD CONFIG. PARAMETERS
 BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
@@ -16,9 +17,9 @@ USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
 FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS = \
     config.getint("FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS")
 CONFIDENCE_MATRIX_UPDATE_TIME = config.getint("CONFIDENCE_MATRIX_UPDATE_TIME")
-# Pool of processes for process person detection in parallel
 PERSON_DETECTION_PARALLEL_MODE = \
     config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+MIN_NUMBER_FRAMES_HISTOGRAM = 100
 
 # GLOBAL VARIABLES DECLARATION
 last_update_frame = 0
@@ -58,7 +59,7 @@ def must_update_histograms(number_frame, fps):
 
 
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
-          frame_resize_copy, number_frame, fps):
+          frame_resized_copy, number_frame, fps):
 
     global last_update_frame, update_confidence_matrix
 
@@ -74,9 +75,9 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
     for (x, y, w, h) in rectangles:
         x_bin = min(int(round(w / 10.)),
-                    int(frame_resize_copy.shape[1] / 10) - 1)
+                    int(frame_resized_copy.shape[1] / 10) - 1)
         y_bin = min(int(round(h / 10.)),
-                    int(frame_resize_copy.shape[0] / 10) - 1)
+                    int(frame_resized_copy.shape[0] / 10) - 1)
 
         if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
             if (number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS) or \

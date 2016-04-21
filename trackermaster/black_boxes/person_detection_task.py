@@ -20,7 +20,6 @@ first_time = True
 HOG = None
 
 
-
 def apply_single(args):
 
     image, bounding_box, mult2 = args[0]
