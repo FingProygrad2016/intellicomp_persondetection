@@ -24,6 +24,8 @@ from utils.tools import \
     find_resolution_multiplier, frame2base64png, x1y1x2y2_to_x1y1wh
 
 
+USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
+    config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
 SHOW_PREDICTION_DOTS = config.getboolean("SHOW_PREDICTION_DOTS")
 SHOW_COMPARISONS_BY_COLOR = config.getboolean("SHOW_COMPARISONS_BY_COLOR")
 SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
@@ -193,7 +195,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     has_more_images = True
 
-    person_detection.set_histogram_size(shape=(work_w, work_h))
+    if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
+        person_detection.set_histogram_size(shape=(work_w, work_h))
 
     fps = 0
     comparisons_by_color_image = []

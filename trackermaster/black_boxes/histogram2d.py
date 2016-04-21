@@ -49,7 +49,6 @@ class Histogram2D:
             x_bin = int(w / 10)
             y_bin = int(h / 10)
 
-            # self.create_confidence_matrix((x, y, w, h), len(blob[0]))
             if blob[1] == 1:
                 self.create_confidence_matrix((x, y, w, h), len(blob[0]))
                 if self.confidenceMatrix[x_bin][y_bin] >= \
