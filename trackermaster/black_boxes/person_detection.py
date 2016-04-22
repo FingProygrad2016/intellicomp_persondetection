@@ -79,22 +79,32 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     int(frame_resize_copy.shape[0] / 10) - 1)
 
         if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
-            if (number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS) or \
-                    update_confidence_matrix:
+            if number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS or \
+               update_confidence_matrix:
                 crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                        resolution_multiplier)
 
                 # Add cropped image
                 cropped_images.append((crop_img, resolution_multiplier, (w, h)))
             else:
-                if HISTOGRAM_2D.normalizedConfidenceMatrix[x_bin][y_bin] > 0:
-                    blobs.append({
-                        "position": cv2.KeyPoint(x + round(w / 2),
-                                                 y + round(h / 2),
-                                                 w * h),
-                        "box": ((x, y), (x + w, y + h)),
-                        "score": 1
-                    })
+                verify = verify_blob((x_bin, y_bin),
+                                     HISTOGRAM_2D.normalizedConfidenceMatrix)
+                if verify[0]:  # Need to check for persons
+                    crop_img = crop_images(raw_frame_copy, (x, y, w, h),
+                                           resolution_multiplier)
+
+                    # Add cropped image
+                    cropped_images.append((crop_img,
+                                           resolution_multiplier, (w, h)))
+                else:
+                    if verify[1]:  # It's a person
+                        blobs.append({
+                            "position": cv2.KeyPoint(x + round(w / 2),
+                                                     y + round(h / 2),
+                                                     w * h),
+                            "box": ((x, y), (x + w, y + h)),
+                            "score": 1
+                        })
         else:
             crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                    resolution_multiplier)

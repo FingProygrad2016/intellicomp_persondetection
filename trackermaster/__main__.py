@@ -123,7 +123,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
         source = videos_path + '/../Videos/Video_003.avi'
-        # source = "http://live3.cdn.antel.net.uy/auth_0_7g6uw36m,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfN2c2dXczNm0lMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjEyOTM3NjMmcmFuZG9tPWpWRm9Jd01jUXQmYy1pcD0xOTAuNjQuNDkuMjcsM2FkYWQ5ZjM3MDY3YmFkMTRmOWNhYjdlYmNkOTI5OGViM2ZkODc1OTJjMmU4MGQ3NGJkYWJiOWJjMzAzZTY1MQ==/hls/var880000/playlist.m3u8"
+        # source = "http://live3.cdn.antel.net.uy/auth_0_vuww1ehe,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfdnV3dzFlaGUlMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjEzNjk2NjQmcmFuZG9tPXpxNkdvZk1JdGcmYy1pcD0xOTAuNjQuNDkuMjcsNGJhNGE3NzE3YzNmYTc0MDE3NjAzMzc4MTMwMGVlZTlmNzllMTBiYjk5YWNlYWNhOTlmMTA5NWU3ZWMxZTdhZA==/hls/var880000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
     has_at_least_one_frame, _ = cap.read()

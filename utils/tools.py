@@ -4,8 +4,10 @@ Modulo que contiene funciones de ayuda generales
 import base64
 import cv2
 import numpy as np
-from scipy.spatial import distance as dist
+
 from math import sqrt, pow
+from scipy.spatial import distance as dist
+from trackermaster.config import config
 
 MAX_WIDTH = 320
 MAX_HEIGHT = 240
@@ -23,6 +25,12 @@ HistogramComparisonMethods = {
     "MANHATTAN": dist.cityblock,
     "CHEBYSEV": dist.chebyshev
 }
+
+USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
+CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
+                     config.getfloat("CONFIDENCE_LEVEL_1"))
+USE_SQUARE_REGION_FOR_VERIFY = config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
+SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
 
 
 def compare_color(color1, color2):
@@ -43,7 +51,8 @@ def compare_color_histogram(method, hist1, hist2):
         if method in ("CORRELATION", "INTERSECTION"):
             reverse = True
 
-        result = cv2.compareHist(hist1, hist2, HistogramComparisonMethods[method])
+        result = cv2.compareHist(hist1, hist2,
+                                 HistogramComparisonMethods[method])
 
         if reverse:
             if result != 0:
@@ -104,7 +113,8 @@ def get_avg_color_in_pixels(pixels):
     r = 0
     count = 0
     for pixel in pixels:
-        if not (np.array_equal(pixel, [0, 0, 0]) or np.array_equal(pixel, [255, 255, 255])):
+        if not (np.array_equal(pixel, [0, 0, 0]) or
+                np.array_equal(pixel, [255, 255, 255])):
             b += pixel[0]
             g += pixel[1]
             r += pixel[2]
@@ -136,7 +146,8 @@ def apply_inverted_mask_to_image(image, inverted_mask):
     """
     Returns the pixels of the image with the inverted mask applied on it
     :param image:
-    :param inverted_mask: matrix with the same size as the image, containing 0s and higher values
+    :param inverted_mask: matrix with the same size as the image,
+           containing 0s and higher values
     :return: image pixels which overlaps with non 0s in the inverted mask
     """
 
@@ -163,8 +174,8 @@ def euclidean_distance(point1, point2):
     :return:
     """
     # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
-    return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2, zip(point1, point2)))
-                   ), 0.5)
+    return pow(abs(sum(map(lambda x_y: (x_y[0]-x_y[1])**2,
+                           zip(point1, point2)))), 0.5)
 
 
 def diff_in_milliseconds(time_start, time_end):
@@ -283,14 +294,32 @@ def x1y1wh_to_x1y1x2y2(rectangles):
 
 
 def normalize_matrix(matrix):
-    return matrix / np.max(matrix)
+    return matrix / np.max(matrix) if np.max(matrix) > 0 else matrix
 
 
-def verify_blob(pos, normalized_confidence_matrix):
-    if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.3):
-        return False, True
-    else:
-        if normalized_confidence_matrix[pos[0]][pos[1]] > (1 - 0.8):
-            return True, False
+def verify_blob(pos, matrix):
+    if USE_CONFIDENCE_LEVELS:
+        if matrix[pos[0], pos[1]] >= CONFIDENCE_LEVELS[0]:  # Level 0
+            return False, True  # No check is needed, there's a person
         else:
-            return False, False
+            if USE_SQUARE_REGION_FOR_VERIFY:
+                x_min = max(0, pos[0] - SQUARE_REGION_RADIUS)
+                y_min = max(0, pos[1] - SQUARE_REGION_RADIUS + 1)
+                x_max = min(matrix.shape[0], pos[0] + SQUARE_REGION_RADIUS) + 1
+                y_max = min(matrix.shape[1], pos[1] + SQUARE_REGION_RADIUS) + 1
+                max_around = matrix[x_min:x_max, y_min:y_max].max()
+
+            if matrix[pos[0], pos[1]] > CONFIDENCE_LEVELS[1]:  # Level 1
+                if USE_SQUARE_REGION_FOR_VERIFY and \
+                   max_around >= CONFIDENCE_LEVELS[0]:
+                    return False, True  # No check is needed, there's a person
+                else:
+                    return True, False  # Check is needed, there maybe a person
+            else:
+                if USE_SQUARE_REGION_FOR_VERIFY and \
+                   max_around >= CONFIDENCE_LEVELS[1]:
+                    return True, False  # Check is needed, there maybe a person
+                else:
+                    return False, False  # No check is needed, there's no person
+    else:
+        return matrix[pos[0], pos[1]] > 0, False  # If > 0, there maybe a person
