@@ -79,16 +79,14 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     int(frame_resize_copy.shape[0] / 10) - 1)
 
         if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
-            if number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS or \
-               update_confidence_matrix:
+            if training_histograms or update_confidence_matrix:
                 crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                        resolution_multiplier)
 
                 # Add cropped image
                 cropped_images.append((crop_img, resolution_multiplier, (w, h)))
             else:
-                verify = \
-                    HISTOGRAM_2D.verify_blob((x_bin, y_bin))
+                verify = HISTOGRAM_2D.verify_blob((x_bin, y_bin))
                 if verify[0]:  # Need to check for persons
                     crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                            resolution_multiplier)
@@ -97,7 +95,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     cropped_images.append((crop_img,
                                            resolution_multiplier, (w, h)))
                 else:
-                    if verify[1]:  # It's one person
+                    if verify[1]:  # It's a person
                         blobs.append({
                             "position": cv2.KeyPoint(x + round(w / 2),
                                                      y + round(h / 2),
@@ -128,7 +126,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             score = persons_data[1]
 
             if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
-                if number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS:
+                if training_histograms:
                     if score == 1:
                         HISTOGRAM_2D.create_confidence_matrix(
                             (persons_data[2][0], persons_data[2][1],   # (X, Y

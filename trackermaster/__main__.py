@@ -32,6 +32,7 @@ SHOW_PREDICTION_DOTS = config.getboolean("SHOW_PREDICTION_DOTS")
 SHOW_COMPARISONS_BY_COLOR = config.getboolean("SHOW_COMPARISONS_BY_COLOR")
 SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
 LIMIT_FPS = config.getboolean("LIMIT_FPS")
+DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
 
 
 def send_patternrecognition_config(communicator,
@@ -188,8 +189,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # Videos de muestra
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
-        source = videos_path + '/../Videos/Video_003.avi'
-        # source = "http://live3.cdn.antel.net.uy/auth_0_vuww1ehe,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfdnV3dzFlaGUlMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjEzNjk2NjQmcmFuZG9tPXpxNkdvZk1JdGcmYy1pcD0xOTAuNjQuNDkuMjcsNGJhNGE3NzE3YzNmYTc0MDE3NjAzMzc4MTMwMGVlZTlmNzllMTBiYjk5YWNlYWNhOTlmMTA5NWU3ZWMxZTdhZA==/hls/var880000/playlist.m3u8"
+        source = videos_path + '/../Videos/TownCentreXVID.avi'
+        # source = "http://live3.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjE2NDg2MDYmcmFuZG9tPWltN2s2WWF0YXMmYy1pcD0xOTAuNjQuNDkuMjcsMDVmNmMxNDc4ZGNjMDNiYzBiMGUyN2E1YWVlNGNjNzUxNzJkMjhmYTZlNThkYWQ3NGY0ZWVkMzcyOTQxYTEwMg==/hls/var880000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
     has_at_least_one_frame, raw_image = cap.read()
@@ -210,7 +211,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         if FPS == 0.:
             FPS = 24.
     except ValueError:
-        FPS = 7.
+        FPS = DEFAULT_FPS_LIMIT
 
     reader = Thread(target=read_raw_input, daemon=True)
     reader.start()
