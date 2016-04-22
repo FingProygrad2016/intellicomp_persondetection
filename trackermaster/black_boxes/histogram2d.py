@@ -1,11 +1,16 @@
 import numpy as np
 
+from trackermaster.config import config
 from utils.tools import normalize_matrix
+
+USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
+CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
+                     config.getfloat("CONFIDENCE_LEVEL_1"))
+USE_SQUARE_REGION_FOR_VERIFY = config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
+SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
 
 
 class Histogram2D:
-    detector = None
-
     def __init__(self, shape):
         self.confidenceMatrix = np.zeros(shape=(int(shape[0] / 5),
                                                 int(shape[1] / 5)),
@@ -20,6 +25,8 @@ class Histogram2D:
                         endpoint=True)
         self.normalizedConfidenceMatrix = np.zeros_like(self.confidenceMatrix,
                                                         dtype=np.float64)
+        self.onePersonConfidenceMatrix = np.zeros_like(self.confidenceMatrix,
+                                                       dtype=np.float64)
         self.updateMaximums = np.zeros_like(self.confidenceMatrix, dtype=np.int)
 
     def create_confidence_matrix(self, blob, count):
@@ -32,14 +39,14 @@ class Histogram2D:
             np.histogram2d(widths, heights, (self.xedges, self.yedges))
 
         if hist.any():
-            np.add(self.confidenceMatrix, hist * count,
-                   out=self.confidenceMatrix)
+            np.add(self.confidenceMatrix,
+                   hist * count, self.confidenceMatrix)
+            if count == 1:
+                np.add(self.onePersonConfidenceMatrix,
+                       hist, self.onePersonConfidenceMatrix)
 
     def update_confidence_matrix(self, blobs):
         print("Update histogram!!!")
-        # for row_index, row in enumerate(self.confidenceMatrix):
-        #     self.confidenceMatrix[row_index] = \
-        #         np.array(list(map(lambda x: max(x - 1, 0), row)))
 
         for blob in blobs:
             x = blob[2][0]
@@ -63,3 +70,55 @@ class Histogram2D:
 
         self.normalizedConfidenceMatrix = \
             normalize_matrix(self.confidenceMatrix)
+
+    def verify_blob(self, pos):
+        if USE_CONFIDENCE_LEVELS:
+            # Level 0
+            if self.confidenceMatrix[pos[0], pos[1]] >= CONFIDENCE_LEVELS[0]:
+                if normalize_matrix(
+                        self.onePersonConfidenceMatrix)[pos[0], pos[1]] >= \
+                   CONFIDENCE_LEVELS[0]:
+                    # No check is needed, there's one person
+                    return False, True
+                else:
+                    # Check is needed, maybe more than one person
+                    return True, True
+            else:
+                if USE_SQUARE_REGION_FOR_VERIFY:
+                    x_min = max(0, pos[0] - SQUARE_REGION_RADIUS)
+                    y_min = max(0, pos[1] - SQUARE_REGION_RADIUS + 1)
+                    x_max = min(self.confidenceMatrix.shape[0],
+                                pos[0] + SQUARE_REGION_RADIUS) + 1
+                    y_max = min(self.confidenceMatrix.shape[1],
+                                pos[1] + SQUARE_REGION_RADIUS) + 1
+                    max_around = \
+                        self.confidenceMatrix[x_min:x_max, y_min:y_max].max()
+
+                # Level 1
+                if self.confidenceMatrix[pos[0], pos[1]] >= \
+                   CONFIDENCE_LEVELS[1]:
+                    if USE_SQUARE_REGION_FOR_VERIFY and \
+                       max_around >= CONFIDENCE_LEVELS[0]:
+                        if normalize_matrix(
+                                self.onePersonConfidenceMatrix)[pos[0], pos[1]]\
+                                >= CONFIDENCE_LEVELS[0]:
+                            # No check is needed, there's one person
+                            return False, True
+                        else:
+                            # Check is needed, maybe more than one person
+                            return True, True
+                    else:
+                        # Check is needed, there maybe a person
+                        return True, False
+                # Level 0
+                else:
+                    if USE_SQUARE_REGION_FOR_VERIFY and \
+                       max_around >= CONFIDENCE_LEVELS[0]:
+                        # Check is needed, there maybe a person
+                        return True, False
+                    else:
+                        # No check is needed, there's no person
+                        return False, False
+        else:
+            # If > 0, there maybe a person
+            return self.confidenceMatrix[pos[0], pos[1]] > 0, False

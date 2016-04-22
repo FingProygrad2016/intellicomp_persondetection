@@ -7,7 +7,6 @@ import numpy as np
 
 from math import sqrt, pow
 from scipy.spatial import distance as dist
-from trackermaster.config import config
 
 MAX_WIDTH = 320
 MAX_HEIGHT = 240
@@ -25,12 +24,6 @@ HistogramComparisonMethods = {
     "MANHATTAN": dist.cityblock,
     "CHEBYSEV": dist.chebyshev
 }
-
-USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
-CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
-                     config.getfloat("CONFIDENCE_LEVEL_1"))
-USE_SQUARE_REGION_FOR_VERIFY = config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
-SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
 
 
 def compare_color(color1, color2):
@@ -295,31 +288,3 @@ def x1y1wh_to_x1y1x2y2(rectangles):
 
 def normalize_matrix(matrix):
     return matrix / np.max(matrix) if np.max(matrix) > 0 else matrix
-
-
-def verify_blob(pos, matrix):
-    if USE_CONFIDENCE_LEVELS:
-        if matrix[pos[0], pos[1]] >= CONFIDENCE_LEVELS[0]:  # Level 0
-            return False, True  # No check is needed, there's a person
-        else:
-            if USE_SQUARE_REGION_FOR_VERIFY:
-                x_min = max(0, pos[0] - SQUARE_REGION_RADIUS)
-                y_min = max(0, pos[1] - SQUARE_REGION_RADIUS + 1)
-                x_max = min(matrix.shape[0], pos[0] + SQUARE_REGION_RADIUS) + 1
-                y_max = min(matrix.shape[1], pos[1] + SQUARE_REGION_RADIUS) + 1
-                max_around = matrix[x_min:x_max, y_min:y_max].max()
-
-            if matrix[pos[0], pos[1]] > CONFIDENCE_LEVELS[1]:  # Level 1
-                if USE_SQUARE_REGION_FOR_VERIFY and \
-                   max_around >= CONFIDENCE_LEVELS[0]:
-                    return False, True  # No check is needed, there's a person
-                else:
-                    return True, False  # Check is needed, there maybe a person
-            else:
-                if USE_SQUARE_REGION_FOR_VERIFY and \
-                   max_around >= CONFIDENCE_LEVELS[1]:
-                    return True, False  # Check is needed, there maybe a person
-                else:
-                    return False, False  # No check is needed, there's no person
-    else:
-        return matrix[pos[0], pos[1]] > 0, False  # If > 0, there maybe a person

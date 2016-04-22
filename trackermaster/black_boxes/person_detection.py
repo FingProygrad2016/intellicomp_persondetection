@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from trackermaster.config import config
 from trackermaster.black_boxes.histogram2d import Histogram2D
 from trackermaster.black_boxes.person_detection_task import apply_single
-from utils.tools import crop_image_for_person_detection, verify_blob
+from utils.tools import crop_image_for_person_detection, normalize_matrix
 
 # LOAD CONFIG. PARAMETERS
 BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
@@ -87,8 +87,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                 # Add cropped image
                 cropped_images.append((crop_img, resolution_multiplier, (w, h)))
             else:
-                verify = verify_blob((x_bin, y_bin),
-                                     HISTOGRAM_2D.normalizedConfidenceMatrix)
+                verify = \
+                    HISTOGRAM_2D.verify_blob((x_bin, y_bin))
                 if verify[0]:  # Need to check for persons
                     crop_img = crop_images(raw_frame_copy, (x, y, w, h),
                                            resolution_multiplier)
@@ -97,7 +97,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                     cropped_images.append((crop_img,
                                            resolution_multiplier, (w, h)))
                 else:
-                    if verify[1]:  # It's a person
+                    if verify[1]:  # It's one person
                         blobs.append({
                             "position": cv2.KeyPoint(x + round(w / 2),
                                                      y + round(h / 2),
@@ -167,7 +167,10 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
 
                 last_update_frame = number_frame
                 update_confidence_matrix = False
-                # plt.imshow(HISTOGRAM_2D.confidenceMatrix)
+                # plt.imshow(HISTOGRAM_2D.normalizedConfidenceMatrix)
                 # plt.savefig('lala.png')
+                # plt.imshow(
+                #     normalize_matrix(HISTOGRAM_2D.onePersonConfidenceMatrix))
+                # plt.savefig('lala2.png')
 
     return blobs
