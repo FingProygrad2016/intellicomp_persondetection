@@ -1,3 +1,5 @@
+from threading import Thread, Lock, Condition
+
 import cv2
 import inspect
 import json
@@ -41,7 +43,7 @@ def send_patternrecognition_config(communicator,
 
 # NOTE: al aumentar/disminuir lo siguiente, el "Text and paths time"
 #   cambia proporcionalmente.
-NUM_OF_POINTS = 40
+NUM_OF_POINTS = 30
 
 
 def draw_journeys(journeys, outputs):
@@ -83,6 +85,65 @@ def draw_journeys(journeys, outputs):
                 cv2.circle(output, (prediction[0], prediction[3]), 3,
                            journey_color, -1)
 
+cap = None
+has_more_images = True
+raw_image = None
+delay = 0
+SEC_PER_FRAME = 0
+number_frame = 1
+reader_lock = Lock()
+reader_condition = Condition()
+kill_reader = False
+processed = True
+
+def read_raw_input():
+    global has_more_images
+    global raw_image
+    global SEC_PER_FRAME
+    global number_frame
+    global processed
+    time_aux_ = time.time()
+
+    # reader_condition.wait()
+
+    while True:
+
+        if LIMIT_FPS:
+            delay_ = time.time() - time_aux_
+            time.sleep(max(SEC_PER_FRAME - delay_, 0))
+
+        has_more_images_aux, raw_image_aux = cap.read()
+        if LIMIT_FPS:
+            time_aux_ = time.time()
+            reader_lock.acquire()
+        else:
+            reader_condition.acquire()
+
+        if not processed:
+            reader_condition.wait()
+
+        has_more_images = has_more_images_aux
+        if not has_more_images or kill_reader:
+            if LIMIT_FPS:
+                reader_lock.release()
+            else:
+                reader_condition.notify()
+                reader_condition.release()
+            break
+        raw_image = raw_image_aux.copy()
+
+        if LIMIT_FPS:
+            reader_lock.release()
+        else:
+            processed = False
+            reader_condition.notify()
+            reader_condition.release()
+
+        number_frame += 1
+        print("FRAME NUMBER: %s" % number_frame)
+
+    return None
+
 
 def track_source(identifier=None, source=None, trackermaster_conf=None,
                  patternmaster_conf=None):
@@ -111,7 +172,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     send_patternrecognition_config(communicator, identifier, patternmaster_conf)
 
+    global cap
+    global has_more_images
+    global raw_image
+    global processed
+    global SEC_PER_FRAME
+
     if source:
+
         cap = cv2.VideoCapture(source)
         comm_info.send_message(
             json.dumps(dict(
@@ -126,7 +194,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # source = "http://live3.cdn.antel.net.uy/auth_0_vuww1ehe,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfdnV3dzFlaGUlMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjEzNjk2NjQmcmFuZG9tPXpxNkdvZk1JdGcmYy1pcD0xOTAuNjQuNDkuMjcsNGJhNGE3NzE3YzNmYTc0MDE3NjAzMzc4MTMwMGVlZTlmNzllMTBiYjk5YWNlYWNhOTlmMTA5NWU3ZWMxZTdhZA==/hls/var880000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
-    has_at_least_one_frame, _ = cap.read()
+    has_at_least_one_frame, raw_image = cap.read()
+
     if not has_at_least_one_frame:
         comm_info.send_message(json.dumps(dict(
             info_id="EXIT WITH ERROR", id=identifier,
@@ -144,6 +213,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             FPS = 24.
     except ValueError:
         FPS = 7.
+
+    reader = Thread(target=read_raw_input, daemon=True)
+    reader.start()
 
     print("Working at", FPS, "FPS")
     SEC_PER_FRAME = 1. / FPS
@@ -168,7 +240,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     loop_time = time.time()
 
-    number_frame = 1
+    global number_frame
     _fps = "%.2f" % FPS
     previous_fps = FPS
 
@@ -193,8 +265,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     total_time = 0
     max_total_time = 0
 
-    has_more_images = True
-
     if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
         person_detection.set_histogram_size(shape=(work_w, work_h))
 
@@ -203,6 +273,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     interpol_cant_persons_prev = 0
     trayectos = []
     tracklets = {}
+    last_number_frame = number_frame
+    skipped = False
 
     # Start the main loop
     while has_more_images:
@@ -210,23 +282,29 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         t_total = time.time()
 
         # FPS calculation
-        if number_frame > 10:
+        if number_frame > 10 and number_frame != last_number_frame:
             delay = (time.time() - loop_time)
-            if LIMIT_FPS:
-                if delay < SEC_PER_FRAME:
-                    time_aux = time.time()
-                    time.sleep(max(SEC_PER_FRAME - delay, 0))
-                    delay += time.time() - time_aux
             loop_time = time.time()
+            # if LIMIT_FPS:
+            #     if delay < SEC_PER_FRAME:
+            #         time_aux = time.time()
+            #         time.sleep(max(SEC_PER_FRAME - delay, 0))
+            #         delay += time.time() - time_aux
+
             fps = (1. / delay) * 0.25 + previous_fps * 0.75
             previous_fps = fps
             _fps = "%.2f" % fps
 
-        t0 = time.time()
-        # Get a new frame
-        has_more_images, raw_frame = cap.read()
+        else:
+            if LIMIT_FPS:
+                while has_more_images and number_frame == last_number_frame:
+                    time.sleep(0.01)  # Sleep for avoid Busy waiting
+                if not has_more_images:
+                    break
+                loop_time = time.time()
 
-        number_frame += 1
+        t0 = time.time()
+
         aux_time = time.time() - t0
         if number_frame > 200:
             read_time += aux_time
@@ -244,8 +322,32 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             t0 = time.time()
 
             # resize to a manageable work resolution
-            raw_frame_copy = raw_frame.copy()
-            frame_resized = cv2.resize(raw_frame, (work_w, work_h))
+            if LIMIT_FPS:
+                reader_lock.acquire()
+            else:
+                reader_condition.acquire()
+                if number_frame == last_number_frame and has_more_images:
+                    reader_condition.wait()
+
+            if not has_more_images:
+                if LIMIT_FPS:
+                    reader_lock.release()
+                else:
+                    reader_condition.notify()
+                    reader_condition.release()
+                break
+            else:
+                last_number_frame = number_frame
+                raw_frame_copy = raw_image.copy()
+                print("AGARRO PARA PROCESAR")
+            if LIMIT_FPS:
+                reader_lock.release()
+            else:
+                processed = True
+                reader_condition.notify()
+                reader_condition.release()
+
+            frame_resized = cv2.resize(raw_frame_copy, (work_w, work_h))
             frame_resized_copy = frame_resized.copy()
 
             bg_sub = background_subtractor.apply(frame_resized)
@@ -452,6 +554,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             if number_frame > 200:
                 total_time += aux_time
                 max_total_time = max(aux_time, max_total_time)
+
+    global kill_reader
+    kill_reader = True
 
     cv2.destroyAllWindows()
 
