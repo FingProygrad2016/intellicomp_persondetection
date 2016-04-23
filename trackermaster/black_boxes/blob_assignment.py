@@ -1,5 +1,6 @@
-import numpy
+import numpy as np
 from munkres import Munkres
+import math
 
 # References in:
 # https://pypi.python.org/pypi/munkres/
@@ -14,27 +15,32 @@ class HungarianAlgorithm:
         self.infinite = infinite
         self.cost_function = cost_function
 
-    def get_costs_generic(self, rows_data, columns_data):
+    def get_costs_generic(self, rows_data, columns_data, weights):
 
         # the costs matrix width has to be larger or equal than height
         columns_count = len(columns_data)  # max(len(self.blobs), len(k_filters))
         rows_count = len(rows_data)
 
-        costs_matrix = numpy.zeros(shape=(rows_count, columns_count))
+        costs_matrix = np.zeros(shape=(rows_count, columns_count), dtype=float)
 
-        assigned_column = numpy.empty(shape=columns_count, dtype=int)
+        assigned_column = np.empty(shape=columns_count, dtype=int)
         assigned_column.fill(-1)
-        assigned_row = numpy.empty(shape=rows_count, dtype=int)
+        assigned_row = np.empty(shape=rows_count, dtype=int)
         assigned_row.fill(-1)
 
         for i in range(0, rows_count):
-            costs_row = numpy.zeros(shape=columns_count)
+            costs_row = np.zeros(shape=columns_count, dtype=float)
             for j in range(0, columns_count):
-                cost = self.cost_function(rows_data[i], columns_data[j])
-                costs_row[j] = cost
-                if cost <= self.threshold:
+                if weights:
+                    cost = self.cost_function(rows_data[i], columns_data[j], weights)
+                else:
+                    cost = self.cost_function(rows_data[i], columns_data[j])
+                if cost["valid"]:
                     assigned_column[j] = 0
                     assigned_row[i] = 0
+                    costs_row[j] = cost["value"]
+                else:
+                    costs_row[j] = cost["value"] * (-1)
             costs_matrix[i] = costs_row
 
         columns_relation = []
@@ -51,22 +57,22 @@ class HungarianAlgorithm:
             if assigned_row[i] == -1:
                 rows_to_delete.append(i)
 
-        costs_matrix = numpy.delete(costs_matrix, columns_to_delete, axis=1)
-        costs_matrix = numpy.delete(costs_matrix, rows_to_delete, axis=0)
+        costs_matrix = np.delete(costs_matrix, columns_to_delete, axis=1)
+        costs_matrix = np.delete(costs_matrix, rows_to_delete, axis=0)
 
         valid_columns_amount = costs_matrix.shape[1]
         new_columns = costs_matrix.shape[0] - costs_matrix.shape[1]
         if new_columns > 0:
             # more rows than columns
-            a = numpy.empty((costs_matrix.shape[0], new_columns))
-            a.fill(self.infinite)
-            costs_matrix = numpy.append(costs_matrix, a, axis=1)
+            a = np.empty((costs_matrix.shape[0], new_columns))
+            a.fill(-self.infinite)
+            costs_matrix = np.append(costs_matrix, a, axis=1)
 
         return costs_matrix, assigned_row, valid_columns_amount, columns_relation
 
-    def apply(self, rows_data, columns_data):
+    def apply(self, rows_data, columns_data, weights=None):
         assigned_row = []
-        assigned_row_cost = numpy.empty(shape=len(rows_data), dtype=float)
+        assigned_row_cost = np.empty(shape=len(rows_data), dtype=float)
         assigned_row_cost.fill(-1.0)
 
         if len(rows_data) > 0:
@@ -74,24 +80,25 @@ class HungarianAlgorithm:
                 m = Munkres()
 
                 costs, assigned_row, valid_columns_amount, columns_relation = \
-                    self.get_costs_generic(rows_data, columns_data)
+                    self.get_costs_generic(rows_data, columns_data, weights)
 
                 if costs.shape[0] > 0 and costs.shape[1]:
-                    indexes = m.compute(costs.copy())
+                    indexes = m.compute(np.absolute(costs))
 
                     j = 0
                     for i in range(0, len(assigned_row)):
                         if assigned_row[i] == 0:
                             column = indexes[j][1]
-                            if column < valid_columns_amount and costs[j][column] <= self.threshold:
+                            # math.copysign(1,-0.0) gives -1.0, and math.copysign(1,0.0) gives 1.0
+                            if column < valid_columns_amount and math.copysign(1, costs[j][column]) == 1.0:
                                 assigned_row[i] = columns_relation[column][1]
                             else:
                                 assigned_row[i] = -1
-                            assigned_row_cost[i] = costs[j][column]
+                            assigned_row_cost[i] = abs(costs[j][column])
 
                             j += 1
             else:
-                assigned_row = numpy.empty(shape=len(rows_data), dtype=int)
+                assigned_row = np.empty(shape=len(rows_data), dtype=int)
                 assigned_row.fill(-1)
 
         return assigned_row, assigned_row_cost

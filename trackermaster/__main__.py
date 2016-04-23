@@ -236,7 +236,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     blobs_detector = BlobDetector()
     # person_detector = Histogram2D()
-    tracker = Tracker(SEC_PER_FRAME)
+    tracker = Tracker(FPS)
 
     loop_time = time.time()
 
