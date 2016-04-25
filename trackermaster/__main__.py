@@ -35,11 +35,10 @@ LIMIT_FPS = config.getboolean("LIMIT_FPS")
 
 
 def send_patternrecognition_config(communicator,
-                                   identifier, patternmaster_conf):
-    if patternmaster_conf:
-        communicator.apply(json.dumps({'config': patternmaster_conf,
-                                      'identifier': identifier}),
-                           routing_key='processing_settings')
+                                   instance_identifier, patternmaster_conf):
+    communicator.apply(json.dumps({'config': patternmaster_conf,
+                                  'identifier': instance_identifier}),
+                       routing_key='processing_settings')
 
 # NOTE: al aumentar/disminuir lo siguiente, el "Text and paths time"
 #   cambia proporcionalmente.
@@ -140,7 +139,6 @@ def read_raw_input():
             reader_condition.release()
 
         number_frame += 1
-        print("FRAME NUMBER: %s" % number_frame)
 
     return None
 
@@ -339,7 +337,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             else:
                 last_number_frame = number_frame
                 raw_frame_copy = raw_image.copy()
-                print("AGARRO PARA PROCESAR")
             if LIMIT_FPS:
                 reader_lock.release()
             else:
