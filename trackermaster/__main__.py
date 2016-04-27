@@ -421,7 +421,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     person_detection_time += aux_time
                     max_person_detection_time = \
                         max(aux_time, max_person_detection_time)
-                    
+
                 t0 = time.time()
 
                 # ############ ##
