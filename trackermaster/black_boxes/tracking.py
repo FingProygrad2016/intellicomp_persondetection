@@ -228,6 +228,8 @@ class Tracker:
 
                     kf_to_remove_in_item = []
                     for j, kf in enumerate(item_kf):
+                        # Amount of frames it has been without a one to one relationship
+                        frames_without_one_to_one = self.last_frame - kf.last_frame_update
                         # Amount of frames it has been without any blob relationship
                         frames_without_any_blob = self.last_frame - kf.last_frame_not_alone
                         # Amount of frames since it has been created
@@ -238,6 +240,9 @@ class Tracker:
                         elif frames_since_created < self.valid_frames_since_created:
                             # it has been created a very short time ago: remove it
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
+                        elif frames_without_one_to_one < self.valid_frames_to_predict_position:
+                            # It has been with one to one recently. It is left only with prediction.
+                            kf.update_pos_info_with_no_measure_confidence(frame_number)
 
                     kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -254,15 +259,15 @@ class Tracker:
                         # normal case: one on one
                         # kalman filter is updated with all the blob info
                         kf = item_kf[0]
-                        kf.update_info(new_position=blob["position"].pt,
-                                       size=blob["position"].size, blob=blob, last_frame_update=frame_number,
+                        kf.update_info(blob=blob, last_frame_update=frame_number,
                                        raw_image=raw_image, bg_subtraction_image=bg_subtraction_image)
                     elif len(item_kf) > 1:
                         # merged blobs: many kalman filters on one blob
                         # kalman filters are updated only with the blob position
 
                         self.remove_or_update_kalman_filters(i, frame_number, item_kf, blob,
-                                                             kf_to_remove, items_to_remove)
+                                                             kf_to_remove, items_to_remove,
+                                                             raw_image, bg_subtraction_image)
 
                 elif len(item_blobs) > 1:
                     if len(item_kf) >= len(item_blobs):
@@ -365,7 +370,8 @@ class Tracker:
                         else:
                             # kalman filters are updated only with the blob position
                             self.remove_or_update_kalman_filters(i, frame_number, item_kf, item_blobs[0][0],
-                                                                 kf_to_remove, items_to_remove)
+                                                                 kf_to_remove, items_to_remove,
+                                                                 raw_image, bg_subtraction_image)
 
                     elif len(item_kf) < len(item_blobs):
                         # this can not happen; each blob must have at least one kalman filter assigned
@@ -424,8 +430,9 @@ class Tracker:
         return len(self.k_filters) - 1
 
     def remove_or_update_kalman_filters(self, item_id, frame_number, kalman_filters, blob,
-                                        kf_to_remove, items_to_remove):
-        # kalman filters are updated only with the blob position
+                                        kf_to_remove, items_to_remove, image, bg_sub_image):
+
+        # first of all, remove the kalman filters that are no longer valid
         kf_to_remove_in_item = []
         for j, kf in enumerate(kalman_filters):
             # Amount of frames it has been without a one to one relationship
@@ -435,15 +442,9 @@ class Tracker:
             if frames_without_one_to_one > self.valid_frames_without_update:
                 # If TrackInfo is too old, remove it forever
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
-            elif frames_without_one_to_one > self.valid_frames_to_predict_position:
-                # If it has been without one to one for a long time, correct with the merged blob
-                kf.update_with_medium_measure_confidence(new_position=blob["position"].pt, frame_number=frame_number)
             elif frames_since_created < self.valid_frames_since_created:
                 # it has been created a very short time ago: remove it
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
-            else:
-                # It has been with one to one recently. It is left only with prediction.
-                kf.update_pos_info_with_no_measure_confidence(frame_number)
 
         kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -453,6 +454,23 @@ class Tracker:
 
         if len(kalman_filters) == 0:
             items_to_remove.append(item_id)
+        elif len(kalman_filters) == 1:
+            # normal case: one on one
+            # kalman filter is updated with all the blob info
+            kf = kalman_filters[0]
+            kf.update_info(blob=blob, last_frame_update=frame_number,
+                           raw_image=image, bg_subtraction_image=bg_sub_image)
+        else:
+            for kf in kalman_filters:
+                # Amount of frames it has been without a one to one relationship
+                frames_without_one_to_one = self.last_frame - kf.last_frame_update
+                if frames_without_one_to_one > self.valid_frames_to_predict_position:
+                    # If it has been without one to one for a long time, correct with the merged blob
+                    kf.update_with_medium_measure_confidence(new_position=blob["position"].pt,
+                                                             frame_number=frame_number)
+                else:
+                    # It has been with one to one recently. It is left only with prediction.
+                    kf.update_pos_info_with_no_measure_confidence(frame_number)
 
     def search_nearest_blob(self, kfs_group_item, blobs):
         min_distance = self.INFINITE_DISTANCE
@@ -502,9 +520,7 @@ class Tracker:
                                           random.randint(0, 255))})
 
                     # kalman filter is updated with all the blob info
-                    kf.update_info(new_position=blob["position"].pt,
-                                   size=blob["position"].size, blob=blob,
-                                   last_frame_update=frame_number,
+                    kf.update_info(blob=blob, last_frame_update=frame_number,
                                    raw_image=raw_image, bg_subtraction_image=bg_subtraction_image)
 
                     blob_to_remove_in_item.append(blobs[j][1])
@@ -880,18 +896,17 @@ class TrackInfo:
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
 
-    def update_info(self, new_position, size,
-                    blob, last_frame_update,
+    def update_info(self, blob, last_frame_update,
                     raw_image, bg_subtraction_image):
 
         if last_frame_update != self.last_frame_update:
-            self.predict_and_correct(last_frame_update, new_position, True)
+            self.predict_and_correct(last_frame_update, blob["position"].pt, True)
 
-            self.size = size
+            self.size = blob["position"].size
             self.last_frame_update = last_frame_update
             self.last_frame_not_alone = last_frame_update
             self.last_update = datetime.now()
-            self.last_point = new_position
+            self.last_point = blob["position"].pt
 
             self.score = (self.score * self.number_updates + blob['score']) /\
                          (self.number_updates + 1)
