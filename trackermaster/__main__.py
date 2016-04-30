@@ -35,9 +35,10 @@ LIMIT_FPS = config.getboolean("LIMIT_FPS")
 DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
 
 
-def send_patternrecognition_config(communicator,
-                                   instance_identifier, patternmaster_conf):
+def send_patternrecognition_config(communicator, instance_identifier,
+                                   patternmaster_conf, resolution_mult):
     communicator.apply(json.dumps({'config': patternmaster_conf,
+                                   'resolution_multiplier': resolution_mult,
                                   'identifier': instance_identifier}),
                        routing_key='processing_settings')
 
@@ -95,6 +96,7 @@ reader_lock = Lock()
 reader_condition = Condition()
 kill_reader = False
 processed = True
+
 
 def read_raw_input():
     global has_more_images
@@ -169,8 +171,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                      exchange_type='direct')
     exit_cause = 'FINISHED'
 
-    send_patternrecognition_config(communicator, identifier, patternmaster_conf)
-
     global cap
     global has_more_images
     global raw_image
@@ -189,7 +189,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # Videos de muestra
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
-        source = videos_path + '/../Videos/TownCentreXVID.avi'
+        source = videos_path + '/../Videos/Video_003.avi'
         # source = "http://live3.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjE2NDg2MDYmcmFuZG9tPWltN2s2WWF0YXMmYy1pcD0xOTAuNjQuNDkuMjcsMDVmNmMxNDc4ZGNjMDNiYzBiMGUyN2E1YWVlNGNjNzUxNzJkMjhmYTZlNThkYWQ3NGY0ZWVkMzcyOTQxYTEwMg==/hls/var880000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
@@ -209,7 +209,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     try:
         FPS = float(int(cap.get(cv2.CAP_PROP_FPS)))
         if FPS == 0.:
-            FPS = 24.
+            FPS = DEFAULT_FPS_LIMIT
     except ValueError:
         FPS = DEFAULT_FPS_LIMIT
 
@@ -228,6 +228,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     work_w = int(w / resolution_multiplier)
     work_h = int(h / resolution_multiplier)
     print("Work resolution: Width", work_w, "Height", work_h)
+
+    send_patternrecognition_config(communicator, identifier, patternmaster_conf,
+                                   resolution_multiplier)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -449,16 +452,33 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 if number_frame % FPS_OVER_2 == 0:
                     for info in info_to_send:
                         info['tracker_id'] = identifier
-                        # FIXME: next line makes the communication 100 times slower
-                        info['img'] = frame2base64png(frame_resized).decode()
+                        # FIXME: next line makes the communication 100 times
+                        # slower
+                        frame_resized_marks = frame_resized.copy()
+                        cv2.rectangle(frame_resized_marks,
+                                      info['rectangle'][0],
+                                      info['rectangle'][1], (200, 0, 0), -1)
+                        frame_resized_marks = \
+                            cv2.addWeighted(frame_resized_marks, 0.2,
+                                            frame_resized, 0.8, 0)
+                        cv2.circle(frame_resized_marks, (int(info['last_position'][0]), int(info['last_position'][1])),
+                                   70, (200, 200, 0), -1)
+                        frame_resized_marks = \
+                            cv2.addWeighted(frame_resized_marks, 0.2,
+                                            frame_resized, 0.8, 0)
+                        info['img'] = frame2base64png(frame_resized_marks).decode()
                     # Send info to the pattern recognition every half second
-                    communicator.apply(json.dumps(info_to_send),
+                    try:
+                        communicator.apply(json.dumps(info_to_send),
                                        routing_key='track_info')
+                    except:
+                        pass
 
                 if number_frame % (FPS*10) == 0:
                     # Renew the config in pattern recognition every 10 seconds
                     send_patternrecognition_config(communicator, identifier,
-                                                   patternmaster_conf)
+                                                   patternmaster_conf,
+                                                   resolution_multiplier)
 
                 aux_time = time.time() - t0
                 if number_frame > 200:

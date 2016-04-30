@@ -74,13 +74,15 @@ class PatternMaster(object):
     def _process_configs(cls, data):
         identifier = data['identifier']
         new_config = data['config']
+        resolution_mult = data['resolution_multiplier']
 
         cls.pattern_recognition_settings[identifier] = new_config
 
         # If the instance of Pattern Recognition was already created,
         # update its configs values.
         if identifier in cls.pattern_recognition:
-            cls.pattern_recognition[identifier].set_config(new_config)
+            cls.pattern_recognition[identifier].set_config(new_config,
+                                                           resolution_mult)
 
 if __name__ == "__main__":
     print("Listening...")

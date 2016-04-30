@@ -1015,7 +1015,12 @@ class TrackInfo:
             "id": self.id,
             "last_update_timestamp":
                 self.last_update.isoformat(),
-            "last_position": self.last_point
+            "last_position": self.last_point,
+            "rectangle": ((int(self.rectangle[0][0]),
+                           int(self.rectangle[0][1])),
+                          (int(self.rectangle[1][0]),
+                           int(self.rectangle[1][1]))
+                          )
         }
 
 

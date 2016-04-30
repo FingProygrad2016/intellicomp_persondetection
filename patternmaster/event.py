@@ -151,6 +151,7 @@ class EventAgglomeration(Event):
         super(EventAgglomeration, self).__init__(quantifier, value, time_end,
                                                  duration, aprox_tolerance)
         self.type_ = type_
+        self.notified = False
 
     def __repr__(self):
         return \
@@ -159,14 +160,17 @@ class EventAgglomeration(Event):
              super(EventAgglomeration, self).__repr__())
 
     def is_glueable(self, event2):
-        return isinstance(event2, EventDirection) and \
-               (self.last_update >= event2.time_start or
-                self.time_start <= event2.last_update)
+        return isinstance(event2, EventAgglomeration) and \
+               (self.last_update >= event2.time_start - timedelta(seconds=1) or
+                self.time_start - timedelta(seconds=1) <=
+                event2.last_update) and \
+               self.type_ == event2.type_
 
     def satisfies(self, event_rule):
         return isinstance(event_rule, EventAgglomeration) and \
                event_rule.quantifier == Quantifiers.GE and \
-               int(self.type_) >= int(event_rule.type_)
+               int(self.type_) >= int(event_rule.type_) and \
+               int(self.value) >= int(event_rule.value)
 
     def glue(self, event2):
         """
