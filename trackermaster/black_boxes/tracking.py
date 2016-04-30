@@ -7,6 +7,7 @@ import imutils
 import cv2
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
+from filterpy.kalman import FixedLagSmoother
 
 from utils.tools import get_avg_color, euclidean_distance, compare_color,\
     compare_color_histogram, get_color_histogram
@@ -36,6 +37,24 @@ PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = \
 SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = \
     list(map(lambda x: float(x), config.get('SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS').split(', ')))
 
+# Kalman filter types: NORMAL (from OpenCV); SMOOTHED (from filterpy)
+if config.get('KALMAN_FILTER_TYPE') == 'NORMAL':
+    KALMAN_FILTER_TYPE = 1
+elif config.get('KALMAN_FILTER_TYPE') == 'SMOOTHED':
+    KALMAN_FILTER_TYPE = 2
+else:
+    KALMAN_FILTER_TYPE = 0
+# Number of updates to use when smoothing
+KALMAN_FILTER_SMOOTH_LAG = config.getint('KALMAN_FILTER_SMOOTH_LAG')
+
+# Variance of measures noise (in pixels)
+VARIANCE_OF_MEASURES_NOISE = config.getint('MEASURES_NOISE_IN_PIXELS')\
+                             * config.getint('MEASURES_NOISE_IN_PIXELS')
+
+# Variance of non truthful measures noise (in pixels)
+VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE = config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS')\
+                                          * config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS')
+
 
 class Tracker:
 
@@ -60,6 +79,7 @@ class Tracker:
         self.INFINITE_DISTANCE = config.getint('INFINITE_DISTANCE')
 
         self.last_frame = 0
+        self.frames_per_second = fps
         self.seconds_per_frame = 1. / fps
 
         # calculate the amount of valid frames to be without an update
@@ -88,7 +108,7 @@ class Tracker:
             if weights[0] == 0:
                 distance_array[0] = 0
             else:
-                corrected_pos = k_filter.kalman_filter.statePost
+                corrected_pos = k_filter.get_state_post()
                 distance_array[0] = euclidean_distance((corrected_pos[0], corrected_pos[3]), blob["position"].pt)
                 if distance_array[0] * weights[0] > self.threshold_distance:
                     ok = False
@@ -98,8 +118,8 @@ class Tracker:
             if weights[1] == 0:
                 distance_array[1] = 0
             else:
-                predicted_pos = k_filter.kalman_filter.statePre
-                distance_array[1] = euclidean_distance((predicted_pos[0], predicted_pos[3]), blob["position"].pt)
+                predicted_pos = k_filter.get_predicted_state_position()
+                distance_array[1] = euclidean_distance((predicted_pos[0], predicted_pos[1]), blob["position"].pt)
                 if distance_array[1] * weights[1] > self.threshold_distance:
                     ok = False
                 # if the distance is valid, then the distance will be between 0 and 1
@@ -119,13 +139,6 @@ class Tracker:
         # Hungarian Algorithm with scores
         self.hung_alg_with_scores = HungarianAlgorithm(scores_distance_function, self.threshold_color,
                                                        self.INFINITE_DISTANCE)
-
-        # General matrixes for the Kalman Filters
-
-        # Var = variation of model between steps
-        q = Q_discrete_white_noise(dim=3, dt=self.seconds_per_frame, var=0.05)
-        aux = block_diag(q, q)
-        self.process_noise_cov = np.array(aux, np.float32)
 
         # Debug/Evaluation Parameters
         self.color_comparison_average_greens_score = 0
@@ -157,7 +170,7 @@ class Tracker:
             if frames_without_one_to_one <= self.valid_frames_to_predict_position:
                 # predict position of kfs without one at one relationship for a valid time frame
                 for i in range(0, frames_from_previous_execution):
-                    kf.predict()
+                    kf.calc_predicted_state()
 
         if len(blobs) > 0:
             for item in self.kfs_per_blob:
@@ -380,8 +393,8 @@ class Tracker:
                 # TODO: ¡¡¡Resolver como calcular el score y como afecta a esta
                 # TODO: parte!!!
                 # if kf.score > 0.3:
-                journeys.append((kf.journey, kf.journey_color, kf.short_id,
-                                 kf.rectangle, kf.kalman_filter.statePost, False,
+                journeys.append((kf.get_journey(), kf.journey_color, kf.short_id,
+                                 kf.rectangle, kf.get_state_post(), False,
                                  self.kfs_per_blob[kf.group_number]['color']))
 
             if SHOW_COMPARISONS_BY_COLOR:
@@ -402,7 +415,7 @@ class Tracker:
         :return:
         """
         track_info = TrackInfo(size, point, self.tracklets_short_id, blob,
-                               frame_number, self.seconds_per_frame, self.process_noise_cov,
+                               frame_number, self.frames_per_second,
                                raw_image, bg_subtraction_image)
         self.k_filters.append(track_info)
 
@@ -424,13 +437,13 @@ class Tracker:
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
             elif frames_without_one_to_one > self.valid_frames_to_predict_position:
                 # If it has been without one to one for a long time, correct with the merged blob
-                kf.update_pos_info(new_position=blob["position"].pt, frame_number=frame_number)
+                kf.update_with_medium_measure_confidence(new_position=blob["position"].pt, frame_number=frame_number)
             elif frames_since_created < self.valid_frames_since_created:
                 # it has been created a very short time ago: remove it
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
             else:
                 # It has been with one to one recently. It is left only with prediction.
-                kf.update_last_frame_not_alone(frame_number)
+                kf.update_pos_info_with_no_measure_confidence(frame_number)
 
         kf_to_remove.extend(kf_to_remove_in_item)
 
@@ -671,8 +684,9 @@ class Tracker:
 class TrackInfo:
 
     def __init__(self, size, point, short_id, blob, frame_number,
-                 time_interval, process_noise_cov, raw_image, bg_subtraction_image):
+                 fps, raw_image, bg_subtraction_image):
 
+        self.fps = fps
         self.size = size
         self.created_datetime = datetime.now()
         self.created_frame = frame_number
@@ -680,6 +694,7 @@ class TrackInfo:
         self.short_id = short_id
         self.last_frame_update = frame_number
         self.last_frame_not_alone = frame_number
+        self.last_frame_predicted = frame_number
         self.last_update = self.created_datetime
         self.last_point = point
         self.group_number = -1
@@ -690,37 +705,6 @@ class TrackInfo:
         self.color = self.previous_color
         self.image = self.previous_image
 
-        self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
-
-        acceleration_change = time_interval * time_interval / 2
-
-        self.kalman_filter.transitionMatrix = \
-            np.array([[1, time_interval, acceleration_change, 0,             0,                   0],
-                      [0,             1,       time_interval, 0,             0,                   0],
-                      [0,             0,                   1, 0,             0,                   0],
-                      [0,             0,                   0, 1, time_interval, acceleration_change],
-                      [0,             0,                   0, 0,             1,       time_interval],
-                      [0,             0,                   0, 0,             0,                   1]], np.float32)
-
-        self.kalman_filter.measurementMatrix = \
-            np.array([[1, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 1, 0, 0]], np.float32)
-
-        self.process_noise_cov = process_noise_cov
-        self.initial_position = point
-
-        # Initialize the process noise matrix to the identity, in order to
-        # only take into account the measurements in the first frames.
-        # Process prediction is not taken into account in first frames, as...
-        # ... there is not a good initial velocity prediction
-        self.kalman_filter.processNoiseCov = np.eye(N=6, dtype=np.float32)
-
-        self.kalman_filter.measurementNoiseCov = \
-            np.array([[1, 0],
-                      [0, 1]], np.float32)
-
-        self.journey = []
-
         if JOURNEYS_RANDOM_COLOR:
             self.journey_color = (random.randint(0, 255), random.randint(0, 255),
                                   random.randint(0, 255))
@@ -729,22 +713,83 @@ class TrackInfo:
 
         self.number_updates = 1
 
-        array_aux = np.array(
-            [[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
-        self.kalman_filter.statePost = array_aux
+        self.frames_between_last_two_updates = 1.0
 
-        # prediction of next new position
-        self.predict()
+        time_interval = self.frames_between_last_two_updates / self.fps
+        acceleration_change = time_interval * time_interval / 2
 
-        self.journey.append(np.array(array_aux.copy()))
+        f_matrix = np.array([[1, time_interval, acceleration_change, 0,             0,                   0],
+                             [0,             1,       time_interval, 0,             0,                   0],
+                             [0,             0,                   1, 0,             0,                   0],
+                             [0,             0,                   0, 1, time_interval, acceleration_change],
+                             [0,             0,                   0, 0,             1,       time_interval],
+                             [0,             0,                   0, 0,             0,                   1]
+                             ], np.float32)
+
+        q_matrix = np.eye(N=6, dtype=np.float32)
+
+        self.initial_position = point
+
+        h_matrix = np.array([[1, 0, 0, 0, 0, 0],
+                             [0, 0, 0, 1, 0, 0]], np.float32)
+
+        r_matrix = np.array([[VARIANCE_OF_MEASURES_NOISE, 0],
+                             [0, VARIANCE_OF_MEASURES_NOISE]], np.float32)
+
+        if KALMAN_FILTER_TYPE == 1:
+            self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
+
+            x_array = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
+
+            self.kalman_filter.statePost = x_array
+            self.kalman_filter.transitionMatrix = f_matrix
+
+            self.kalman_filter.measurementMatrix = h_matrix
+
+            self.kalman_filter.measurementNoiseCov = r_matrix
+
+            # Initialize the process noise matrix to the identity, in order to
+            # only take into account the measurements in the first frames.
+            # Process prediction is not taken into account in first frames, as...
+            # ... there is not a good initial velocity prediction
+            self.kalman_filter.processNoiseCov = q_matrix
+
+            self.journey = []
+
+            self.journey.append(np.array(x_array.copy()))
+        else:
+            self.kalman_filter = FixedLagSmoother(dim_x=6, dim_z=2, N=KALMAN_FILTER_SMOOTH_LAG)
+
+            x_array = np.array([point[0], 0.0, 0.0, point[1], 0.0, 0.0], np.float32)
+
+            self.kalman_filter.x = x_array
+            self.kalman_filter.F = f_matrix
+
+            self.kalman_filter.H = h_matrix
+
+            self.kalman_filter.R = r_matrix
+
+            # The next four lines are to avoid the error "integer argument expected, got float"
+            # when printing journey lines in the __main__.py file
+            self.kalman_filter.P = self.kalman_filter.P.astype(dtype=np.float32)
+            self.kalman_filter._I = self.kalman_filter._I.astype(dtype=np.float32)
+            self.kalman_filter.residual = self.kalman_filter.residual.astype(dtype=np.float32)
+            self.kalman_filter.x_s = self.kalman_filter.x_s.astype(dtype=np.float32)
+
+            # Initialize the process noise matrix to the identity, in order to
+            # only take into account the measurements in the first frames.
+            # Process prediction is not taken into account in first frames, as...
+            # ... there is not a good initial velocity prediction
+            self.kalman_filter.Q = q_matrix
+
+        self.predicted_state_np = x_array.copy()
+        self.predicted_state = self.predicted_state_np.tolist()
 
     def __repr__(self):
         return "<TrackInfo color: %s, size: %s, last seen: %s, created: %s>" %\
                (self.color, self.size, self.last_update, self.created_datetime)
 
     def predict(self):
-        # FIXME: Después de los tests, comentar la siguiente línea
-        # self.journey.append(self.kalman_filter.predict())
         self.kalman_filter.predict()
 
     def correct(self, measurement):
@@ -754,6 +799,82 @@ class TrackInfo:
 
         return correction
 
+    def predict_and_correct(self, last_frame_number, measurement, has_confidence_in_measure):
+        frames_from_last_update = last_frame_number - self.last_frame_predicted
+        time_interval = frames_from_last_update / self.fps
+
+        self.last_frame_predicted = last_frame_number
+
+        if frames_from_last_update != self.frames_between_last_two_updates:
+            self.frames_between_last_two_updates = frames_from_last_update
+
+            acceleration_change = time_interval * time_interval / 2
+
+            f_matrix = np.array([[1, time_interval, acceleration_change, 0,             0,                   0],
+                                 [0,             1,       time_interval, 0,             0,                   0],
+                                 [0,             0,                   1, 0,             0,                   0],
+                                 [0,             0,                   0, 1, time_interval, acceleration_change],
+                                 [0,             0,                   0, 0,             1,       time_interval],
+                                 [0,             0,                   0, 0,             0,                   1]
+                                 ], np.float32)
+
+            if KALMAN_FILTER_TYPE == 1:
+                self.kalman_filter.transitionMatrix = f_matrix
+            else:
+                self.kalman_filter.F = f_matrix
+
+            if self.number_updates >= 5:
+                # Var = variation of model between steps
+                q = Q_discrete_white_noise(dim=3, dt=time_interval, var=0.05)
+                aux_q = block_diag(q, q)
+                q_matrix = np.array(aux_q, np.float32)
+
+                if KALMAN_FILTER_TYPE == 1:
+                    self.kalman_filter.processNoiseCov = q_matrix
+                else:
+                    self.kalman_filter.Q = q_matrix
+
+        if KALMAN_FILTER_TYPE == 1:
+            self.predict()
+            # correction with the known new position
+            self.correct(np.array(measurement, np.float32))
+        else:
+            self.kalman_filter.smooth(np.array(measurement, np.float32))
+
+        if has_confidence_in_measure:
+            self.number_updates += 1
+
+            if self.number_updates == 3:
+                # Use the information of the initial position and 5th update
+                # new_position to initialize the kalman filter velocity.
+                # Also, initialize the kalman filter process noise matrix.
+
+                # Var = variation of model between steps
+                q = Q_discrete_white_noise(dim=3, dt=time_interval, var=0.05)
+                aux_q = block_diag(q, q)
+                q_matrix = np.array(aux_q, np.float32)
+
+                aux = (measurement[0] - self.initial_position[0],
+                       measurement[1] - self.initial_position[1])
+
+                # si avanza aux[0] pixeles (en eje x) en [last_frame_number - self.created_frame] frames
+                # -> avanza aux[0] pixeles en [(last_frame_number - self.created_frame) / fps] segundos
+                # -> avanza [ aux[0] / ((last_frame_number - self.created_frame) / fps) ] pixeles en 1 segundo
+                # -> avanza [ aux[0] * fps / (last_frame_number - self.created_frame) ] pixeles en 1 segundo
+                frames_since_created = last_frame_number - self.created_frame
+                mult_factor = self.fps / frames_since_created
+
+                if KALMAN_FILTER_TYPE == 1:
+                    self.kalman_filter.processNoiseCov = q_matrix
+
+                    self.kalman_filter.statePost[1] = aux[0] * mult_factor
+                    self.kalman_filter.statePost[4] = aux[1] * mult_factor
+                else:
+                    self.kalman_filter.Q = q_matrix
+
+                    self.kalman_filter.x[1] = aux[0] * mult_factor
+                    self.kalman_filter.x[4] = aux[1] * mult_factor
+
     def update_last_frame(self, last_frame_update):
         self.last_frame_update = last_frame_update
         self.last_frame_not_alone = last_frame_update
@@ -762,56 +883,105 @@ class TrackInfo:
     def update_info(self, new_position, size,
                     blob, last_frame_update,
                     raw_image, bg_subtraction_image):
-        # correction with the known new position
-        self.correct(np.array(new_position, np.float32))
-        # self.color = color
-        self.size = size
-        self.last_frame_update = last_frame_update
-        self.last_frame_not_alone = last_frame_update
-        self.last_update = datetime.now()
-        self.last_point = new_position
 
-        self.score = (self.score * self.number_updates + blob['score']) /\
-                     (self.number_updates + 1)
+        if last_frame_update != self.last_frame_update:
+            self.predict_and_correct(last_frame_update, new_position, True)
 
-        self.rectangle = blob["box"]
+            self.size = size
+            self.last_frame_update = last_frame_update
+            self.last_frame_not_alone = last_frame_update
+            self.last_update = datetime.now()
+            self.last_point = new_position
 
-        self.number_updates += 1
+            self.score = (self.score * self.number_updates + blob['score']) /\
+                         (self.number_updates + 1)
 
-        if self.number_updates == 5:
-            # Use the information of the initial position and 5th update
-            # new_position to initialize the kalman filter velocity.
-            # Also, initialize the kalman filter process noise matrix.
-            self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0],
-                   new_position[1] - self.initial_position[1])
-            self.kalman_filter.statePost[1] = aux[0]/5.0
-            self.kalman_filter.statePost[4] = aux[1]/5.0
+            self.rectangle = blob["box"]
 
-        # if color has not been set and there are at least 5 updates, calculate and set color
-        # if (self.color is None) or (self.number_updates % 5 == 0):
-        self.previous_color = self.color
-        self.previous_image = self.image
-        self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
-        if not JOURNEYS_RANDOM_COLOR:
-            self.journey_color = self.color
+            # if color has not been set and there are at least 5 updates, calculate and set color
+            # if (self.color is None) or (self.number_updates % 5 == 0):
+            self.previous_color = self.color
+            self.previous_image = self.image
+            self.color, self.image = get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
+            if not JOURNEYS_RANDOM_COLOR:
+                self.journey_color = self.color
 
-    def update_pos_info(self, new_position, frame_number):  # , last_frame_update):
-        self.correct(np.array(new_position, np.float32))
-        self.last_point = new_position
+    def update_pos_info(self, frame_number, new_position, has_confidence_in_measure):  # , last_frame_update):
+
+        self.predict_and_correct(frame_number, new_position, has_confidence_in_measure)
+
         self.last_frame_not_alone = frame_number
 
-        self.number_updates += 1
+        if new_position:
+            self.last_point = new_position
 
-        if self.number_updates == 5:
-            # Use the information of the initial position and 5th update
-            # new_position to initialize the kalman filter velocity.
-            # Also, initialize the kalman filter process noise matrix.
-            self.kalman_filter.processNoiseCov = self.process_noise_cov
-            aux = (new_position[0] - self.initial_position[0],
-                   new_position[1] - self.initial_position[1])
-            self.kalman_filter.statePost[1] = aux[0] / 5.0
-            self.kalman_filter.statePost[4] = aux[1] / 5.0
+    def update_pos_info_with_no_measure_confidence(self, frame_number):
+        self.update_pos_info(frame_number,
+                             self.get_predicted_state_position(),
+                             False)
+
+    def update_with_medium_measure_confidence(self, new_position, frame_number):
+        r_matrix = np.array([[VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE, 0],
+                             [0, VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE]], np.float32)
+        if KALMAN_FILTER_TYPE == 1:
+            self.kalman_filter.measurementNoiseCov = r_matrix
+        else:
+            self.kalman_filter.R = r_matrix
+
+        self.update_pos_info(frame_number, new_position, False)
+
+        r_matrix = np.array([[VARIANCE_OF_MEASURES_NOISE, 0],
+                             [0, VARIANCE_OF_MEASURES_NOISE]], np.float32)
+        if KALMAN_FILTER_TYPE == 1:
+            self.kalman_filter.measurementNoiseCov = r_matrix
+        else:
+            self.kalman_filter.R = r_matrix
+
+    def get_journey(self):
+        if KALMAN_FILTER_TYPE == 1:
+            journey = self.journey
+        else:
+            if len(self.kalman_filter.xSmooth) > KALMAN_FILTER_SMOOTH_LAG:
+                journey = self.kalman_filter.xSmooth[0:-KALMAN_FILTER_SMOOTH_LAG]
+            else:
+                journey = []
+
+        return journey
+
+    def get_state_post(self):
+        # Get the corrected state
+        if KALMAN_FILTER_TYPE == 1:
+            state_post = self.kalman_filter.statePost
+        else:
+            state_post = self.kalman_filter.x
+
+        return state_post
+
+    def calc_predicted_state(self):
+        # Calculate the predicted state
+        if KALMAN_FILTER_TYPE == 1:
+            state_pre = np.dot(self.kalman_filter.transitionMatrix,
+                               self.kalman_filter.statePost)
+        else:
+            state_pre = np.dot(self.kalman_filter.F,
+                               self.kalman_filter.x)
+
+        # Positions must be positive. They are pixels positions on the screen.
+        if state_pre[0] < 0:
+            state_pre[0] = 0
+        if state_pre[3] < 0:
+            state_pre[3] = 0
+
+        self.predicted_state_np = state_pre
+        self.predicted_state = state_pre.tolist()
+
+    def get_predicted_state_position(self):
+        if KALMAN_FILTER_TYPE == 1:
+            state_pre_pos = (self.predicted_state[0][0], self.predicted_state[3][0])
+        else:
+            state_pre_pos = (self.predicted_state[0], self.predicted_state[3])
+
+        return state_pre_pos
 
     def update_last_frame_not_alone(self, frame_number):
         self.last_frame_not_alone = frame_number
