@@ -179,6 +179,8 @@ def diff_in_milliseconds(time_start, time_end):
     :return: difference time_end - time_start in milliseconds
     :rtype: int
     """
+    if None in (time_start, time_end):
+        return 0
     diff = time_end - time_start
     milliseconds = diff.days * 86400000  # 86400000 = 24 * 60 * 60 * 1000
     milliseconds += diff.seconds * 1000

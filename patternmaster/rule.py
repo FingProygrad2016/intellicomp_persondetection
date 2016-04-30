@@ -3,7 +3,7 @@ import os
 import inspect
 
 from patternmaster.event import EventSpeed, SpeedEventTypes, Quantifiers, \
-    EventDirection, DirectionEventTypes
+    EventDirection, DirectionEventTypes, EventAgglomeration
 from patternmaster.config import read_conf
 
 
@@ -60,6 +60,14 @@ def load_system_rules(config=None):
                     elif event_type == 'DIRECTION':
                         event_class = EventDirection
                         type_enum = DirectionEventTypes
+                    elif event_type == 'AGGLOMERATION':
+                        events.append(
+                            EventAgglomeration(
+                                type_=int(event_info_type),
+                                quantifier=Quantifiers[event_quantifier],
+                                value=float(event_value))
+                        )
+                        continue
                     else:
                         raise Exception(
                             'Rule loader fails in line ' + str(line) + '. ' +

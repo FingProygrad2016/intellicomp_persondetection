@@ -37,6 +37,7 @@ class PatternMaster(object):
             routing_key='track_info')
 
     def apply(self):
+        print("APPLY")
         self.channel.basic_consume(self.proccess, queue='patternmaster_rcv',
                                    no_ack=True)
         self.channel.start_consuming()
@@ -45,7 +46,7 @@ class PatternMaster(object):
     def proccess(ch, method, properties, body):
 
         data = json.loads(body.decode())
-
+        print("Process data: %s\n" % body.decode()[:50])
         if method.routing_key == 'track_info':
             PatternMaster._process_tracklets(data)
         elif method.routing_key == 'processing_settings':
@@ -72,11 +73,14 @@ class PatternMaster(object):
     @classmethod
     def _process_configs(cls, data):
         identifier = data['identifier']
-        cls.pattern_recognition_settings[identifier] = data['config']
+        new_config = data['config']
+
+        cls.pattern_recognition_settings[identifier] = new_config
+
         # If the instance of Pattern Recognition was already created,
         # update its configs values.
         if identifier in cls.pattern_recognition:
-            cls.pattern_recognition[identifier].set_config(data['config'])
+            cls.pattern_recognition[identifier].set_config(new_config)
 
 if __name__ == "__main__":
     print("Listening...")

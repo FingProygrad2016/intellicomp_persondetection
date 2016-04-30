@@ -1,10 +1,12 @@
 from datetime import datetime
+from sys import maxsize
 import json
+from itertools import dropwhile, takewhile
 
 import numpy as np
 
 from patternmaster.event import EventDirection, EventSpeed, EventInfoType, \
-    Quantifiers, SpeedEventTypes
+    Quantifiers, SpeedEventTypes, EventAgglomeration
 from patternmaster.rule import load_system_rules
 from patternmaster.tracklet import Tracklet
 from utils.communicator import Communicator
@@ -32,12 +34,21 @@ class PatternRecognition(object):
         self.MIN_EVENTS_SPEED_TIME = self.config.getint('MIN_EVENTS_SPEED_TIME')
         self.MIN_EVENTS_DIR_AMOUNT = self.config.getint('MIN_EVENTS_DIR_AMOUNT')
         self.MIN_EVENTS_DIR_TIME = self.config.getint('MIN_EVENTS_DIR_TIME')
+        self.AGGLOMERATION_MIN_AMOUNT_PERSONS = \
+            self.config.getint('AGGLOMERATION_MIN_AMOUNT_PERSONS')
+        self.AGGLOMERATION_MIN_DISTANCE = \
+            self.config.getint('AGGLOMERATION_MIN_DISTANCE')
+        self.GLOBAL_EVENTS_LIVES_TIME = \
+            self.config.getint('GLOBAL_EVENTS_LIVES_TIME')
+        self.TRACKLETS_LIVES_TIME = self.config.getint('TRACKLETS_LIVES_TIME')
 
         self.communicator = \
             Communicator(
                 expiration_time=self.config.getint('WARNINGS_EXPIRATION_TIME'),
                 host_address=self.config.get('WARNINGS_QUEUE_HOSTADDRESS'),
                 exchange='to_master', exchange_type='topic')
+
+        self.global_events = []
 
     def set_config(self, data):
         self.config = CustomConfig(data) if data \
@@ -78,31 +89,68 @@ class PatternRecognition(object):
             if time_lapse > 0:
                 # If there a time lapse to process
 
-                # Look for new events
-                current_events = \
-                    self.calc_events(tracklet_info, last_update_datetime,
-                                     time_lapse, distance, angle)
+                last_position = tracklet_raw_info['last_position']
 
-                # Add found events to the current tracklet
-                tracklet_info.add_new_events(current_events)
+                # Look for new events
+                current_local_events, current_global_events = \
+                    self.calc_events(tracklet_info, last_update_datetime,
+                                     time_lapse, distance, angle, last_position)
+
+                # Add found local events to the current tracklet
+                tracklet_info.add_new_events(current_local_events)
+
+                # Add found global events to the global information
+                self.add_global_events(current_global_events)
 
                 # Update the last_updated_time for the current tracklet
                 tracklet_info.last_position_time = last_update_datetime
-                tracklet_info.last_position = tracklet_raw_info['last_position']
+                tracklet_info.last_position = last_position
 
                 # Considering the new events and the recent events' history,
                 # check if any rule matches
-                found_rules = self.calc_rules(tracklet_info)
+                found_local_rules, found_global_rules = \
+                    self.calc_rules(tracklet_info)
 
                 # If Rules were matched, warn about it
+                # TODO: Revisar validez de esta comparacion
                 if [x[1] for x in tracklet_info.last_found_rules] != \
-                        [x[1] for x in found_rules]:
-                    if found_rules:
-                        found_rules.sort(key=lambda x: x[2], reverse=True)
-                        tracklet_info.last_found_rules = found_rules
-                        tracklet_info.last_time_found_rules = last_update_datetime
+                        [x[1] for x in found_local_rules]:
+                    if found_local_rules:
+                        found_local_rules.sort(key=lambda x: x[2], reverse=True)
+                        tracklet_info.last_found_rules = found_local_rules
+                        tracklet_info.last_time_found_rules = \
+                            last_update_datetime
                         tracklet_info.img = tracklet_raw_info['img']
                         self.fire_alarms(tracklet_info)
+
+                if found_global_rules:
+                    self.fire_global_alarms(found_global_rules)
+
+                # Remove abandoned tracklets from lists
+                self.remove_abandoned_tracklets(last_update_datetime)
+                # Remove old global events from list
+                self.remove_old_global_events(last_update_datetime)
+
+    def remove_abandoned_tracklets(self, last_update):
+        tracklet_to_delete = \
+            [t.id for t in self.tracklets_info.values()
+             if diff_in_milliseconds(t.last_position_time, last_update) >
+             self.TRACKLETS_LIVES_TIME]
+        for id_ in tracklet_to_delete:
+            del self.tracklets_info[id_]
+
+    def remove_old_global_events(self, last_update):
+        self.global_events = list(dropwhile(
+            lambda e: diff_in_milliseconds(e.last_update, last_update) <
+            self.GLOBAL_EVENTS_LIVES_TIME, self.global_events))
+
+    def add_global_events(self, current_global_events):
+        for event in current_global_events:
+            if self.global_events and \
+                    event.is_glueable(self.global_events[-1]):
+                self.global_events[-1].glue(event)
+            else:
+                self.global_events.append(event)
 
     def calc_movements_info(self, tracklet_info, new_position,
                             new_position_time):
@@ -120,7 +168,6 @@ class PatternRecognition(object):
         distance = euclidean_distance(point1, point2)
 
         # sin(angle) = opposite / hypotenuse
-        # FIXME: Ver si existe alternativa en Numpy (+ eficiente)
         if distance:
             sin_of_angle = abs(point2[1] - point1[1]) / distance
 
@@ -131,14 +178,18 @@ class PatternRecognition(object):
         return distance, angle
 
     def calc_events(self, tracklet_info, last_update, time_lapse,
-                    distance, angle):
+                    distance, angle, last_position):
 
-        current_events = self.calc_direction_events(tracklet_info, angle,
-                                                    last_update, time_lapse)
-        current_events.extend(
+        current_local_events = \
+            self.calc_direction_events(tracklet_info, angle,
+                                       last_update, time_lapse)
+        current_local_events.extend(
             self.calc_speed_events(distance, last_update, time_lapse))
 
-        return current_events
+        current_global_event = \
+            self.calc_global_events(last_update, last_position, time_lapse)
+
+        return current_local_events, current_global_event
 
     def calc_direction_events(self, tracklet_info, angle, last_update,
                               time_lapse):
@@ -179,23 +230,46 @@ class PatternRecognition(object):
         if speed < self.min_walking_speed:
             # Append 'STOPPED' event
             current_events.append(EventSpeed(SpeedEventTypes.STOPPED,
-                                             Quantifiers.EQ, time_lapse,
+                                             Quantifiers.EQ, value=time_lapse,
                                              time_end=last_update,
                                              duration=time_lapse))
         elif speed < self.min_running_speed:
             # Append 'WALKING' event
             current_events.append(EventSpeed(SpeedEventTypes.WALKING,
-                                             Quantifiers.EQ, time_lapse,
+                                             Quantifiers.EQ, value=time_lapse,
                                              time_end=last_update,
                                              duration=time_lapse))
         else:
             # Append 'RUNNING' event
             current_events.append(EventSpeed(SpeedEventTypes.RUNNING,
-                                             Quantifiers.EQ, time_lapse,
+                                             Quantifiers.EQ, value=time_lapse,
                                              time_end=last_update,
                                              duration=time_lapse))
 
         return current_events
+
+    def calc_global_events(self, last_update, last_position, time_lapse):
+        counter = 0
+        current_global_events = []
+
+        # ## Look for AGGLOMERATION events ## #
+        # Calculate distance to each tracklet and check if it is close enough
+        for tracklet in self.tracklets_info.values():
+            if diff_in_milliseconds(
+                    tracklet.last_position_time, last_update) < 1500 and \
+                euclidean_distance(last_position, tracklet.last_position) < \
+                    self.AGGLOMERATION_MIN_DISTANCE:
+                counter += 1
+        else:
+            if counter > 1:  # self.AGGLOMERATION_MIN_AMOUNT_PERSONS:
+                current_global_events.append(
+                    EventAgglomeration(type_=counter, value=time_lapse,
+                                       duration=time_lapse))
+
+        # ## Place to verify future global events ## #
+        # ... ... ...
+
+        return current_global_events
 
     def calc_rules(self, tracklet_info):
         """
@@ -207,59 +281,69 @@ class PatternRecognition(object):
              2- The time that the rule has taken
         satisfied
         """
-        found_rules = []
+        found_local_rules = []
+        found_global_rules = []
+        last_update = tracklet_info.last_position_time
 
-        last_speed_events = []
-        last_dir_events = []
-
-        for event in reversed(tracklet_info.active_speed_events):
-            if diff_in_milliseconds(
-                    event.last_update, tracklet_info.last_position_time) < \
-                    self.MIN_EVENTS_SPEED_TIME or \
-                    len(last_speed_events) < self.MIN_EVENTS_SPEED_AMOUNT:
-                last_speed_events.insert(0, event)
-            else:
-                break
-
-        for event in reversed(tracklet_info.active_direction_events):
-            if diff_in_milliseconds(
-                    event.last_update, tracklet_info.last_position_time) < \
-                    self.MIN_EVENTS_DIR_TIME or \
-                    len(last_dir_events) < self.MIN_EVENTS_DIR_AMOUNT:
-                last_dir_events.insert(0, event)
-            else:
-                break
+        # Take the latest events or a minimum
+        last_speed_events = \
+            list(map(lambda x: x[1], takewhile(
+                lambda i_e:
+                diff_in_milliseconds(i_e[1].last_update, last_update) <
+                self.MIN_EVENTS_SPEED_TIME or
+                i_e[0] < self.MIN_EVENTS_SPEED_AMOUNT,
+                enumerate(reversed(tracklet_info.active_speed_events))
+            )))
+        last_dir_events = \
+            list(map(lambda x: x[1], takewhile(
+                lambda i_e:
+                diff_in_milliseconds(i_e[1].last_update, last_update) <
+                self.MIN_EVENTS_DIR_TIME or i_e[0] < self.MIN_EVENTS_DIR_AMOUNT,
+                enumerate(reversed(tracklet_info.active_direction_events))
+            )))
 
         # if any matches, then the rule is added to found_rules
         for rule in self.movement_change_rules:
-            satisfies_speed_events, dist1, time_from_start1= \
+            satisfies_speed_events, dist1, time_from_start1 = \
                 self.check_ruleevents_in_activeevents(
                     rule.events, last_speed_events)
             satisfies_dir_events, dist2, time_from_start2 = \
                 self.check_ruleevents_in_activeevents(
                     rule.events, last_dir_events)
 
-            if satisfies_speed_events or satisfies_dir_events:
-                found_rules.append((dist1 + dist2, rule,
-                                    min(time_from_start1, time_from_start2)))
+            satisfies_global_events, dist3, time_from_start3 = \
+                self.check_ruleevents_in_activeevents(
+                    rule.events, self.global_events)
 
-        return found_rules
+            if satisfies_global_events:
+                found_global_rules.append((dist3, rule, time_from_start3))
+            elif satisfies_speed_events or satisfies_dir_events:
+                found_local_rules.append(
+                    (dist1 + dist2, rule,
+                     min(time_from_start1, time_from_start2)))
+
+        return found_local_rules, found_global_rules
 
     @staticmethod
     def check_ruleevents_in_activeevents(rule_events, last_events):
         """
         Checks if the sequence of rule's events are contained in last_events,
         in the same order as defined in the rule.
-        BE CAREFUL: Same order doesn't mean contiguously. Non contiguously
+        BE CAREFUL: Same order doesn't mean contiguously. Non contiguous
         rule's events will have a distance greater than zero.
-        :param rule_events:
-        :param last_events:
-        :return:
+        :param rule_events: List of events that shapes a Rule.
+        :param last_events: List of last occurred events
+
+        :return: (True/False if satisfy the rule,
+                 distance (measure of confidence),
+                 time from first event to the last)
         """
         if not last_events:
-            return False, 0, 9999999999
+            return False, 0, maxsize
+
         firsts = True
-        last_events_iter = iter(reversed(last_events))
+        last_events_iter = reversed(list(last_events))
+
         try:
             distance = 0
             time_from_start = 0
@@ -279,18 +363,34 @@ class PatternRecognition(object):
             pass
 
         # FIXME: si no hay eventos de tal tipo en la rule, la distancia no
-        # deberia ser cero ya que del otro tipo puede cuplir
-        return False, 0, 9999999999
+        # deberia ser cero ya que del otro tipo puede cumplir
+        return False, 0, maxsize
 
     def fire_alarms(self, tracklet_info):
+        return_data = {'tracker_id': self.identifier,
+                       'rules': [(r[0], r[1].name) for r in
+                                 tracklet_info.last_found_rules],
+                       'position': tracklet_info.last_position,
+                       'id': tracklet_info.id,
+                       'img': tracklet_info.img,
+                       'timestamp': str(tracklet_info.last_time_found_rules)}
 
-        self.communicator.apply(
-            json.dumps({'tracker_id': self.identifier,
-                        'rules': [(r[0], r[1].name) for r in
-                                  tracklet_info.last_found_rules],
-                        'position':
-                            tracklet_info.last_position,
-                        'id': tracklet_info.id,
-                        'img': tracklet_info.img,
-                        'timestamp': str(tracklet_info.last_time_found_rules)}),
-            routing_key='warnings')
+        self.communicator.apply(json.dumps(return_data), routing_key='warnings')
+
+    def fire_global_alarms(self, global_rules):
+        return_data = {'tracker_id': 'GLOBAL: Cantidad: ' +
+                             str(self.global_events[-1].type_) +
+                             " por tiempo(ms): " +
+                             str(self.global_events[-1].value),
+                       'rules': [(r[0], r[1].name) for r in
+                                 global_rules],
+                       'position': (0, 0),
+                       'id': 'GLOBAL: Cantidad: ' +
+                             str(global_rules[0][1].events[0].type_) +
+                             " por tiempo(ms): " +
+                             str(global_rules[0][1].events[0].value),
+                       'img': [],
+                       'timestamp':
+                           str(global_rules[0][1].events[0].last_update)}
+        print("GLOBAL:: %s" % return_data)
+        self.communicator.apply(json.dumps(return_data), routing_key='warnings')

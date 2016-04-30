@@ -61,7 +61,6 @@ if __name__ == '__main__':
     log("Espero el resultado")
 
     for method, properties, msg in warnings_queue.consume():
-        print(":::: STREAM CONTROLLER %s" % stream_controller)
         log('(TYPE %s) %s' %
             (method.routing_key, msg[:100]))
         if method.routing_key == 'cmd':
@@ -80,10 +79,13 @@ if __name__ == '__main__':
                     identifier = \
                         sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
 
-                trackermaster_conf = json.loads(cmd[4]) \
-                    if len(cmd) > 4 else None
-                patternmaster_conf = json.loads(cmd[5]) \
-                    if len(cmd) > 5 else None
+                # TODO: REPARAR ESTO!!!
+                # trackermaster_conf = json.loads(cmd[4]) \
+                #     if len(cmd) > 4 else None
+                trackermaster_conf = None
+                patternmaster_conf = None
+                # patternmaster_conf = json.loads(cmd[5]) \
+                #     if len(cmd) > 5 else None
 
                 stream_controller.add(identifier, subprocess.Popen(
                     ["python3", "trackermaster", identifier, cmd[2],
