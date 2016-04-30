@@ -102,6 +102,8 @@ class Tracker:
                                                                self.threshold_color, self.INFINITE_DISTANCE)
 
         def scores_distance_function(blob, k_filter, weights):
+            # TODO: review and correct the issue of weights and comparison with the thresholds
+            # TODO: in the case where the weight is different from 0 and 1.
             ok = True
             distance_array = np.zeros(3)
 
@@ -197,8 +199,7 @@ class Tracker:
                 else:
                     # this is the result of a new blob (shaped like a person) in the scene
                     # new kalman filter is created for the blob
-                    best_kf = self.add_new_tracking(blob["position"].pt,
-                                                    blob["position"].size, blob, frame_number,
+                    best_kf = self.add_new_tracking(blob, frame_number,
                                                     raw_image, bg_subtraction_image)
                     kf = self.k_filters[best_kf]
                     self.kfs_per_blob.append({'k_filters': [kf], 'blobs': [(blob, i)],
@@ -411,7 +412,7 @@ class Tracker:
         return journeys, [kf.to_dict() for kf in self.k_filters], \
             {k.id: k for k in self.k_filters}, comparisons_by_color
 
-    def add_new_tracking(self, point, size, blob, frame_number, raw_image, bg_subtraction_image):
+    def add_new_tracking(self, blob, frame_number, raw_image, bg_subtraction_image):
         """
         Add a new instance of KalmanFilter and the corresponding metadata
         to the control collection.
@@ -420,7 +421,7 @@ class Tracker:
         :param color:
         :return:
         """
-        track_info = TrackInfo(size, point, self.tracklets_short_id, blob,
+        track_info = TrackInfo(self.tracklets_short_id, blob,
                                frame_number, self.frames_per_second,
                                raw_image, bg_subtraction_image)
         self.k_filters.append(track_info)
@@ -699,20 +700,22 @@ class Tracker:
 
 class TrackInfo:
 
-    def __init__(self, size, point, short_id, blob, frame_number,
+    def __init__(self, short_id, blob, frame_number,
                  fps, raw_image, bg_subtraction_image):
 
         self.fps = fps
-        self.size = size
-        self.created_datetime = datetime.now()
-        self.created_frame = frame_number
+
         self.id = uuid4().hex
         self.short_id = short_id
+        self.size = blob["position"].size
+        self.created_datetime = datetime.now()
+        self.created_frame = frame_number
+        self.initial_position = blob["position"].pt
         self.last_frame_update = frame_number
         self.last_frame_not_alone = frame_number
         self.last_frame_predicted = frame_number
         self.last_update = self.created_datetime
-        self.last_point = point
+        self.last_point = self.initial_position
         self.group_number = -1
         self.score = blob['score']
 
@@ -744,8 +747,6 @@ class TrackInfo:
 
         q_matrix = np.eye(N=6, dtype=np.float32)
 
-        self.initial_position = point
-
         h_matrix = np.array([[1, 0, 0, 0, 0, 0],
                              [0, 0, 0, 1, 0, 0]], np.float32)
 
@@ -755,7 +756,8 @@ class TrackInfo:
         if KALMAN_FILTER_TYPE == 1:
             self.kalman_filter = cv2.KalmanFilter(6, 2, 0)
 
-            x_array = np.array([[point[0]], [0.0], [0.0], [point[1]], [0.0], [0.0]], np.float32)
+            x_array = np.array([[self.initial_position[0]], [0.0], [0.0],
+                                [self.initial_position[1]], [0.0], [0.0]], np.float32)
 
             self.kalman_filter.statePost = x_array
             self.kalman_filter.transitionMatrix = f_matrix
@@ -776,7 +778,8 @@ class TrackInfo:
         else:
             self.kalman_filter = FixedLagSmoother(dim_x=6, dim_z=2, N=KALMAN_FILTER_SMOOTH_LAG)
 
-            x_array = np.array([point[0], 0.0, 0.0, point[1], 0.0, 0.0], np.float32)
+            x_array = np.array([self.initial_position[0], 0.0, 0.0,
+                                self.initial_position[1], 0.0, 0.0], np.float32)
 
             self.kalman_filter.x = x_array
             self.kalman_filter.F = f_matrix
@@ -982,6 +985,8 @@ class TrackInfo:
                                self.kalman_filter.x)
 
         # Positions must be positive. They are pixels positions on the screen.
+        # Otherwise, euclidean distance comparisons throw error.
+        # If they are corrected, delete the following four lines.
         if state_pre[0] < 0:
             state_pre[0] = 0
         if state_pre[3] < 0:
