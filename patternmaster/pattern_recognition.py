@@ -17,6 +17,8 @@ from patternmaster.config import CustomConfig, read_conf
 class PatternRecognition(object):
 
     def __init__(self, identifier, custom_config=None):
+        self.globals_last_notification_datetime = datetime.now()
+        self.globals_last_notification_number = 0
         self.tracklets_info = {}  # Collection of Tracklets
         self.identifier = identifier
         self.resolution_multiplier = 1
@@ -128,7 +130,12 @@ class PatternRecognition(object):
                         self.fire_alarms(tracklet_info)
 
                 if found_global_rules and self.global_events and \
-                        not self.global_events[-1].notified:
+                        not self.global_events[-1].notified and (
+                        (last_update_datetime -
+                         self.globals_last_notification_datetime)
+                                .seconds > 5 or
+                        self.globals_last_notification_number <
+                                self.global_events[-1].type_):
                     self.fire_global_alarms(found_global_rules, tracklet_info)
 
                 # Remove abandoned tracklets from lists
@@ -319,11 +326,9 @@ class PatternRecognition(object):
 
             satisfies_global_events, dist3, time_from_start3 = \
                 self.check_ruleevents_in_activeevents(
-                    rule.events, [ge for ge in self.global_events
-                                  if not ge.notified])
+                    rule.events, [self.global_events[-1]])
 
             if satisfies_global_events:
-                # rule.events = self.global_events.copy()
                 found_global_rules.append((dist3, rule, time_from_start3))
             elif satisfies_speed_events or satisfies_dir_events:
                 found_local_rules.append(
@@ -398,5 +403,9 @@ class PatternRecognition(object):
                        'timestamp':
                            str(global_rules[0][1].events[0].last_update)}
         self.global_events[-1].notified = True
-        print("GLOBAL:: %s" % return_data)
+        self.globals_last_notification_datetime = \
+            self.global_events[-1].last_update
+        self.globals_last_notification_number = self.global_events[-1].type_
+        print("GLOBAL:: %s" % [x for x in return_data.items() if x[0] != 'img'])
+        print("GLOBAL TOTAL:: %s" % self.global_events)
         self.communicator.apply(json.dumps(return_data), routing_key='warnings')

@@ -37,7 +37,6 @@ class PatternMaster(object):
             routing_key='track_info')
 
     def apply(self):
-        print("APPLY")
         self.channel.basic_consume(self.proccess, queue='patternmaster_rcv',
                                    no_ack=True)
         self.channel.start_consuming()
@@ -46,7 +45,10 @@ class PatternMaster(object):
     def proccess(ch, method, properties, body):
 
         data = json.loads(body.decode())
-        print("Process data: %s\n" % body.decode()[:50])
+        if isinstance(data, list):
+            for d in data:
+                print("Process data: %s" % [x for x in d.items()
+                                            if x[0] != 'img'])
         if method.routing_key == 'track_info':
             PatternMaster._process_tracklets(data)
         elif method.routing_key == 'processing_settings':
