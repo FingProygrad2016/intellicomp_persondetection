@@ -175,6 +175,9 @@ class Tracker:
                     kf.calc_predicted_state()
 
         if len(blobs) > 0:
+
+            image_dimension = raw_image.shape[0:2]
+
             for item in self.kfs_per_blob:
                 item['blobs'] = []
                 item['has_been_assigned'] = False
@@ -240,6 +243,9 @@ class Tracker:
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
                         elif frames_since_created < self.valid_frames_since_created:
                             # it has been created a very short time ago: remove it
+                            kf_to_remove_in_item.append({"index": j, "kf": kf})
+                        elif not kf.prediction_is_inside_image(image_dimension):
+                            # it is probably a blob that went out of the image; remove it tracklet
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
                         elif frames_without_one_to_one < self.valid_frames_to_predict_position:
                             # It has been with one to one recently. It is left only with prediction.
@@ -959,10 +965,10 @@ class TrackInfo:
         if KALMAN_FILTER_TYPE == 1:
             journey = self.journey
         else:
-            if len(self.kalman_filter.xSmooth) > KALMAN_FILTER_SMOOTH_LAG:
+            if KALMAN_FILTER_SMOOTH_LAG > 0:
                 journey = self.kalman_filter.xSmooth[0:-KALMAN_FILTER_SMOOTH_LAG]
             else:
-                journey = []
+                journey = self.kalman_filter.xSmooth
 
         return journey
 
@@ -987,10 +993,12 @@ class TrackInfo:
         # Positions must be positive. They are pixels positions on the screen.
         # Otherwise, euclidean distance comparisons throw error.
         # If they are corrected, delete the following four lines.
+        """
         if state_pre[0] < 0:
             state_pre[0] = 0
         if state_pre[3] < 0:
             state_pre[3] = 0
+        """
 
         self.predicted_state_np = state_pre
         self.predicted_state = state_pre.tolist()
@@ -1002,6 +1010,14 @@ class TrackInfo:
             state_pre_pos = (self.predicted_state[0], self.predicted_state[3])
 
         return state_pre_pos
+
+    def prediction_is_inside_image(self, image_dimension):
+        is_inside = True
+        predicted_state = self.get_predicted_state_position()
+        if predicted_state[0] < 0 or predicted_state[0] >= image_dimension[1] or \
+                predicted_state[1] < 0 or predicted_state[1] >= image_dimension[0]:
+            is_inside = False
+        return is_inside
 
     def update_last_frame_not_alone(self, frame_number):
         self.last_frame_not_alone = frame_number
