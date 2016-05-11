@@ -33,6 +33,8 @@ SHOW_COMPARISONS_BY_COLOR = config.getboolean("SHOW_COMPARISONS_BY_COLOR")
 SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
 LIMIT_FPS = config.getboolean("LIMIT_FPS")
 DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
+CREATE_MODEL = config.getboolean("CREATE_MODEL")
+USE_MODEL = config.getboolean("USE_MODEL")
 
 
 def send_patternrecognition_config(communicator, instance_identifier,
@@ -269,6 +271,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
         person_detection.set_histogram_size(shape=(work_w, work_h))
+        person_detection.set_create_model(CREATE_MODEL)
+        person_detection.set_use_model(USE_MODEL)
 
     fps = 0
     comparisons_by_color_image = []
@@ -577,6 +581,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     kill_reader = True
 
     cv2.destroyAllWindows()
+
+    if CREATE_MODEL:
+        person_detection.save_histogram()
 
     number_frame_skip_first = number_frame - 200
     print("Average times::::")

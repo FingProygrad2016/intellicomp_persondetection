@@ -25,6 +25,8 @@ last_update_frame = 0
 update_confidence_matrix = False
 # Histogram2D unique instance
 HISTOGRAM_2D = None
+CREATE_MODEL = None
+USE_MODEL = None
 
 
 if PERSON_DETECTION_PARALLEL_MODE:
@@ -35,6 +37,23 @@ if PERSON_DETECTION_PARALLEL_MODE:
 def set_histogram_size(shape):
     global HISTOGRAM_2D
     HISTOGRAM_2D = Histogram2D(shape=shape)
+
+
+def set_create_model(create_model):
+    global CREATE_MODEL
+    CREATE_MODEL = create_model
+
+
+def set_use_model(use_model):
+    global USE_MODEL
+    USE_MODEL = use_model
+    if USE_MODEL:
+        HISTOGRAM_2D.load()
+        plt.imshow(HISTOGRAM_2D.normalizedConfidenceMatrix)
+        plt.savefig('lala.png')
+        plt.imshow(
+            normalize_matrix(HISTOGRAM_2D.onePersonConfidenceMatrix))
+        plt.savefig('lala2.png')
 
 
 def crop_images(image, rect, resolution_multiplier):
@@ -57,6 +76,10 @@ def must_update_histograms(number_frame, fps):
            ((CONFIDENCE_MATRIX_UPDATE_TIME / 1000) * int(round(fps)))
 
 
+def save_histogram():
+    HISTOGRAM_2D.save()
+
+
 def apply(rectangles, resolution_multiplier, raw_frame_copy,
           frame_resize_copy, number_frame, fps):
 
@@ -65,9 +88,11 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
     blobs = []
     cropped_images = []
 
-    training_histograms = number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS
+    training_histograms = \
+        CREATE_MODEL or ((not USE_MODEL) and
+                         number_frame <= FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS)
 
-    update_confidence_matrix = \
+    update_confidence_matrix = (not (CREATE_MODEL or USE_MODEL)) and \
         USE_HISTOGRAMS_FOR_PERSON_DETECTION and (not training_histograms) and \
         (CONFIDENCE_MATRIX_UPDATE_TIME > 0) and \
         must_update_histograms(number_frame, fps)
@@ -126,7 +151,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
             score = persons_data[1]
 
             if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
-                if training_histograms:
+                if CREATE_MODEL or training_histograms:
                     if score == 1:
                         HISTOGRAM_2D.create_confidence_matrix(
                             (persons_data[2][0], persons_data[2][1],   # (X, Y
@@ -155,7 +180,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                         "score": score
                     })
         else:
-            if USE_HISTOGRAMS_FOR_PERSON_DETECTION and update_confidence_matrix:
+            if USE_HISTOGRAMS_FOR_PERSON_DETECTION and \
+               (CREATE_MODEL or update_confidence_matrix):
                 if PERSON_DETECTION_PARALLEL_MODE:
                     HISTOGRAM_2D.update_confidence_matrix(results_aux)
                     del results_aux
@@ -170,5 +196,7 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                 # plt.imshow(
                 #     normalize_matrix(HISTOGRAM_2D.onePersonConfidenceMatrix))
                 # plt.savefig('lala2.png')
-
-    return blobs
+    if CREATE_MODEL:
+        return []
+    else:
+        return blobs

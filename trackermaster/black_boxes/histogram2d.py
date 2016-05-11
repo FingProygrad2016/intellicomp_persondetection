@@ -46,7 +46,6 @@ class Histogram2D:
                        hist, self.onePersonConfidenceMatrix)
 
     def update_confidence_matrix(self, blobs):
-        print("Update histogram!!!")
 
         for blob in blobs:
             x = blob[2][0]
@@ -122,3 +121,13 @@ class Histogram2D:
         else:
             # If > 0, there maybe a person
             return self.confidenceMatrix[pos[0], pos[1]] > 0, False
+
+    def save(self):
+        np.save('persons_model.npy', self.confidenceMatrix)
+        np.save('one_person_model.npy', self.onePersonConfidenceMatrix)
+
+    def load(self):
+        self.confidenceMatrix = np.load('persons_model.npy')
+        self.normalizedConfidenceMatrix = \
+            normalize_matrix(self.confidenceMatrix)
+        self.onePersonConfidenceMatrix = np.load('one_person_model.npy')
