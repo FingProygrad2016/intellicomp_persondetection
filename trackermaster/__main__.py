@@ -192,7 +192,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
         source = videos_path + '/../Videos/Video_003.avi'
-        # source = "http://live3.cdn.antel.net.uy/auth_0_s2ujmpsk,vxttoken=cGF0aFVSST0lMkZhdXRoXzBfczJ1am1wc2slMkZobHMlMkYlMkEmZXhwaXJ5PTE0NjE2NDg2MDYmcmFuZG9tPWltN2s2WWF0YXMmYy1pcD0xOTAuNjQuNDkuMjcsMDVmNmMxNDc4ZGNjMDNiYzBiMGUyN2E1YWVlNGNjNzUxNzJkMjhmYTZlNThkYWQ3NGY0ZWVkMzcyOTQxYTEwMg==/hls/var880000/playlist.m3u8"
         cap = cv2.VideoCapture(source)
 
     has_at_least_one_frame, raw_image = cap.read()
@@ -231,8 +230,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     work_h = int(h / resolution_multiplier)
     print("Work resolution: Width", work_w, "Height", work_h)
 
-    send_patternrecognition_config(communicator, identifier, patternmaster_conf,
-                                   resolution_multiplier)
+    send_patternrecognition_config(communicator, identifier,
+                                   patternmaster_conf, resolution_multiplier)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -280,7 +279,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     trayectos = []
     tracklets = {}
     last_number_frame = number_frame
-    skipped = False
 
     # Start the main loop
     while has_more_images:
@@ -317,9 +315,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             max_read_time = max(aux_time, max_read_time)
 
         if has_more_images:
-            # ################################################################ #
-            # ##                  BLACK BOXES PROCESSES                     ## #
-            # ################################################################ #
+            # ############################################################# #
+            # ##               BLACK BOXES PROCESSES                     ## #
+            # ############################################################# #
 
             # ########################## ##
             # ## BACKGROUND SUBTRACTOR # ##
@@ -462,19 +460,21 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         cv2.rectangle(frame_resized_marks,
                                       info['rectangle'][0],
                                       info['rectangle'][1], (200, 0, 0), -1)
-                        frame_resized_marks = \
-                            cv2.addWeighted(frame_resized_marks, 0.2,
-                                            frame_resized, 0.8, 0)
-                        cv2.circle(frame_resized_marks, (int(info['last_position'][0]), int(info['last_position'][1])),
+                        frame_resized_marks = cv2.addWeighted(
+                            frame_resized_marks, 0.2, frame_resized, 0.8, 0)
+                        cv2.circle(frame_resized_marks,
+                                   (int(info['last_position'][0]),
+                                    int(info['last_position'][1])),
                                    70, (200, 200, 0), -1)
                         frame_resized_marks = \
                             cv2.addWeighted(frame_resized_marks, 0.2,
                                             frame_resized, 0.8, 0)
-                        info['img'] = frame2base64png(frame_resized_marks).decode()
+                        info['img'] = \
+                            frame2base64png(frame_resized_marks).decode()
                     # Send info to the pattern recognition every half second
                     try:
                         communicator.apply(json.dumps(info_to_send),
-                                       routing_key='track_info')
+                                           routing_key='track_info')
                     except:
                         pass
 
@@ -495,8 +495,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             now = dt.now()
             for tracklet in tracklets.values():
                 if getattr(tracklet, 'last_rule', None):
-                    time_pass = now - \
-                                getattr(tracklet, 'last_rule_time')
+                    time_pass = now - getattr(tracklet, 'last_rule_time')
                     if time_pass.seconds < 9:
                         if SHOW_VIDEO_OUTPUT:
                             cv2.putText(to_show, tracklet.last_rule,
@@ -539,10 +538,11 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     ((len(trayectos) * .7) + (cant_personas * .3)) * .35 +
                     interpol_cant_persons_prev * .65)
                 interpol_cant_persons_prev = interpol_cant_persons
-                cv2.putText(big_frame, 'Current tracklets/persons interpol. num: ' +
-                            str(round((len(trayectos)*.85)+(cant_personas*.15))),
-                            (20, 60), font, .5,
-                            (255, 255, 0), 1)
+                cv2.putText(big_frame,
+                            'Current tracklets/persons interpol. num: ' +
+                            str(round((len(trayectos) * .85) +
+                                      (cant_personas * .15))),
+                            (20, 60), font, .5, (255, 255, 0), 1)
                 cv2.putText(big_frame, 'FPS: ' + _fps, (20, 80), font, .5,
                             (255, 255, 0), 1)
 

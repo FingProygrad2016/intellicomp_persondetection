@@ -33,7 +33,8 @@ def load_system_rules(config=None):
         os.path.abspath(inspect.getfile(inspect.currentframe())))
     with open(conf_file_path + config.get('PATTERNS_DEFINITION_FILE_PATH'),
               newline='') as data_csv:
-        pattern_definitions = csv.reader(data_csv, delimiter=',', quotechar='"')
+        pattern_definitions = \
+            csv.reader(data_csv, delimiter=',', quotechar='"')
 
         for line, pattern_def in enumerate(pattern_definitions):
             try:
@@ -41,7 +42,8 @@ def load_system_rules(config=None):
 
                 # Events
                 events = []
-                for event_type, event_info_type, event_quantifier, event_value \
+                for event_type, event_info_type, event_quantifier, \
+                    event_value \
                     in zip(pattern_def[1::4], pattern_def[2::4],
                            pattern_def[3::4], pattern_def[4::4]):
 

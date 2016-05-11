@@ -13,8 +13,10 @@ from utils.communicator import Communicator
 from webmanager import run_app as run_webmanager
 
 # REFERENCIAS
-# https://docs.python.org/3.5/library/multiprocessing.html#multiprocessing.pool.Pool
-# http://sebastianraschka.com/Articles/2014_multiprocessing_intro.html#The-Pool-class
+# https://docs.python.org/3.5/library/
+# multiprocessing.html#multiprocessing.pool.Pool
+# http://sebastianraschka.com/Articles/
+# 2014_multiprocessing_intro.html#The-Pool-class
 
 
 def log(msg):
@@ -97,7 +99,8 @@ if __name__ == '__main__':
                     source_id = cmd[2]
                     stream_controller.remove(source_id)
             elif cmd[0] == 'SOURCE' and cmd[1] == 'LIST':
-                comm = Communicator(exchange='to_master', exchange_type='topic')
+                comm = Communicator(exchange='to_master',
+                                    exchange_type='topic')
                 comm.send_message(json.dumps(dict(
                     info_id="SOURCE LIST",
                     content=list(stream_controller.get_identidiers()))),

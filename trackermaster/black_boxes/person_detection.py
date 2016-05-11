@@ -109,7 +109,8 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                                        resolution_multiplier)
 
                 # Add cropped image
-                cropped_images.append((crop_img, resolution_multiplier, (w, h)))
+                cropped_images.append((crop_img,
+                                       resolution_multiplier, (w, h)))
             else:
                 verify = HISTOGRAM_2D.verify_blob((x_bin, y_bin))
                 if verify[0]:  # Need to check for persons
@@ -162,9 +163,10 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                         x_a, y_a, x_b, y_b = person
 
                         blobs.append({
-                            "position": cv2.KeyPoint(round((x_a + x_b) / 2),
-                                                     round((y_a + y_b) / 2),
-                                                     (x_b - x_a) * (y_b - y_a)),
+                            "position":
+                                cv2.KeyPoint(round((x_a + x_b) / 2),
+                                             round((y_a + y_b) / 2),
+                                             (x_b - x_a) * (y_b - y_a)),
                             "box": ((x_a, y_a), (x_b, y_b)),
                             "score": score
                         })

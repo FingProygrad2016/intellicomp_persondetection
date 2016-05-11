@@ -17,7 +17,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
 
         date = datetime.now()
         last_events = [
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500,
+                       date, 500),
             EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
@@ -29,7 +30,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(rule_distance, 0)
 
         last_events = [
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date,
+                       500),
             EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
@@ -43,7 +45,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(rule_distance, 0)
 
         last_events = [
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date,
+                       500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.EQ, 500,
@@ -57,7 +60,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(rule_distance, 500)
 
         last_events = [
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date,
+                       500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.EQ, 500,
@@ -75,7 +79,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         last_events = [
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date - timedelta(milliseconds=500), 500),
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date,
+                       500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.STOPPED, Quantifiers.EQ, 500,
@@ -93,7 +98,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         last_events = [
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date - timedelta(milliseconds=500), 500),
-            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date, 500),
+            EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500, date,
+                       500),
             EventSpeed(SpeedEventTypes.RUNNING, Quantifiers.EQ, 500,
                        date + timedelta(milliseconds=500), 500),
             EventSpeed(SpeedEventTypes.WALKING, Quantifiers.EQ, 500,
@@ -131,9 +137,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertFalse(satisfy)
 
     def test_primitives_recognition(self):
-        pattern_recognition = PatternRecognition(
-            min_angle_rotation=45, min_walking_speed=10,
-            min_running_speed=50)
+        pattern_recognition = PatternRecognition(identifier='test')
         # remove the fire_alarms logic
         pattern_recognition.fire_alarms = null_function
 
@@ -150,7 +154,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(1, len(tcklts))
         self.assertIn('123123', tcklts)
         self.assertEqual(0, len(tcklts[tracklet['id']].active_speed_events))
-        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        self.assertEqual(0,
+                         len(tcklts[tracklet['id']].active_direction_events))
 
         # 'Send' new data
         tracklet['last_position'] = (0, 0)
@@ -162,7 +167,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(1, len(tcklts))
         self.assertIn('123123', tcklts)
         self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
-        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        self.assertEqual(0,
+                         len(tcklts[tracklet['id']].active_direction_events))
         last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
         self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
 
@@ -176,7 +182,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(1, len(tcklts))
         self.assertIn('123123', tcklts)
         self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
-        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        self.assertEqual(0,
+                         len(tcklts[tracklet['id']].active_direction_events))
         last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
         self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
 
@@ -190,7 +197,8 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(1, len(tcklts))
         self.assertIn('123123', tcklts)
         self.assertEqual(1, len(tcklts[tracklet['id']].active_speed_events))
-        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        self.assertEqual(0,
+                         len(tcklts[tracklet['id']].active_direction_events))
         last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
         self.assertEqual(SpeedEventTypes.STOPPED, last_speed_event.type)
 
@@ -204,15 +212,14 @@ class PatternRecognitionTestCase(unittest.TestCase):
         self.assertEqual(1, len(tcklts))
         self.assertIn('123123', tcklts)
         self.assertEqual(2, len(tcklts[tracklet['id']].active_speed_events))
-        self.assertEqual(0, len(tcklts[tracklet['id']].active_direction_events))
+        self.assertEqual(0,
+                         len(tcklts[tracklet['id']].active_direction_events))
         last_speed_event = tcklts[tracklet['id']].active_speed_events[-1]
         self.assertEqual(SpeedEventTypes.WALKING, last_speed_event.type)
 
     def test_pattern_recognition(self):
 
-        pattern_recognition = PatternRecognition(
-            min_angle_rotation=45, min_walking_speed=10,
-            min_running_speed=50)
+        pattern_recognition = PatternRecognition(identifier='test')
         # remove the fire_alarms logic
         pattern_recognition.rules = []
 
@@ -253,8 +260,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(seconds=1)
         tracklet = {'id': '456789',
                     'last_position': (15, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertListEqual(pattern_recognition.tracklets_info['456789'].
                              last_found_rules, [])
@@ -263,8 +269,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(seconds=1)
         tracklet = {'id': '456789',
                     'last_position': (26, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertListEqual(pattern_recognition.tracklets_info['456789'].
                              last_found_rules, [])
@@ -273,8 +278,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(milliseconds=200)
         tracklet = {'id': '456789',
                     'last_position': (25, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertListEqual(pattern_recognition.tracklets_info['456789'].
                              last_found_rules, [])
@@ -283,8 +287,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(milliseconds=200)
         tracklet = {'id': '456789',
                     'last_position': (26, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertListEqual(pattern_recognition.tracklets_info['456789'].
                              last_found_rules, [])
@@ -293,18 +296,16 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(milliseconds=500)
         tracklet = {'id': '456789',
                     'last_position': (100, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
-        self.assertListEqual(pattern_recognition.tracklets_info['456789'].
-                             last_found_rules, [])
+        self.assertListEqual(
+            pattern_recognition.tracklets_info['456789'].last_found_rules, [])
 
         # RUNNING - 1300 msec -> RULE SATISFIED
         timestamp += timedelta(milliseconds=800)
         tracklet = {'id': '456789',
                     'last_position': (150, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertEqual(1, len(pattern_recognition.tracklets_info['456789'].
                                 last_found_rules))
@@ -319,8 +320,7 @@ class PatternRecognitionTestCase(unittest.TestCase):
         timestamp += timedelta(seconds=1)
         tracklet = {'id': '456789',
                     'last_position': (250, 0),
-                    'last_update_timestamp':
-                        timestamp.isoformat()}
+                    'last_update_timestamp': timestamp.isoformat()}
         pattern_recognition.apply(tracklet)
         self.assertEqual(1, len(pattern_recognition.tracklets_info['456789'].
                                 last_found_rules))

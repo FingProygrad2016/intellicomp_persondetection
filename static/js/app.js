@@ -50,7 +50,7 @@ $('document').ready(function() {
         publish_log(log_template_info_image('danger',
                 {'ID': data['tracker_id'],
                 'CONFIABILIDAD': data['rules'][0][0],
-                'TIPO DE PATRÓN': data['rules'][0][1]},
+                'TIPO DE PATRON': data['rules'][0][1]},
                 data['img']));
     });
     socket.on('info', function (msg) {

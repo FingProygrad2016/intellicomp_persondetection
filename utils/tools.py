@@ -148,15 +148,8 @@ def apply_inverted_mask_to_image(image, inverted_mask):
     m = inverted_mask[0:, 0:, 0]
     pixels_left = cv2.bitwise_and(image, image, mask=m)
     pixels_left = np.ma.masked_equal(pixels_left, [0, 0, 0])
-    return np.ma.compress_rowcols(np.ma.concatenate(pixels_left), 0)
 
-
-    # ANOTHER WAY #
-    """
-    m = np.ma.masked_equal(inverted_mask, [0, 0, 0])
-    pixels_left = np.ma.masked_array(image, m.mask)
     return np.ma.compress_rowcols(np.ma.concatenate(pixels_left), 0)
-    """
 
 
 def euclidean_distance(point1, point2):
@@ -265,19 +258,24 @@ def rect_size(rect):
 
 
 def frame2base64png(frame):
-    return base64.b64encode(np.array(cv2.imencode('.png', frame)[1]).tostring())
+    return base64.b64encode(
+        np.array(cv2.imencode('.png', frame)[1]).tostring())
 
 
 def x1y1x2y2_to_x1y1wh_single(rectangle):
-    # Transform a rectangle expressed as (x1,y1,x2,y2) to (x1,y1, width, height)
+    """
+    Transform a rectangle expressed as (x1,y1,x2,y2) to (x1,y1, width, height)
+    """
     return rectangle[0], rectangle[1], rectangle[2] - rectangle[0], \
-           rectangle[3] - rectangle[1]
+        rectangle[3] - rectangle[1]
 
 
 def x1y1wh_to_x1y1x2y2_single(rectangle):
-    # Transform a rectangle expressed as (x1,y1, width, height) to (x1,y1,x2,y2)
+    """
+    Transform a rectangle expressed as (x1,y1, width, height) to (x1,y1,x2,y2)
+    """
     return rectangle[0], rectangle[1], rectangle[0] + rectangle[2], \
-           rectangle[1] + rectangle[3]
+        rectangle[1] + rectangle[3]
 
 
 def x1y1x2y2_to_x1y1wh(rectangles):

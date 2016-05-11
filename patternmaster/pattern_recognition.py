@@ -34,11 +34,11 @@ class PatternRecognition(object):
             self.config.getfloat('WEIGHT_NEW_DIRECTION_ANGLE')
         self.MIN_EVENTS_SPEED_AMOUNT = \
             self.config.getint('MIN_EVENTS_SPEED_AMOUNT')
-        self.MIN_EVENTS_SPEED_TIME = self.config.getint('MIN_EVENTS_SPEED_TIME')
-        self.MIN_EVENTS_DIR_AMOUNT = self.config.getint('MIN_EVENTS_DIR_AMOUNT')
+        self.MIN_EVENTS_SPEED_TIME = \
+            self.config.getint('MIN_EVENTS_SPEED_TIME')
+        self.MIN_EVENTS_DIR_AMOUNT = \
+            self.config.getint('MIN_EVENTS_DIR_AMOUNT')
         self.MIN_EVENTS_DIR_TIME = self.config.getint('MIN_EVENTS_DIR_TIME')
-        self.AGGLOMERATION_MIN_AMOUNT_PERSONS = \
-            self.config.getint('AGGLOMERATION_MIN_AMOUNT_PERSONS')
         self.AGGLOMERATION_MIN_DISTANCE = \
             self.config.getint('AGGLOMERATION_MIN_DISTANCE')
         self.GLOBAL_EVENTS_LIVES_TIME = \
@@ -98,7 +98,8 @@ class PatternRecognition(object):
                 # Look for new events
                 current_local_events, current_global_events = \
                     self.calc_events(tracklet_info, last_update_datetime,
-                                     time_lapse, distance, angle, last_position)
+                                     time_lapse, distance, angle,
+                                     last_position)
 
                 # Add found local events to the current tracklet
                 tracklet_info.add_new_events(current_local_events)
@@ -123,7 +124,8 @@ class PatternRecognition(object):
                 if [x[1] for x in tracklet_info.last_found_rules] != \
                         [x[1] for x in found_local_rules]:
                     if found_local_rules:
-                        found_local_rules.sort(key=lambda x: x[2], reverse=True)
+                        found_local_rules.sort(key=lambda x: x[2],
+                                               reverse=True)
                         tracklet_info.last_found_rules = found_local_rules
                         tracklet_info.last_time_found_rules = \
                             last_update_datetime
@@ -132,10 +134,9 @@ class PatternRecognition(object):
                 if found_global_rules and self.global_events and \
                         not self.global_events[-1].notified and (
                         (last_update_datetime -
-                         self.globals_last_notification_datetime)
-                                .seconds > 5 or
-                        self.globals_last_notification_number <
-                                self.global_events[-1].type_):
+                         self.globals_last_notification_datetime).seconds >
+                        5 or self.globals_last_notification_number <
+                        self.global_events[-1].type_):
                     self.fire_global_alarms(found_global_rules, tracklet_info)
 
                 # Remove abandoned tracklets from lists
@@ -273,7 +274,7 @@ class PatternRecognition(object):
                     self.AGGLOMERATION_MIN_DISTANCE:
                 counter += 1
         else:
-            if counter > 1:  # self.AGGLOMERATION_MIN_AMOUNT_PERSONS:
+            if counter > 1:
                 current_global_events.append(
                     EventAgglomeration(type_=counter, value=time_lapse,
                                        time_end=last_update,
@@ -311,7 +312,8 @@ class PatternRecognition(object):
             list(map(lambda x: x[1], takewhile(
                 lambda i_e:
                 diff_in_milliseconds(i_e[1].last_update, last_update) <
-                self.MIN_EVENTS_DIR_TIME or i_e[0] < self.MIN_EVENTS_DIR_AMOUNT,
+                self.MIN_EVENTS_DIR_TIME or i_e[0] <
+                self.MIN_EVENTS_DIR_AMOUNT,
                 enumerate(reversed(tracklet_info.active_direction_events))
             )))
 
@@ -388,24 +390,26 @@ class PatternRecognition(object):
                        'img': tracklet_info.img,
                        'timestamp': str(tracklet_info.last_time_found_rules)}
 
-        self.communicator.apply(json.dumps(return_data), routing_key='warnings')
+        self.communicator.apply(json.dumps(return_data),
+                                routing_key='warnings')
 
     def fire_global_alarms(self, global_rules, current_tracklet):
         return_data = {'tracker_id': 'GLOBAL: Cantidad: ' +
-                             str(self.global_events[-1].type_) +
-                             " por tiempo(ms): " +
-                             str(self.global_events[-1].value),
-                       'rules': [(r[0], r[1].name) for r in
-                                 global_rules],
+                                     str(self.global_events[-1].type_) +
+                                     " por tiempo(ms): " +
+                                     str(self.global_events[-1].value),
+                       'rules': [(r[0], r[1].name) for r in global_rules],
                        'position': (0, 0),
                        'id': current_tracklet.id,
                        'img': current_tracklet.img,
-                       'timestamp':
-                           str(global_rules[0][1].events[0].last_update)}
+                       'timestamp': str(
+                           global_rules[0][1].events[0].last_update)}
         self.global_events[-1].notified = True
         self.globals_last_notification_datetime = \
             self.global_events[-1].last_update
         self.globals_last_notification_number = self.global_events[-1].type_
-        print("GLOBAL:: %s" % [x for x in return_data.items() if x[0] != 'img'])
+        print("GLOBAL:: %s" % [x for x in return_data.items()
+                               if x[0] != 'img'])
         print("GLOBAL TOTAL:: %s" % self.global_events)
-        self.communicator.apply(json.dumps(return_data), routing_key='warnings')
+        self.communicator.apply(json.dumps(return_data),
+                                routing_key='warnings')

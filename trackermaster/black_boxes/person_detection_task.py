@@ -67,4 +67,4 @@ def apply_single(args):
         persons_resize.append((x_a, y_a, x_b, y_b))
 
     return persons_resize, score, \
-           [(b / resolution_multiplier) for b in bounding_box], args[2]
+        [(b / resolution_multiplier) for b in bounding_box], args[2]

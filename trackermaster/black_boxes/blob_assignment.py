@@ -5,7 +5,8 @@ import math
 # References in:
 # https://pypi.python.org/pypi/munkres/
 # http://answers.opencv.org/question/9354/kalman-filter-solution-to-some-cases/
-# http://www.math.harvard.edu/archive/20_spring_05/handouts/assignment_overheads.pdf
+# http://www.math.harvard.edu/archive/20_spring_05/handouts/
+# assignment_overheads.pdf
 
 
 class HungarianAlgorithm:
@@ -18,7 +19,7 @@ class HungarianAlgorithm:
     def get_costs_generic(self, rows_data, columns_data, weights):
 
         # the costs matrix width has to be larger or equal than height
-        columns_count = len(columns_data)  # max(len(self.blobs), len(k_filters))
+        columns_count = len(columns_data)
         rows_count = len(rows_data)
 
         costs_matrix = np.zeros(shape=(rows_count, columns_count), dtype=float)
@@ -32,7 +33,8 @@ class HungarianAlgorithm:
             costs_row = np.zeros(shape=columns_count, dtype=float)
             for j in range(0, columns_count):
                 if weights:
-                    cost = self.cost_function(rows_data[i], columns_data[j], weights)
+                    cost = self.cost_function(rows_data[i],
+                                              columns_data[j], weights)
                 else:
                     cost = self.cost_function(rows_data[i], columns_data[j])
                 if cost["valid"]:
@@ -51,7 +53,8 @@ class HungarianAlgorithm:
             if assigned_column[i] == -1:
                 columns_to_delete.append(i)
             else:
-                columns_relation.append((j, i))  # column j corresponds to original column_data i
+                # column j corresponds to original column_data i
+                columns_relation.append((j, i))
                 j += 1
         for i in range(0, len(assigned_row)):
             if assigned_row[i] == -1:
@@ -68,7 +71,8 @@ class HungarianAlgorithm:
             a.fill(-self.infinite)
             costs_matrix = np.append(costs_matrix, a, axis=1)
 
-        return costs_matrix, assigned_row, valid_columns_amount, columns_relation
+        return costs_matrix, assigned_row, valid_columns_amount,\
+            columns_relation
 
     def apply(self, rows_data, columns_data, weights=None):
         assigned_row = []
@@ -89,8 +93,10 @@ class HungarianAlgorithm:
                     for i in range(0, len(assigned_row)):
                         if assigned_row[i] == 0:
                             column = indexes[j][1]
-                            # math.copysign(1,-0.0) gives -1.0, and math.copysign(1,0.0) gives 1.0
-                            if column < valid_columns_amount and math.copysign(1, costs[j][column]) == 1.0:
+                            # math.copysign(1,-0.0) gives -1.0,
+                            # and math.copysign(1,0.0) gives 1.0
+                            if column < valid_columns_amount and \
+                                    math.copysign(1, costs[j][column]) == 1.0:
                                 assigned_row[i] = columns_relation[column][1]
                             else:
                                 assigned_row[i] = -1

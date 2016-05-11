@@ -1,4 +1,3 @@
-import json
 import pika
 from blinker import signal
 
@@ -31,7 +30,8 @@ class Communicator:
         self.channel = self.connection.channel()
 
         if exchange:
-            self.channel.exchange_declare(exchange, exchange_type=exchange_type)
+            self.channel.exchange_declare(
+                exchange, exchange_type=exchange_type)
             self.exchange = exchange
 
         if queue_name:
@@ -41,7 +41,6 @@ class Communicator:
                                         exchange=self.exchange,
                                         routing_key=routing_key)
             self.exchange = ''
-            # self.channel.queue_declare(queue=queue_name)
 
     def send_message(self, message, routing_key=None):
         self.channel.basic_publish(exchange=self.exchange,

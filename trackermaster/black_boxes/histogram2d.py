@@ -6,7 +6,8 @@ from utils.tools import normalize_matrix
 USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
 CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
                      config.getfloat("CONFIDENCE_LEVEL_1"))
-USE_SQUARE_REGION_FOR_VERIFY = config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
+USE_SQUARE_REGION_FOR_VERIFY = \
+    config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
 SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
 
 
@@ -27,7 +28,8 @@ class Histogram2D:
                                                         dtype=np.float64)
         self.onePersonConfidenceMatrix = np.zeros_like(self.confidenceMatrix,
                                                        dtype=np.float64)
-        self.updateMaximums = np.zeros_like(self.confidenceMatrix, dtype=np.int)
+        self.updateMaximums = \
+            np.zeros_like(self.confidenceMatrix, dtype=np.int)
 
     def create_confidence_matrix(self, blob, count):
         widths, heights = [], []
@@ -99,7 +101,8 @@ class Histogram2D:
                     if USE_SQUARE_REGION_FOR_VERIFY and \
                        max_around >= CONFIDENCE_LEVELS[0]:
                         if normalize_matrix(
-                                self.onePersonConfidenceMatrix)[pos[0], pos[1]]\
+                                self.onePersonConfidenceMatrix)[pos[0],
+                                                                pos[1]] \
                                 >= CONFIDENCE_LEVELS[0]:
                             # No check is needed, there's one person
                             return False, True
