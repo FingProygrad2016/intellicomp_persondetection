@@ -47,13 +47,19 @@ def set_create_model(create_model):
 def set_use_model(use_model):
     global USE_MODEL
     USE_MODEL = use_model
+
+    result = True, ""
     if USE_MODEL:
-        HISTOGRAM_2D.load()
-        plt.imshow(HISTOGRAM_2D.normalizedConfidenceMatrix)
-        plt.savefig('lala.png')
-        plt.imshow(
-            normalize_matrix(HISTOGRAM_2D.onePersonConfidenceMatrix))
-        plt.savefig('lala2.png')
+        load = HISTOGRAM_2D.load()
+        if load[0]:
+            plt.imshow(HISTOGRAM_2D.normalizedConfidenceMatrix)
+            plt.savefig('lala.png')
+            plt.imshow(
+                normalize_matrix(HISTOGRAM_2D.onePersonConfidenceMatrix))
+            plt.savefig('lala2.png')
+        else:
+            result = False, load[1]
+    return result
 
 
 def crop_images(image, rect, resolution_multiplier):

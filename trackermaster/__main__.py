@@ -268,10 +268,11 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     total_time = 0
     max_total_time = 0
 
+    model_load = False, ""
     if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
         person_detection.set_histogram_size(shape=(work_w, work_h))
         person_detection.set_create_model(CREATE_MODEL)
-        person_detection.set_use_model(USE_MODEL)
+        model_load = person_detection.set_use_model(USE_MODEL)
 
     fps = 0
     comparisons_by_color_image = []
@@ -280,356 +281,359 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     tracklets = {}
     last_number_frame = number_frame
 
-    # Start the main loop
-    while has_more_images:
+    if model_load[0]:
+        # Start the main loop
+        while has_more_images:
 
-        t_total = time.time()
+            t_total = time.time()
 
-        # FPS calculation
-        if number_frame > 10 and number_frame != last_number_frame:
-            delay = (time.time() - loop_time)
-            loop_time = time.time()
-            # if LIMIT_FPS:
-            #     if delay < SEC_PER_FRAME:
-            #         time_aux = time.time()
-            #         time.sleep(max(SEC_PER_FRAME - delay, 0))
-            #         delay += time.time() - time_aux
-
-            fps = (1. / delay) * 0.25 + previous_fps * 0.75
-            previous_fps = fps
-            _fps = "%.2f" % fps
-
-        else:
-            if LIMIT_FPS:
-                while has_more_images and number_frame == last_number_frame:
-                    time.sleep(0.01)  # Sleep for avoid Busy waiting
-                if not has_more_images:
-                    break
+            # FPS calculation
+            if number_frame > 10 and number_frame != last_number_frame:
+                delay = (time.time() - loop_time)
                 loop_time = time.time()
+                # if LIMIT_FPS:
+                #     if delay < SEC_PER_FRAME:
+                #         time_aux = time.time()
+                #         time.sleep(max(SEC_PER_FRAME - delay, 0))
+                #         delay += time.time() - time_aux
 
-        t0 = time.time()
+                fps = (1. / delay) * 0.25 + previous_fps * 0.75
+                previous_fps = fps
+                _fps = "%.2f" % fps
 
-        aux_time = time.time() - t0
-        if number_frame > 200:
-            read_time += aux_time
-            max_read_time = max(aux_time, max_read_time)
-
-        if has_more_images:
-            # ############################################################# #
-            # ##               BLACK BOXES PROCESSES                     ## #
-            # ############################################################# #
-
-            # ########################## ##
-            # ## BACKGROUND SUBTRACTOR # ##
-            # ########################## ##
+            else:
+                if LIMIT_FPS:
+                    while has_more_images and number_frame == last_number_frame:
+                        time.sleep(0.01)  # Sleep for avoid Busy waiting
+                    if not has_more_images:
+                        break
+                    loop_time = time.time()
 
             t0 = time.time()
 
-            # resize to a manageable work resolution
-            if LIMIT_FPS:
-                reader_lock.acquire()
-            else:
-                reader_condition.acquire()
-                if number_frame == last_number_frame and has_more_images:
-                    reader_condition.wait()
+            aux_time = time.time() - t0
+            if number_frame > 200:
+                read_time += aux_time
+                max_read_time = max(aux_time, max_read_time)
 
-            if not has_more_images:
+            if has_more_images:
+                # ############################################################# #
+                # ##               BLACK BOXES PROCESSES                     ## #
+                # ############################################################# #
+
+                # ########################## ##
+                # ## BACKGROUND SUBTRACTOR # ##
+                # ########################## ##
+
+                t0 = time.time()
+
+                # resize to a manageable work resolution
+                if LIMIT_FPS:
+                    reader_lock.acquire()
+                else:
+                    reader_condition.acquire()
+                    if number_frame == last_number_frame and has_more_images:
+                        reader_condition.wait()
+
+                if not has_more_images:
+                    if LIMIT_FPS:
+                        reader_lock.release()
+                    else:
+                        reader_condition.notify()
+                        reader_condition.release()
+                    break
+                else:
+                    last_number_frame = number_frame
+                    raw_frame_copy = raw_image.copy()
                 if LIMIT_FPS:
                     reader_lock.release()
                 else:
+                    processed = True
                     reader_condition.notify()
                     reader_condition.release()
-                break
-            else:
-                last_number_frame = number_frame
-                raw_frame_copy = raw_image.copy()
-            if LIMIT_FPS:
-                reader_lock.release()
-            else:
-                processed = True
-                reader_condition.notify()
-                reader_condition.release()
 
-            frame_resized = cv2.resize(raw_frame_copy, (work_w, work_h))
-            frame_resized_copy = frame_resized.copy()
+                frame_resized = cv2.resize(raw_frame_copy, (work_w, work_h))
+                frame_resized_copy = frame_resized.copy()
 
-            bg_sub = background_subtractor.apply(frame_resized)
-            bg_subtraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
-            to_show = bg_subtraction.copy()
+                bg_sub = background_subtractor.apply(frame_resized)
+                bg_subtraction = cv2.cvtColor(bg_sub, cv2.COLOR_GRAY2BGR)
+                to_show = bg_subtraction.copy()
 
-            bg_subtraction_resized =\
-                cv2.resize(bg_subtraction, (work_w, work_h))
-
-            aux_time = time.time() - t0
-            if number_frame > 200:
-                bg_sub_time += aux_time
-                max_bg_sub_time = max(aux_time, max_bg_sub_time)
-
-            # ################### ##
-            # ## BLOBS DETECTOR # ##
-            # ################### ##
-
-            t0 = time.time()
-
-            # blobs_points = blobs_detector.apply(bg_sub)
-            # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
-            bounding_boxes = blobs_detector.apply(bg_sub)
-
-            aux_time = time.time() - t0
-            if number_frame > 200:
-                blob_det_time += aux_time
-                max_blob_det_time = max(aux_time, max_blob_det_time)
-
-            t0 = time.time()
-
-            cant_personas = 0
-
-            if len(bounding_boxes):
-                rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
-                del bounding_boxes
-
-                for (x, y, w, h) in rectangles:
-                    # Draw in blue candidate blobs
-                    cv2.rectangle(frame_resized_copy, (x, y),
-                                  (x + w, y + h), (255, 0, 0), 1)
-
-                # TODO: Remove!
-                if len(rectangles) > 50:
-                    # Skip the cycle when it's full of small blobs
-                    print("TOO MUCH RECTANGLES!!!!")
-                    continue
-
-                # ##################### ##
-                # ## PERSONS DETECTOR # ##
-                # ##################### ##
-
-                persons = \
-                    person_detection.apply(rectangles, resolution_multiplier,
-                                           raw_frame_copy, frame_resized_copy,
-                                           number_frame, fps)
-                cant_personas = len(persons)
-
-                for p in persons:
-                    # Red and Yellow dots
-                    (x_a, y_a), (x_b, y_b) = p['box']
-                    color = 0 if p['score'] == 1 else 255
-                    cv2.circle(
-                        img=frame_resized_copy,
-                        center=(int((x_a + x_b) / 2), int((y_a + y_b) / 2)),
-                        radius=0, color=(0, color, 255), thickness=3)
+                bg_subtraction_resized =\
+                    cv2.resize(bg_subtraction, (work_w, work_h))
 
                 aux_time = time.time() - t0
                 if number_frame > 200:
-                    person_detection_time += aux_time
-                    max_person_detection_time = \
-                        max(aux_time, max_person_detection_time)
+                    bg_sub_time += aux_time
+                    max_bg_sub_time = max(aux_time, max_bg_sub_time)
+
+                # ################### ##
+                # ## BLOBS DETECTOR # ##
+                # ################### ##
 
                 t0 = time.time()
 
-                # ############ ##
-                # ## TRACKER # ##
-                # ############ ##
-
-                trayectos_, info_to_send, tracklets, \
-                    comparisons_by_color_image_aux = \
-                    tracker.apply(persons, frame_resized,
-                                  bg_subtraction_resized, number_frame)
-                del persons
-                trayectos = trayectos_ if trayectos_ else trayectos
-
-                if len(comparisons_by_color_image_aux) > 0:
-                    comparisons_by_color_image = comparisons_by_color_image_aux
+                # blobs_points = blobs_detector.apply(bg_sub)
+                # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
+                bounding_boxes = blobs_detector.apply(bg_sub)
 
                 aux_time = time.time() - t0
                 if number_frame > 200:
-                    t_time += aux_time
-                    max_t_time = max(aux_time, max_t_time)
+                    blob_det_time += aux_time
+                    max_blob_det_time = max(aux_time, max_blob_det_time)
 
                 t0 = time.time()
 
-                # ################################################# ##
-                # ## COMMUNICATION WITH PATTERN MASTER AND OTHERS # ##
-                # ################################################# ##
+                cant_personas = 0
 
-                if number_frame % FPS_OVER_2 == 0:
-                    for info in info_to_send:
-                        info['tracker_id'] = identifier
-                        # FIXME: next line makes the communication 100 times
-                        # slower
-                        frame_resized_marks = frame_resized.copy()
-                        cv2.rectangle(frame_resized_marks,
-                                      info['rectangle'][0],
-                                      info['rectangle'][1], (200, 0, 0), -1)
-                        frame_resized_marks = cv2.addWeighted(
-                            frame_resized_marks, 0.2, frame_resized, 0.8, 0)
-                        cv2.circle(frame_resized_marks,
-                                   (int(info['last_position'][0]),
-                                    int(info['last_position'][1])),
-                                   70, (200, 200, 0), -1)
-                        frame_resized_marks = \
-                            cv2.addWeighted(frame_resized_marks, 0.2,
-                                            frame_resized, 0.8, 0)
-                        info['img'] = \
-                            frame2base64png(frame_resized_marks).decode()
-                    # Send info to the pattern recognition every half second
-                    try:
-                        communicator.apply(json.dumps(info_to_send),
-                                           routing_key='track_info')
-                    except:
-                        pass
+                if len(bounding_boxes):
+                    rectangles = x1y1x2y2_to_x1y1wh(bounding_boxes)
+                    del bounding_boxes
 
-                if number_frame % (FPS*10) == 0:
-                    # Renew the config in pattern recognition every 10 seconds
-                    send_patternrecognition_config(communicator, identifier,
-                                                   patternmaster_conf,
-                                                   resolution_multiplier)
+                    for (x, y, w, h) in rectangles:
+                        # Draw in blue candidate blobs
+                        cv2.rectangle(frame_resized_copy, (x, y),
+                                      (x + w, y + h), (255, 0, 0), 1)
 
-                aux_time = time.time() - t0
-                if number_frame > 200:
-                    pattern_recogn_time += aux_time
-                    max_pattern_recogn_time = \
-                        max(aux_time, max_pattern_recogn_time)
+                    # TODO: Remove!
+                    if len(rectangles) > 50:
+                        # Skip the cycle when it's full of small blobs
+                        print("TOO MUCH RECTANGLES!!!!")
+                        continue
 
-            t0 = time.time()
+                    # ##################### ##
+                    # ## PERSONS DETECTOR # ##
+                    # ##################### ##
 
-            now = dt.now()
-            for tracklet in tracklets.values():
-                if getattr(tracklet, 'last_rule', None):
-                    time_pass = now - getattr(tracklet, 'last_rule_time')
-                    if time_pass.seconds < 9:
-                        if SHOW_VIDEO_OUTPUT:
-                            cv2.putText(to_show, tracklet.last_rule,
-                                        (int(tracklet.last_point[0]),
-                                         int(tracklet.last_point[1])),
-                                        font, 0.3 -
-                                        (time_pass.seconds/30), (255, 0, 0), 1)
-                    else:
-                        tracklet.last_rule = None
+                    persons = \
+                        person_detection.apply(rectangles, resolution_multiplier,
+                                               raw_frame_copy, frame_resized_copy,
+                                               number_frame, fps)
+                    cant_personas = len(persons)
 
-            if SHOW_VIDEO_OUTPUT:
-                # Draw the journeys of the tracked persons
-                draw_journeys(trayectos, [frame_resized_copy, to_show])
+                    for p in persons:
+                        # Red and Yellow dots
+                        (x_a, y_a), (x_b, y_b) = p['box']
+                        color = 0 if p['score'] == 1 else 255
+                        cv2.circle(
+                            img=frame_resized_copy,
+                            center=(int((x_a + x_b) / 2), int((y_a + y_b) / 2)),
+                            radius=0, color=(0, color, 255), thickness=3)
 
-            aux_time = time.time() - t0
-            if number_frame > 200:
-                show_info_time += aux_time
-                max_show_info_time = max(aux_time, max_show_info_time)
+                    aux_time = time.time() - t0
+                    if number_frame > 200:
+                        person_detection_time += aux_time
+                        max_person_detection_time = \
+                            max(aux_time, max_person_detection_time)
 
-            if SHOW_VIDEO_OUTPUT:
-                # #################### ##
-                # ## DISPLAY RESULTS # ##
-                # #################### ##
+                    t0 = time.time()
 
-                t0 = time.time()
+                    # ############ ##
+                    # ## TRACKER # ##
+                    # ############ ##
 
-                big_frame = \
-                    np.vstack((np.hstack((bg_subtraction, to_show)),
-                               np.hstack((frame_resized, frame_resized_copy))))
-                # TEXT INFORMATION
-                # Write FPS in the frame to show
+                    trayectos_, info_to_send, tracklets, \
+                        comparisons_by_color_image_aux = \
+                        tracker.apply(persons, frame_resized,
+                                      bg_subtraction_resized, number_frame)
+                    del persons
+                    trayectos = trayectos_ if trayectos_ else trayectos
 
-                cv2.putText(big_frame, 'Current persons detected: ' +
-                            str(cant_personas), (20, 20), font, .5,
-                            (255, 255, 0), 1)
-                cv2.putText(big_frame, 'Current tracklets: ' +
-                            str(len(trayectos)), (20, 40), font, .5,
-                            (255, 255, 0), 1)
-                interpol_cant_persons = round(
-                    ((len(trayectos) * .7) + (cant_personas * .3)) * .35 +
-                    interpol_cant_persons_prev * .65)
-                interpol_cant_persons_prev = interpol_cant_persons
-                cv2.putText(big_frame,
-                            'Current tracklets/persons interpol. num: ' +
-                            str(round((len(trayectos) * .85) +
-                                      (cant_personas * .15))),
-                            (20, 60), font, .5, (255, 255, 0), 1)
-                cv2.putText(big_frame, 'FPS: ' + _fps, (20, 80), font, .5,
-                            (255, 255, 0), 1)
+                    if len(comparisons_by_color_image_aux) > 0:
+                        comparisons_by_color_image = comparisons_by_color_image_aux
 
-                big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
-                cv2.imshow('result', big_frame)
+                    aux_time = time.time() - t0
+                    if number_frame > 200:
+                        t_time += aux_time
+                        max_t_time = max(aux_time, max_t_time)
 
-                if SHOW_COMPARISONS_BY_COLOR:
-                    if len(comparisons_by_color_image) > 0:
-                        cv2.imshow('comparisons by color',
-                                   comparisons_by_color_image)
+                    t0 = time.time()
 
-                aux_time = time.time() - t0
-                if number_frame > 200:
-                    display_time += aux_time
-                    max_display_time = max(aux_time, max_display_time)
+                    # ################################################# ##
+                    # ## COMMUNICATION WITH PATTERN MASTER AND OTHERS # ##
+                    # ################################################# ##
+
+                    if number_frame % FPS_OVER_2 == 0:
+                        for info in info_to_send:
+                            info['tracker_id'] = identifier
+                            # FIXME: next line makes the communication 100 times
+                            # slower
+                            frame_resized_marks = frame_resized.copy()
+                            cv2.rectangle(frame_resized_marks,
+                                          info['rectangle'][0],
+                                          info['rectangle'][1], (200, 0, 0), -1)
+                            frame_resized_marks = cv2.addWeighted(
+                                frame_resized_marks, 0.2, frame_resized, 0.8, 0)
+                            cv2.circle(frame_resized_marks,
+                                       (int(info['last_position'][0]),
+                                        int(info['last_position'][1])),
+                                       70, (200, 200, 0), -1)
+                            frame_resized_marks = \
+                                cv2.addWeighted(frame_resized_marks, 0.2,
+                                                frame_resized, 0.8, 0)
+                            info['img'] = \
+                                frame2base64png(frame_resized_marks).decode()
+                        # Send info to the pattern recognition every half second
+                        try:
+                            communicator.apply(json.dumps(info_to_send),
+                                               routing_key='track_info')
+                        except:
+                            pass
+
+                    if number_frame % (FPS*10) == 0:
+                        # Renew the config in pattern recognition every 10 seconds
+                        send_patternrecognition_config(communicator, identifier,
+                                                       patternmaster_conf,
+                                                       resolution_multiplier)
+
+                    aux_time = time.time() - t0
+                    if number_frame > 200:
+                        pattern_recogn_time += aux_time
+                        max_pattern_recogn_time = \
+                            max(aux_time, max_pattern_recogn_time)
 
                 t0 = time.time()
 
-                if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
-                    exit_cause = 'CLOSED BY PRESSING "Q|q"'
-                    break
+                now = dt.now()
+                for tracklet in tracklets.values():
+                    if getattr(tracklet, 'last_rule', None):
+                        time_pass = now - getattr(tracklet, 'last_rule_time')
+                        if time_pass.seconds < 9:
+                            if SHOW_VIDEO_OUTPUT:
+                                cv2.putText(to_show, tracklet.last_rule,
+                                            (int(tracklet.last_point[0]),
+                                             int(tracklet.last_point[1])),
+                                            font, 0.3 -
+                                            (time_pass.seconds/30), (255, 0, 0), 1)
+                        else:
+                            tracklet.last_rule = None
+
+                if SHOW_VIDEO_OUTPUT:
+                    # Draw the journeys of the tracked persons
+                    draw_journeys(trayectos, [frame_resized_copy, to_show])
 
                 aux_time = time.time() - t0
                 if number_frame > 200:
-                    wait_key_time += aux_time
-                    max_wait_key_time = max(aux_time, max_wait_key_time)
-            else:
-                print("fps: ", str(_fps))
+                    show_info_time += aux_time
+                    max_show_info_time = max(aux_time, max_show_info_time)
 
-            aux_time = time.time() - t_total
-            if number_frame > 200:
-                total_time += aux_time
-                max_total_time = max(aux_time, max_total_time)
+                if SHOW_VIDEO_OUTPUT:
+                    # #################### ##
+                    # ## DISPLAY RESULTS # ##
+                    # #################### ##
 
-    global kill_reader
-    kill_reader = True
+                    t0 = time.time()
 
-    cv2.destroyAllWindows()
+                    big_frame = \
+                        np.vstack((np.hstack((bg_subtraction, to_show)),
+                                   np.hstack((frame_resized, frame_resized_copy))))
+                    # TEXT INFORMATION
+                    # Write FPS in the frame to show
 
-    if CREATE_MODEL:
-        person_detection.save_histogram()
+                    cv2.putText(big_frame, 'Current persons detected: ' +
+                                str(cant_personas), (20, 20), font, .5,
+                                (255, 255, 0), 1)
+                    cv2.putText(big_frame, 'Current tracklets: ' +
+                                str(len(trayectos)), (20, 40), font, .5,
+                                (255, 255, 0), 1)
+                    interpol_cant_persons = round(
+                        ((len(trayectos) * .7) + (cant_personas * .3)) * .35 +
+                        interpol_cant_persons_prev * .65)
+                    interpol_cant_persons_prev = interpol_cant_persons
+                    cv2.putText(big_frame,
+                                'Current tracklets/persons interpol. num: ' +
+                                str(round((len(trayectos) * .85) +
+                                          (cant_personas * .15))),
+                                (20, 60), font, .5, (255, 255, 0), 1)
+                    cv2.putText(big_frame, 'FPS: ' + _fps, (20, 80), font, .5,
+                                (255, 255, 0), 1)
 
-    number_frame_skip_first = number_frame - 200
-    print("Average times::::")
-    read_time /= number_frame_skip_first
-    print("Read time " + str(read_time))
-    bg_sub_time /= number_frame_skip_first
-    print("Background subtraction time " + str(bg_sub_time))
-    blob_det_time /= number_frame_skip_first
-    print("Blob detector time " + str(blob_det_time))
-    person_detection_time /= number_frame_skip_first
-    print("Person detector time " + str(person_detection_time))
-    t_time /= number_frame_skip_first
-    print("Tracker time " + str(t_time))
-    pattern_recogn_time /= number_frame_skip_first
-    print("Communication with pattern recognition time " +
-          str(pattern_recogn_time))
-    show_info_time /= number_frame_skip_first
-    print("Text and paths time " + str(show_info_time))
-    display_time /= number_frame_skip_first
-    print("Display time " + str(display_time))
-    wait_key_time /= number_frame_skip_first
-    print("cv2.waitKey time " + str(wait_key_time))
-    total_time /= number_frame_skip_first
-    print("Total time " + str(total_time))
+                    big_frame = cv2.resize(big_frame, (work_w*4, work_h*4))
+                    cv2.imshow('result', big_frame)
 
-    print("")
-    print("")
-    print("Max times::::")
-    print("Read time " + str(max_read_time))
-    print("Background subtraction time " + str(max_bg_sub_time))
-    print("Blob detector time " + str(max_blob_det_time))
-    print("Person detector time " + str(max_person_detection_time))
-    print("Tracker time " + str(max_t_time))
-    print("Communication with pattern recognition time " +
-          str(max_pattern_recogn_time))
-    print("Text and paths time " + str(max_show_info_time))
-    print("Display time " + str(max_display_time))
-    print("cv2.waitKey time " + str(max_wait_key_time))
-    print("Total time " + str(max_total_time))
+                    if SHOW_COMPARISONS_BY_COLOR:
+                        if len(comparisons_by_color_image) > 0:
+                            cv2.imshow('comparisons by color',
+                                       comparisons_by_color_image)
 
-    comm_info = Communicator(exchange='to_master', exchange_type='topic')
-    comm_info.send_message(json.dumps(dict(
-        info_id="EXIT", id=identifier,
-        content="CAUSE: " + exit_cause,
-        img=frame2base64png(frame_resized).decode())),
-        routing_key='info')
+                    aux_time = time.time() - t0
+                    if number_frame > 200:
+                        display_time += aux_time
+                        max_display_time = max(aux_time, max_display_time)
+
+                    t0 = time.time()
+
+                    if cv2.waitKey(1) & 0xFF in (ord('q'), ord('Q')):
+                        exit_cause = 'CLOSED BY PRESSING "Q|q"'
+                        break
+
+                    aux_time = time.time() - t0
+                    if number_frame > 200:
+                        wait_key_time += aux_time
+                        max_wait_key_time = max(aux_time, max_wait_key_time)
+                else:
+                    print("fps: ", str(_fps))
+
+                aux_time = time.time() - t_total
+                if number_frame > 200:
+                    total_time += aux_time
+                    max_total_time = max(aux_time, max_total_time)
+
+        global kill_reader
+        kill_reader = True
+
+        cv2.destroyAllWindows()
+
+        if CREATE_MODEL:
+            person_detection.save_histogram()
+
+        number_frame_skip_first = number_frame - 200
+        print("Average times::::")
+        read_time /= number_frame_skip_first
+        print("Read time " + str(read_time))
+        bg_sub_time /= number_frame_skip_first
+        print("Background subtraction time " + str(bg_sub_time))
+        blob_det_time /= number_frame_skip_first
+        print("Blob detector time " + str(blob_det_time))
+        person_detection_time /= number_frame_skip_first
+        print("Person detector time " + str(person_detection_time))
+        t_time /= number_frame_skip_first
+        print("Tracker time " + str(t_time))
+        pattern_recogn_time /= number_frame_skip_first
+        print("Communication with pattern recognition time " +
+              str(pattern_recogn_time))
+        show_info_time /= number_frame_skip_first
+        print("Text and paths time " + str(show_info_time))
+        display_time /= number_frame_skip_first
+        print("Display time " + str(display_time))
+        wait_key_time /= number_frame_skip_first
+        print("cv2.waitKey time " + str(wait_key_time))
+        total_time /= number_frame_skip_first
+        print("Total time " + str(total_time))
+
+        print("")
+        print("")
+        print("Max times::::")
+        print("Read time " + str(max_read_time))
+        print("Background subtraction time " + str(max_bg_sub_time))
+        print("Blob detector time " + str(max_blob_det_time))
+        print("Person detector time " + str(max_person_detection_time))
+        print("Tracker time " + str(max_t_time))
+        print("Communication with pattern recognition time " +
+              str(max_pattern_recogn_time))
+        print("Text and paths time " + str(max_show_info_time))
+        print("Display time " + str(max_display_time))
+        print("cv2.waitKey time " + str(max_wait_key_time))
+        print("Total time " + str(max_total_time))
+
+        comm_info = Communicator(exchange='to_master', exchange_type='topic')
+        comm_info.send_message(json.dumps(dict(
+            info_id="EXIT", id=identifier,
+            content="CAUSE: " + exit_cause,
+            img=frame2base64png(frame_resized).decode())),
+            routing_key='info')
+    else:
+        print(model_load[1])
 
     exit()
 

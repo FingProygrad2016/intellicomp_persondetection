@@ -130,7 +130,13 @@ class Histogram2D:
         np.save('one_person_model.npy', self.onePersonConfidenceMatrix)
 
     def load(self):
-        self.confidenceMatrix = np.load('persons_model.npy')
-        self.normalizedConfidenceMatrix = \
-            normalize_matrix(self.confidenceMatrix)
-        self.onePersonConfidenceMatrix = np.load('one_person_model.npy')
+        try:
+            self.confidenceMatrix = np.load('persons_model.npy')
+            self.normalizedConfidenceMatrix = \
+                normalize_matrix(self.confidenceMatrix)
+            self.onePersonConfidenceMatrix = np.load('one_person_model.npy')
+            return True, ""
+        except FileNotFoundError as f:
+            return False, "Error({0}): {1} - {2}".format(f.errno,
+                                                         f.filename,
+                                                         f.strerror)
