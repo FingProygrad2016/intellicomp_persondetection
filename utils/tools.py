@@ -2,8 +2,8 @@
 Modulo que contiene funciones de ayuda generales
 """
 import base64
-import cv2
 import numpy as np
+import cv2
 
 from math import sqrt, pow
 from scipy.spatial import distance as dist

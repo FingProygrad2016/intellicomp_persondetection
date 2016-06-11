@@ -1,3 +1,4 @@
+import base64
 import subprocess
 from hashlib import sha1
 from datetime import datetime as dt
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     # Starting up the base
 
     warnings_queue = Communicator(queue_name='launcher_rcv',
-                                  exchange='to_master', routing_key='#',
+                                  exchange='to_master', routing_key='cmd',
                                   exchange_type='topic')
 
     log("Starting up the Pattern Recognition Engine...")
@@ -76,21 +77,22 @@ if __name__ == '__main__':
             elif cmd[0] == 'SOURCE' and cmd[1] == 'NEW':
                 if len(cmd) > 3:
                     # Se le pasa un id
-                    identifier = cmd[3]
+                    identifier = base64.b64decode(cmd[3]).decode()
                 else:
                     identifier = \
                         sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
 
-                # TODO: REPARAR ESTO!!!
-                # trackermaster_conf = json.loads(cmd[4]) \
-                #     if len(cmd) > 4 else None
-                trackermaster_conf = None
-                patternmaster_conf = None
-                # patternmaster_conf = json.loads(cmd[5]) \
-                #     if len(cmd) > 5 else None
+                path = base64.b64decode(cmd[2]).decode()
+
+                trackermaster_conf = \
+                    json.loads(base64.b64decode(cmd[4]).decode()) \
+                    if len(cmd) > 4 else None
+                patternmaster_conf = \
+                    json.loads(base64.b64decode(cmd[5]).decode()) \
+                    if len(cmd) > 5 else None
 
                 stream_controller.add(identifier, subprocess.Popen(
-                    ["python3", "trackermaster", identifier, cmd[2],
+                    ["python3", "trackermaster", identifier, path,
                      json.dumps(trackermaster_conf),
                      json.dumps(patternmaster_conf)]))
 

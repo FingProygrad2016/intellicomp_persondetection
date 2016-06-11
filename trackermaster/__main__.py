@@ -1,9 +1,9 @@
 from threading import Thread, Lock, Condition
 
-import cv2
 import inspect
 import json
 import numpy as np
+import cv2
 import os
 import sys
 import time

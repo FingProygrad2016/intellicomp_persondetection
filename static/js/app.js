@@ -2,8 +2,23 @@ var current_sources = [];
 
 function publish_log(msg){
     var warnings = $('#warnings');
+
+    var realtop = get_real_scroll_height(warnings.get(0)),
+        should_scroll = warnings.get(0).scrollTop == realtop;
+
     warnings.append(msg);
-    warnings.animate({scrollTop: warnings.get(0).scrollHeight}, 500)
+    if (should_scroll) {
+        warnings.animate({scrollTop: warnings.get(0).scrollHeight}, 250);
+    }
+}
+
+function get_real_scroll_height(the_element){
+    tmp = the_element.scrollTop;
+    the_element.scrollTop = the_element.scrollHeight;
+    realtop = the_element.scrollTop;
+    the_element.scrollTop = tmp;
+
+    return realtop;
 }
 
 function addConfigInput(parent, item, default_val) {
@@ -181,9 +196,9 @@ function add_new_source() {
 
         socket.emit('cmd', {
             'data': 'SOURCE NEW ' +
-            path + ' ' + identifier + ' ' +
-            JSON.stringify(config_trackermaster) + ' ' +
-            JSON.stringify(config_patternmaster)
+            btoa(path) + ' ' + btoa(identifier) + ' ' +
+            btoa(JSON.stringify(config_trackermaster)) + ' ' +
+            btoa(JSON.stringify(config_patternmaster))
         });
         add_close_source_button(identifier);
         current_sources.push(identifier);

@@ -55,8 +55,13 @@ def get_configs():
 
 
 @socketio.on('connect')
-def ws_conn():
-    return True
+def connect():
+    print('connected')
+
+
+@socketio.on('disconnect')
+def disconnect():
+    print('disconnected')
 
 
 @socketio.on('cmd')
@@ -67,7 +72,7 @@ def ws_disconn(data):
 
 
 def run_app():
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0')
 
 if __name__ == '__main__':
     run_app()

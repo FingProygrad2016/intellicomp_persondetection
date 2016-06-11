@@ -12,7 +12,7 @@ class StreamController:
             self._terminate(p)
             del self.streamings[identifier]
         else:
-            print("MASTER ERROR: Process was not fount in StreamControler.")
+            print("MASTER ERROR: Process was not found in StreamController.")
 
     def remove_all(self):
         for p in self.streamings.values():

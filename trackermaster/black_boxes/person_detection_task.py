@@ -1,5 +1,5 @@
-import cv2
 import numpy as np
+import cv2
 
 from imutils.object_detection import non_max_suppression
 from trackermaster.config import config
