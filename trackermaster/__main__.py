@@ -303,7 +303,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
             else:
                 if LIMIT_FPS:
-                    while has_more_images and number_frame == last_number_frame:
+                    while has_more_images and \
+                                    number_frame == last_number_frame:
                         time.sleep(0.01)  # Sleep for avoid Busy waiting
                     if not has_more_images:
                         break
@@ -317,9 +318,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 max_read_time = max(aux_time, max_read_time)
 
             if has_more_images:
-                # ############################################################# #
-                # ##               BLACK BOXES PROCESSES                     ## #
-                # ############################################################# #
+                # ########################################################## #
+                # ##               BLACK BOXES PROCESSES                  ## #
+                # ########################################################## #
 
                 # ########################## ##
                 # ## BACKGROUND SUBTRACTOR # ##
@@ -395,30 +396,26 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         cv2.rectangle(frame_resized_copy, (x, y),
                                       (x + w, y + h), (255, 0, 0), 1)
 
-                    # TODO: Remove!
-                    if len(rectangles) > 50:
+                    if len(rectangles) > 100:
                         # Skip the cycle when it's full of small blobs
-                        print("TOO MUCH RECTANGLES!!!!")
                         continue
 
                     # ##################### ##
                     # ## PERSONS DETECTOR # ##
                     # ##################### ##
-
-                    persons = \
-                        person_detection.apply(rectangles, resolution_multiplier,
-                                               raw_frame_copy, frame_resized_copy,
-                                               number_frame, fps)
+                    persons = person_detection.apply(
+                        rectangles, resolution_multiplier, raw_frame_copy,
+                        frame_resized_copy, number_frame, fps)
                     cant_personas = len(persons)
 
                     for p in persons:
                         # Red and Yellow dots
                         (x_a, y_a), (x_b, y_b) = p['box']
                         color = 0 if p['score'] == 1 else 255
-                        cv2.circle(
-                            img=frame_resized_copy,
-                            center=(int((x_a + x_b) / 2), int((y_a + y_b) / 2)),
-                            radius=0, color=(0, color, 255), thickness=3)
+                        cv2.circle(img=frame_resized_copy,
+                                   center=(int((x_a + x_b) / 2),
+                                           int((y_a + y_b) / 2)), radius=0,
+                                   color=(0, color, 255), thickness=3)
 
                     aux_time = time.time() - t0
                     if number_frame > 200:
@@ -440,7 +437,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     trayectos = trayectos_ if trayectos_ else trayectos
 
                     if len(comparisons_by_color_image_aux) > 0:
-                        comparisons_by_color_image = comparisons_by_color_image_aux
+                        comparisons_by_color_image = \
+                            comparisons_by_color_image_aux
 
                     aux_time = time.time() - t0
                     if number_frame > 200:
@@ -456,14 +454,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     if number_frame % FPS_OVER_2 == 0:
                         for info in info_to_send:
                             info['tracker_id'] = identifier
-                            # FIXME: next line makes the communication 100 times
-                            # slower
+
                             frame_resized_marks = frame_resized.copy()
-                            cv2.rectangle(frame_resized_marks,
-                                          info['rectangle'][0],
-                                          info['rectangle'][1], (200, 0, 0), -1)
-                            frame_resized_marks = cv2.addWeighted(
-                                frame_resized_marks, 0.2, frame_resized, 0.8, 0)
+                            cv2.rectangle(
+                                frame_resized_marks, info['rectangle'][0],
+                                info['rectangle'][1], (200, 0, 0), -1)
+                            frame_resized_marks = \
+                                cv2.addWeighted(frame_resized_marks, 0.2,
+                                                frame_resized, 0.8, 0)
                             cv2.circle(frame_resized_marks,
                                        (int(info['last_position'][0]),
                                         int(info['last_position'][1])),
@@ -473,18 +471,17 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                                 frame_resized, 0.8, 0)
                             info['img'] = \
                                 frame2base64png(frame_resized_marks).decode()
-                        # Send info to the pattern recognition every half second
-                        try:
-                            communicator.apply(json.dumps(info_to_send),
-                                               routing_key='track_info')
-                        except:
-                            pass
+                        # Send info to the pattern recognition
+                        # every half second
+                        communicator.apply(json.dumps(info_to_send),
+                                           routing_key='track_info')
 
                     if number_frame % (FPS*10) == 0:
-                        # Renew the config in pattern recognition every 10 seconds
-                        send_patternrecognition_config(communicator, identifier,
-                                                       patternmaster_conf,
-                                                       resolution_multiplier)
+                        # Renew the config in pattern recognition every
+                        # 10 seconds
+                        send_patternrecognition_config(
+                            communicator, identifier, patternmaster_conf,
+                            resolution_multiplier)
 
                     aux_time = time.time() - t0
                     if number_frame > 200:
@@ -500,11 +497,12 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         time_pass = now - getattr(tracklet, 'last_rule_time')
                         if time_pass.seconds < 9:
                             if SHOW_VIDEO_OUTPUT:
-                                cv2.putText(to_show, tracklet.last_rule,
-                                            (int(tracklet.last_point[0]),
-                                             int(tracklet.last_point[1])),
-                                            font, 0.3 -
-                                            (time_pass.seconds/30), (255, 0, 0), 1)
+                                cv2.putText(
+                                    to_show, tracklet.last_rule,
+                                    (int(tracklet.last_point[0]),
+                                     int(tracklet.last_point[1])),
+                                    font, 0.3 - (time_pass.seconds/30),
+                                    (255, 0, 0), 1)
                         else:
                             tracklet.last_rule = None
 
@@ -526,7 +524,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                     big_frame = \
                         np.vstack((np.hstack((bg_subtraction, to_show)),
-                                   np.hstack((frame_resized, frame_resized_copy))))
+                                   np.hstack((frame_resized,
+                                              frame_resized_copy))))
                     # TEXT INFORMATION
                     # Write FPS in the frame to show
 
