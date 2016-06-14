@@ -13,6 +13,7 @@ class StreamController:
             del self.streamings[identifier]
         else:
             print("MASTER ERROR: Process was not found in StreamController.")
+            print("StreamController: %s" % self.streamings.keys())
 
     def remove_all(self):
         for p in self.streamings.values():

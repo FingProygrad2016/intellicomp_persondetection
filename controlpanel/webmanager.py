@@ -1,5 +1,6 @@
 
 # To see opened connections, use command: lsof -a -i -c python3.5
+import base64
 import json
 
 from flask import Flask, render_template, request
@@ -35,6 +36,12 @@ def receive_events():
     msg = data['msg']
     global socketio
     if method == 'cmd':
+        splitted_msg = msg.split(" ")
+        if splitted_msg[0] == 'SOURCE' and len(splitted_msg) > 1 and \
+                splitted_msg[1] == 'NEW':
+            msg = "SOURCE NEW " + \
+                  base64.b64decode(splitted_msg[2]).decode() + " " + \
+                  base64.b64decode(splitted_msg[3]).decode()
         socketio.emit('cmd', {'data': msg}, broadcast=True)
     elif method == 'warnings':
         socketio.emit('warning', {'data': msg}, broadcast=True)
@@ -72,6 +79,9 @@ def ws_disconn(data):
 
 
 def run_app():
+    # WARNING: If you add debug=True the server is not thread safe.
+    # masterlaunch will experiment strange behaviors. (track instances
+    # won't terminate)
     socketio.run(app, host='0.0.0.0')
 
 if __name__ == '__main__':

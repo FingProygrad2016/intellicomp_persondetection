@@ -1,19 +1,20 @@
 import base64
-import subprocess
-from hashlib import sha1
-from datetime import datetime as dt
 import json
-
+import subprocess
+from datetime import datetime as dt
+from hashlib import sha1
 from multiprocessing import Process
+
 import pika
 
-from events import events_listener
+from controlpanel.events import events_listener
+from controlpanel.webmanager import run_app as run_webmanager
 from patternmaster.__main__ import PatternMaster
-from streamcontroller import StreamController as SC
 from utils.communicator import Communicator
-from webmanager import run_app as run_webmanager
+from utils.streamcontroller import StreamController as SC
 
-# REFERENCIAS
+
+# REFERENCES ABOUT multiprocessing:
 # https://docs.python.org/3.5/library/
 # multiprocessing.html#multiprocessing.pool.Pool
 # http://sebastianraschka.com/Articles/
