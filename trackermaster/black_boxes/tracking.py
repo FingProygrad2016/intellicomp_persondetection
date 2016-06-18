@@ -35,6 +35,9 @@ SHOW_COMPARISONS_BY_COLOR_GREY = \
 JOURNEYS_RANDOM_COLOR = config.getboolean('JOURNEYS_RANDOM_COLOR')
 USE_HISTOGRAMS_FOR_TRACKING = config.getboolean('USE_HISTOGRAMS_FOR_TRACKING')
 HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
+SAVE_POSITIONS_TO_FILE = config.getboolean('SAVE_POSITIONS_TO_FILE')
+IMAGE_MULTIPLIER_ON_POSITIONS_SAVE = \
+    config.getfloat('IMAGE_MULTIPLIER_ON_POSITIONS_SAVE')
 
 PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = list(
     map(lambda x: float(x),
@@ -69,7 +72,7 @@ class Tracker:
     kfs_per_blob = []
     tracklets_short_id = 1
 
-    def __init__(self, fps):
+    def __init__(self, fps, resolution_multiplier):
 
         # Configuration parameters
         self.threshold_color = config.getfloat('THRESHOLD_COLOR')
@@ -88,6 +91,7 @@ class Tracker:
         self.last_frame = 0
         self.frames_per_second = fps
         self.seconds_per_frame = 1. / fps
+        self.resolution_multiplier = resolution_multiplier
 
         # calculate the amount of valid frames to be without an update
         self.valid_frames_without_update = \
@@ -185,6 +189,8 @@ class Tracker:
 
         journeys = []
         comparisons_by_color = []
+        positions_in_frame = ''
+        rectangles_in_frame = []
 
         frames_from_previous_execution = frame_number - self.last_frame
         self.last_frame = frame_number
@@ -471,11 +477,36 @@ class Tracker:
 
             # Prepare the return data
             for kf in self.k_filters:
+                kf_group = self.kfs_per_blob[kf.group_number]
 
                 journeys.append((kf.get_journey(), kf.journey_color,
                                  kf.short_id, kf.rectangle,
                                  kf.get_state_post(), False,
-                                 self.kfs_per_blob[kf.group_number]['color']))
+                                 kf_group['color']))
+
+                if SAVE_POSITIONS_TO_FILE:
+                    multiplier = self.resolution_multiplier * \
+                                 IMAGE_MULTIPLIER_ON_POSITIONS_SAVE
+                    ((x_1, y_1), (x_2, y_2)) = kf.rectangle
+                    x_1 *= multiplier
+                    x_1 = round(x_1 + 1)
+                    y_1 *= multiplier
+                    y_1 = round(y_1 + 1)
+                    x_2 *= multiplier
+                    x_2 = round(x_2 + 1)
+                    y_2 *= multiplier
+                    y_2 = round(y_2 + 1)
+
+                    # if len(kf_group['k_filters']) == 1:
+                    text = str(frame_number + 1) + ',' + \
+                        str(kf.short_id) + ',' + \
+                        str(x_1) + ',' + str(y_1) + ',' + \
+                        str(x_2 - x_1) + ',' + str(y_2 - y_1) + \
+                        ',1,-1,-1,-1'
+
+                    positions_in_frame += text + '\n'
+
+                    rectangles_in_frame.append(kf.rectangle)
 
             if SHOW_COMPARISONS_BY_COLOR:
                 comparisons_by_color = \
@@ -483,7 +514,8 @@ class Tracker:
                         raw_image, bg_subtraction_image, blobs)
 
         return journeys, [kf.to_dict() for kf in self.k_filters], \
-            {k.id: k for k in self.k_filters}, comparisons_by_color
+            {k.id: k for k in self.k_filters}, comparisons_by_color, \
+            positions_in_frame, rectangles_in_frame
 
     def add_new_tracking(self, blob, frame_number, raw_image,
                          bg_subtraction_image):
@@ -836,6 +868,11 @@ class TrackInfo:
         self.score = blob['score']
 
         self.rectangle = blob["box"]
+        # rectangle is: ((x_1, y_1), (x_2, y_2))
+        self.rectangle_size = ((self.rectangle[1][0] - self.rectangle[0][0]),
+                               (self.rectangle[1][1] - self.rectangle[0][1]))
+        self.rectangle_size_updates = 1
+
         self.previous_color, self.previous_image = \
             get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
         self.color = self.previous_color
@@ -1036,16 +1073,20 @@ class TrackInfo:
 
                     self.kalman_filter.x[1] = aux[0] * mult_factor
                     self.kalman_filter.x[4] = aux[1] * mult_factor
-
+    """
     def update_last_frame(self, last_frame_update):
         self.last_frame_update = last_frame_update
         self.last_frame_not_alone = last_frame_update
         self.last_update = datetime.now()
+    """
 
     def update_info(self, blob, last_frame_update,
                     raw_image, bg_subtraction_image):
 
         if last_frame_update != self.last_frame_update:
+
+            before_predict_position = self.get_state_post().copy()
+
             self.predict_and_correct(last_frame_update, blob["position"].pt,
                                      True)
 
@@ -1058,7 +1099,66 @@ class TrackInfo:
             self.score = (self.score * self.number_updates + blob['score']) /\
                          (self.number_updates + 1)
 
-            self.rectangle = blob["box"]
+            if SAVE_POSITIONS_TO_FILE:
+
+                if blob["score"] == 1:
+
+                    """
+                    # Option 1:
+
+                    self.rectangle = blob["box"]
+                    """
+
+                    new_rect = blob["box"]
+                    new_rect_mid_x = (new_rect[0][0] + new_rect[1][0]) / 2
+                    new_rect_mid_y = (new_rect[0][1] + new_rect[1][1]) / 2
+                    new_rect_width = new_rect[1][0] - new_rect[0][0]
+                    new_rect_height = new_rect[1][1] - new_rect[0][1]
+
+                    new_rect_width = new_rect_width / 1.2 / 2
+                    new_rect_height = new_rect_height / 1.2 / 2
+
+                    self.rectangle = ((new_rect_mid_x - new_rect_width,
+                                       new_rect_mid_y - new_rect_height),
+                                      (new_rect_mid_x + new_rect_width,
+                                       new_rect_mid_y + new_rect_height))
+
+                    """
+                    # Option 2:
+
+                    new_rect = blob["box"]
+                    self.rectangle_size_updates += 1
+                    new_size = (new_rect[1][0] - new_rect[0][0],
+                                new_rect[1][1] - new_rect[0][1])
+                    new_weight = 1/self.rectangle_size_updates
+                    old_weight = 1 - new_weight
+                    new_avg_size = (self.rectangle_size[0] * old_weight +
+                                    new_size[0] * new_weight,
+                                    self.rectangle_size[1] * old_weight +
+                                    new_size[1] * new_weight)
+                    self.rectangle_size = new_avg_size
+
+                    new_rect_mid_x = (new_rect[0][0] + new_rect[1][0]) / 2
+                    new_rect_mid_y = (new_rect[0][1] + new_rect[1][1]) / 2
+
+                    self.rectangle = ((new_rect_mid_x - (new_avg_size[0] / 2),
+                                       new_rect_mid_y - (new_avg_size[1] / 2)),
+                                      (new_rect_mid_x + (new_avg_size[0] / 2),
+                                       new_rect_mid_y + (new_avg_size[1] / 2)))
+                    """
+                else:
+                    after_predict_position = self.get_state_post()
+
+                    movement = (after_predict_position[0] -
+                                before_predict_position[0],
+                                after_predict_position[3] -
+                                before_predict_position[3])
+
+                    ((x_1, y_1), (x_2, y_2)) = self.rectangle
+                    self.rectangle = ((x_1 + movement[0], y_1 + movement[1]),
+                                      (x_2 + movement[0], y_2 + movement[1]))
+            else:
+                self.rectangle = blob["box"]
 
             # if color has not been set and there are at least 5 updates,
             # calculate and set color
@@ -1066,15 +1166,27 @@ class TrackInfo:
             self.previous_color = self.color
             self.previous_image = self.image
             self.color, self.image = \
-                get_color_aux(raw_image, bg_subtraction_image, self.rectangle)
+                get_color_aux(raw_image, bg_subtraction_image, blob["box"])
             if not JOURNEYS_RANDOM_COLOR:
                 self.journey_color = self.color
 
     def update_pos_info(self, frame_number, new_position,
                         has_confidence_in_measure):
 
+        before_predict_position = self.get_state_post().copy()
+
         self.predict_and_correct(frame_number, new_position,
                                  has_confidence_in_measure)
+
+        if SAVE_POSITIONS_TO_FILE:
+            after_predict_position = self.get_state_post()
+
+            movement = (after_predict_position[0] - before_predict_position[0],
+                        after_predict_position[3] - before_predict_position[3])
+
+            ((x_1, y_1), (x_2, y_2)) = self.rectangle
+            self.rectangle = ((x_1 + movement[0], y_1 + movement[1]),
+                              (x_2 + movement[0], y_2 + movement[1]))
 
         self.last_frame_not_alone = frame_number
 
@@ -1167,8 +1279,10 @@ class TrackInfo:
             is_inside = False
         return is_inside
 
+    """
     def update_last_frame_not_alone(self, frame_number):
         self.last_frame_not_alone = frame_number
+    """
 
     def to_dict(self):
         return {

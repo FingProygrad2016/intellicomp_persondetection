@@ -35,6 +35,7 @@ LIMIT_FPS = config.getboolean("LIMIT_FPS")
 DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
 CREATE_MODEL = config.getboolean("CREATE_MODEL")
 USE_MODEL = config.getboolean("USE_MODEL")
+SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
 
 
 def send_patternrecognition_config(communicator, instance_identifier,
@@ -124,7 +125,7 @@ def read_raw_input():
             reader_condition.acquire()
 
         if not processed:
-            reader_condition.wait()
+            reader_condition.wait(2)
 
         has_more_images = has_more_images_aux
         if not has_more_images or kill_reader:
@@ -239,7 +240,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     blobs_detector = BlobDetector()
     # person_detector = Histogram2D()
-    tracker = Tracker(FPS)
+    tracker = Tracker(FPS, resolution_multiplier)
 
     loop_time = time.time()
 
@@ -276,6 +277,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     fps = 0
     comparisons_by_color_image = []
+    positions_to_file = ''
     interpol_cant_persons_prev = 0
     trayectos = []
     tracklets = {}
@@ -334,7 +336,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 else:
                     reader_condition.acquire()
                     if number_frame == last_number_frame and has_more_images:
-                        reader_condition.wait()
+                        reader_condition.wait(2)
 
                 if not has_more_images:
                     if LIMIT_FPS:
@@ -428,13 +430,25 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     # ############ ##
                     # ## TRACKER # ##
                     # ############ ##
-
+                    rectangles_in_frame = []
                     trayectos_, info_to_send, tracklets, \
-                        comparisons_by_color_image_aux = \
+                        comparisons_by_color_image_aux, \
+                        positions_in_frame,\
+                        rectangles_in_frame = \
                         tracker.apply(persons, frame_resized,
                                       bg_subtraction_resized, number_frame)
                     del persons
                     trayectos = trayectos_ if trayectos_ else trayectos
+
+                    if SAVE_POSITIONS_TO_FILE:
+                        positions_to_file += positions_in_frame
+
+                        for ((x1, y1), (x2, y2)) in rectangles_in_frame:
+                            # Draw in green candidate blobs
+                            cv2.rectangle(frame_resized_copy,
+                                          (int(x1), int(y1)),
+                                          (int(x2), int(y2)),
+                                          (0, 255, 0), 1)
 
                     if len(comparisons_by_color_image_aux) > 0:
                         comparisons_by_color_image = \
@@ -585,6 +599,11 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         if CREATE_MODEL:
             person_detection.save_histogram()
+
+        if SAVE_POSITIONS_TO_FILE:
+            print(positions_to_file)
+            with open("../results/" + identifier + ".txt", "w") as text_file:
+                print(positions_to_file, file=text_file)
 
         number_frame_skip_first = number_frame - 200
         print("Average times::::")
