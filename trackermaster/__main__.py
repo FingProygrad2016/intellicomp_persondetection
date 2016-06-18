@@ -269,6 +269,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     total_time = 0
     max_total_time = 0
 
+    persons_in_scene = "Frame number (one-based), Current persons detected, " \
+                       "Current tracklets, " \
+                       "Current tracklets/persons interpol. num\n\n"
+
     model_load = False, ""
     if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
         person_detection.set_histogram_size(shape=(work_w, work_h))
@@ -529,6 +533,15 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     show_info_time += aux_time
                     max_show_info_time = max(aux_time, max_show_info_time)
 
+                if SAVE_POSITIONS_TO_FILE:
+                    persons_in_scene += str(number_frame + 1) + ", " + \
+                                        str(cant_personas) + ", " + \
+                                        str(len(trayectos)) + ", " + \
+                                        str(round(
+                                            (len(trayectos) * .85) +
+                                            (cant_personas * .15))) + \
+                                        "\n"
+
                 if SHOW_VIDEO_OUTPUT:
                     # #################### ##
                     # ## DISPLAY RESULTS # ##
@@ -585,7 +598,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                         wait_key_time += aux_time
                         max_wait_key_time = max(aux_time, max_wait_key_time)
                 else:
-                    print("fps: ", str(_fps))
+                    print("frame: ", str(number_frame), "; fps: ", str(_fps))
 
                 aux_time = time.time() - t_total
                 if number_frame > 200:
@@ -600,49 +613,57 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         if CREATE_MODEL:
             person_detection.save_histogram()
 
-        if SAVE_POSITIONS_TO_FILE:
-            print(positions_to_file)
-            with open("../results/" + identifier + ".txt", "w") as text_file:
-                print(positions_to_file, file=text_file)
-
         number_frame_skip_first = number_frame - 200
-        print("Average times::::")
-        read_time /= number_frame_skip_first
-        print("Read time " + str(read_time))
-        bg_sub_time /= number_frame_skip_first
-        print("Background subtraction time " + str(bg_sub_time))
-        blob_det_time /= number_frame_skip_first
-        print("Blob detector time " + str(blob_det_time))
-        person_detection_time /= number_frame_skip_first
-        print("Person detector time " + str(person_detection_time))
-        t_time /= number_frame_skip_first
-        print("Tracker time " + str(t_time))
-        pattern_recogn_time /= number_frame_skip_first
-        print("Communication with pattern recognition time " +
-              str(pattern_recogn_time))
-        show_info_time /= number_frame_skip_first
-        print("Text and paths time " + str(show_info_time))
-        display_time /= number_frame_skip_first
-        print("Display time " + str(display_time))
-        wait_key_time /= number_frame_skip_first
-        print("cv2.waitKey time " + str(wait_key_time))
-        total_time /= number_frame_skip_first
-        print("Total time " + str(total_time))
 
-        print("")
-        print("")
-        print("Max times::::")
-        print("Read time " + str(max_read_time))
-        print("Background subtraction time " + str(max_bg_sub_time))
-        print("Blob detector time " + str(max_blob_det_time))
-        print("Person detector time " + str(max_person_detection_time))
-        print("Tracker time " + str(max_t_time))
-        print("Communication with pattern recognition time " +
-              str(max_pattern_recogn_time))
-        print("Text and paths time " + str(max_show_info_time))
-        print("Display time " + str(max_display_time))
-        print("cv2.waitKey time " + str(max_wait_key_time))
-        print("Total time " + str(max_total_time))
+        avg_times_text = "Average times::::"
+        read_time /= number_frame_skip_first
+        avg_times_text += "\nRead time " + str(read_time)
+        bg_sub_time /= number_frame_skip_first
+        avg_times_text += "\nBackground subtraction time " + str(bg_sub_time)
+        blob_det_time /= number_frame_skip_first
+        avg_times_text += "\nBlob detector time " + str(blob_det_time)
+        person_detection_time /= number_frame_skip_first
+        avg_times_text += "\nPerson detector time " + str(person_detection_time)
+        t_time /= number_frame_skip_first
+        avg_times_text += "\nTracker time " + str(t_time)
+        pattern_recogn_time /= number_frame_skip_first
+        avg_times_text += "\nCommunication with pattern recognition time " + \
+                          str(pattern_recogn_time)
+        show_info_time /= number_frame_skip_first
+        avg_times_text += "\nText and paths time " + str(show_info_time)
+        display_time /= number_frame_skip_first
+        avg_times_text += "\nDisplay time " + str(display_time)
+        wait_key_time /= number_frame_skip_first
+        avg_times_text += "\ncv2.waitKey time " + str(wait_key_time)
+        total_time /= number_frame_skip_first
+        avg_times_text += "\nTotal time " + str(total_time)
+
+        avg_times_text += "\n\n\nMax times::::"
+        avg_times_text += "\nRead time " + str(max_read_time)
+        avg_times_text += "\nBackground subtraction time " + \
+                          str(max_bg_sub_time)
+        avg_times_text += "\nBlob detector time " + str(max_blob_det_time)
+        avg_times_text += "\nPerson detector time " + str(max_person_detection_time)
+        avg_times_text += "\nTracker time " + str(max_t_time)
+        avg_times_text += "\nCommunication with pattern recognition time " + \
+                          str(max_pattern_recogn_time)
+        avg_times_text += "\nText and paths time " + str(max_show_info_time)
+        avg_times_text += "\nDisplay time " + str(max_display_time)
+        avg_times_text += "\ncv2.waitKey time " + str(max_wait_key_time)
+        avg_times_text += "\nTotal time " + str(max_total_time)
+
+        print(avg_times_text)
+
+        if SAVE_POSITIONS_TO_FILE:
+            with open("../results/" + identifier + "_positions.txt", "w") as \
+                    text_file:
+                print(positions_to_file, file=text_file)
+            with open("../results/" + identifier + "_times.txt", "w") as \
+                    text_file:
+                print(avg_times_text, file=text_file)
+            with open("../results/" + identifier + "_counter.txt", "w") as \
+                    text_file:
+                print(persons_in_scene, file=text_file)
 
         comm_info = Communicator(exchange='to_master', exchange_type='topic')
         comm_info.send_message(json.dumps(dict(

@@ -65,6 +65,8 @@ VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE = \
     config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS') * \
     config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS')
 
+EXPAND_BLOBS_RATIO = config.getfloat('EXPAND_BLOBS_RATIO') + 1.2
+
 
 class Tracker:
 
@@ -1102,50 +1104,19 @@ class TrackInfo:
             if SAVE_POSITIONS_TO_FILE:
 
                 if blob["score"] == 1:
-
-                    """
-                    # Option 1:
-
-                    self.rectangle = blob["box"]
-                    """
-
                     new_rect = blob["box"]
                     new_rect_mid_x = (new_rect[0][0] + new_rect[1][0]) / 2
                     new_rect_mid_y = (new_rect[0][1] + new_rect[1][1]) / 2
                     new_rect_width = new_rect[1][0] - new_rect[0][0]
                     new_rect_height = new_rect[1][1] - new_rect[0][1]
 
-                    new_rect_width = new_rect_width / 1.2 / 2
-                    new_rect_height = new_rect_height / 1.2 / 2
+                    new_rect_width = new_rect_width / (EXPAND_BLOBS_RATIO) / 2
+                    new_rect_height = new_rect_height / (EXPAND_BLOBS_RATIO) / 2
 
                     self.rectangle = ((new_rect_mid_x - new_rect_width,
                                        new_rect_mid_y - new_rect_height),
                                       (new_rect_mid_x + new_rect_width,
                                        new_rect_mid_y + new_rect_height))
-
-                    """
-                    # Option 2:
-
-                    new_rect = blob["box"]
-                    self.rectangle_size_updates += 1
-                    new_size = (new_rect[1][0] - new_rect[0][0],
-                                new_rect[1][1] - new_rect[0][1])
-                    new_weight = 1/self.rectangle_size_updates
-                    old_weight = 1 - new_weight
-                    new_avg_size = (self.rectangle_size[0] * old_weight +
-                                    new_size[0] * new_weight,
-                                    self.rectangle_size[1] * old_weight +
-                                    new_size[1] * new_weight)
-                    self.rectangle_size = new_avg_size
-
-                    new_rect_mid_x = (new_rect[0][0] + new_rect[1][0]) / 2
-                    new_rect_mid_y = (new_rect[0][1] + new_rect[1][1]) / 2
-
-                    self.rectangle = ((new_rect_mid_x - (new_avg_size[0] / 2),
-                                       new_rect_mid_y - (new_avg_size[1] / 2)),
-                                      (new_rect_mid_x + (new_avg_size[0] / 2),
-                                       new_rect_mid_y + (new_avg_size[1] / 2)))
-                    """
                 else:
                     after_predict_position = self.get_state_post()
 
