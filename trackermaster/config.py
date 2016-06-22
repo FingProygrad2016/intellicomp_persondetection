@@ -3,11 +3,11 @@ import os
 import inspect
 
 
-def read_conf():
+def read_conf(relative_file_path='/trackermaster.conf'):
     configuration = configparser.ConfigParser()
     conf_file_path = os.path.dirname(
         os.path.abspath(inspect.getfile(inspect.currentframe())))
-    conf_file_path += '/trackermaster.conf'
+    conf_file_path += relative_file_path
     read_conf_files = configuration.read(conf_file_path)
 
     if not read_conf_files:
@@ -44,6 +44,10 @@ class CustomConfig(object):
         if custome_config:
             return custome_config[name.lower()] == 'True'
         return cls.data[name] == 'True'
+
+    @classmethod
+    def change_config_file(cls, path):
+        cls.data = read_conf(path)
 
 
 def set_custome_config(data):

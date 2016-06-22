@@ -21,51 +21,24 @@ from trackermaster.config import config
 # http://airccse.org/journal/sipij/papers/2211sipij01.pdf
 
 
-SHOW_COMPARISONS_BY_COLOR = config.getboolean('SHOW_COMPARISONS_BY_COLOR')
-SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION = \
-    config.getboolean('SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION')
-SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO = \
-    config.getboolean('SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO')
-SHOW_COMPARISONS_BY_COLOR_GREEN = \
-    config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREEN')
-SHOW_COMPARISONS_BY_COLOR_RED = \
-    config.getboolean('SHOW_COMPARISONS_BY_COLOR_RED')
-SHOW_COMPARISONS_BY_COLOR_GREY = \
-    config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREY')
-JOURNEYS_RANDOM_COLOR = config.getboolean('JOURNEYS_RANDOM_COLOR')
-USE_HISTOGRAMS_FOR_TRACKING = config.getboolean('USE_HISTOGRAMS_FOR_TRACKING')
-HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
-SAVE_POSITIONS_TO_FILE = config.getboolean('SAVE_POSITIONS_TO_FILE')
-IMAGE_MULTIPLIER_ON_POSITIONS_SAVE = \
-    config.getfloat('IMAGE_MULTIPLIER_ON_POSITIONS_SAVE')
-
-PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = list(
-    map(lambda x: float(x),
-        config.get('PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS').split(', ')))
-SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = list(map(
-    lambda x: float(x),
-    config.get('SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS').split(', ')))
-
-# Kalman filter types: NORMAL (from OpenCV); SMOOTHED (from filterpy)
-if config.get('KALMAN_FILTER_TYPE') == 'NORMAL':
-    KALMAN_FILTER_TYPE = 1
-elif config.get('KALMAN_FILTER_TYPE') == 'SMOOTHED':
-    KALMAN_FILTER_TYPE = 2
-else:
-    KALMAN_FILTER_TYPE = 0
-# Number of updates to use when smoothing
-KALMAN_FILTER_SMOOTH_LAG = config.getint('KALMAN_FILTER_SMOOTH_LAG')
-
-# Variance of measures noise (in pixels)
-VARIANCE_OF_MEASURES_NOISE = config.getint('MEASURES_NOISE_IN_PIXELS')\
-                             * config.getint('MEASURES_NOISE_IN_PIXELS')
-
-# Variance of non truthful measures noise (in pixels)
-VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE = \
-    config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS') * \
-    config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS')
-
-EXPAND_BLOBS_RATIO = config.getfloat('EXPAND_BLOBS_RATIO') + 1.2
+SHOW_COMPARISONS_BY_COLOR = None
+SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION = None
+SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO = None
+SHOW_COMPARISONS_BY_COLOR_GREEN = None
+SHOW_COMPARISONS_BY_COLOR_RED = None
+SHOW_COMPARISONS_BY_COLOR_GREY = None
+JOURNEYS_RANDOM_COLOR = None
+USE_HISTOGRAMS_FOR_TRACKING = None
+HISTOGRAM_COMPARISON_METHOD = None
+SAVE_POSITIONS_TO_FILE = None
+IMAGE_MULTIPLIER_ON_POSITIONS_SAVE = None
+PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = None
+SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = None
+KALMAN_FILTER_TYPE = None
+KALMAN_FILTER_SMOOTH_LAG = None
+VARIANCE_OF_MEASURES_NOISE = None
+VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE = None
+EXPAND_BLOBS_RATIO = None
 
 
 class Tracker:
@@ -75,6 +48,75 @@ class Tracker:
     tracklets_short_id = 1
 
     def __init__(self, fps, resolution_multiplier):
+
+        """  START SETTING CONSTANTS  """
+
+        global SHOW_COMPARISONS_BY_COLOR, \
+            SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION, \
+            SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO, \
+            SHOW_COMPARISONS_BY_COLOR_GREEN, SHOW_COMPARISONS_BY_COLOR_RED, \
+            SHOW_COMPARISONS_BY_COLOR_GREY, JOURNEYS_RANDOM_COLOR, \
+            USE_HISTOGRAMS_FOR_TRACKING, HISTOGRAM_COMPARISON_METHOD, \
+            SAVE_POSITIONS_TO_FILE, IMAGE_MULTIPLIER_ON_POSITIONS_SAVE, \
+            PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS, \
+            SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS, \
+            KALMAN_FILTER_TYPE, KALMAN_FILTER_SMOOTH_LAG, \
+            VARIANCE_OF_MEASURES_NOISE, \
+            VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE, EXPAND_BLOBS_RATIO
+
+        SHOW_COMPARISONS_BY_COLOR = \
+            config.getboolean('SHOW_COMPARISONS_BY_COLOR')
+        SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION = \
+            config.getboolean(
+                'SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION')
+        SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO = \
+            config.getboolean('SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO')
+        SHOW_COMPARISONS_BY_COLOR_GREEN = \
+            config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREEN')
+        SHOW_COMPARISONS_BY_COLOR_RED = \
+            config.getboolean('SHOW_COMPARISONS_BY_COLOR_RED')
+        SHOW_COMPARISONS_BY_COLOR_GREY = \
+            config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREY')
+        JOURNEYS_RANDOM_COLOR = config.getboolean('JOURNEYS_RANDOM_COLOR')
+        USE_HISTOGRAMS_FOR_TRACKING = \
+            config.getboolean('USE_HISTOGRAMS_FOR_TRACKING')
+        HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
+        SAVE_POSITIONS_TO_FILE = config.getboolean('SAVE_POSITIONS_TO_FILE')
+        IMAGE_MULTIPLIER_ON_POSITIONS_SAVE = \
+            config.getfloat('IMAGE_MULTIPLIER_ON_POSITIONS_SAVE')
+
+        PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = list(
+            map(lambda x: float(x),
+                config.get(
+                    'PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS').split(', ')))
+        SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = list(map(
+            lambda x: float(x),
+            config.get(
+                'SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS').split(', ')))
+
+        # Kalman filter types: NORMAL (from OpenCV); SMOOTHED (from filterpy)
+        if config.get('KALMAN_FILTER_TYPE') == 'NORMAL':
+            KALMAN_FILTER_TYPE = 1
+        elif config.get('KALMAN_FILTER_TYPE') == 'SMOOTHED':
+            KALMAN_FILTER_TYPE = 2
+        else:
+            KALMAN_FILTER_TYPE = 0
+        # Number of updates to use when smoothing
+        KALMAN_FILTER_SMOOTH_LAG = config.getint('KALMAN_FILTER_SMOOTH_LAG')
+
+        # Variance of measures noise (in pixels)
+        VARIANCE_OF_MEASURES_NOISE = \
+            config.getint('MEASURES_NOISE_IN_PIXELS') * \
+            config.getint('MEASURES_NOISE_IN_PIXELS')
+
+        # Variance of non truthful measures noise (in pixels)
+        VARIANCE_OF_NON_TRUTHFUL_MEASURES_NOISE = \
+            config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS') * \
+            config.getint('NON_TRUTHFUL_MEASURES_NOISE_IN_PIXELS')
+
+        EXPAND_BLOBS_RATIO = config.getfloat('EXPAND_BLOBS_RATIO') + 1.2
+
+        """  FINISH SETTING CONSTANTS  """
 
         # Configuration parameters
         self.threshold_color = config.getfloat('THRESHOLD_COLOR')

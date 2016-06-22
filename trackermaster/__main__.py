@@ -7,6 +7,7 @@ import cv2
 import os
 import sys
 import time
+import argparse
 
 from hashlib import sha1
 from datetime import datetime as dt
@@ -26,16 +27,15 @@ from utils.tools import \
     find_resolution_multiplier, frame2base64png, x1y1x2y2_to_x1y1wh
 
 
-USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
-    config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
-SHOW_PREDICTION_DOTS = config.getboolean("SHOW_PREDICTION_DOTS")
-SHOW_COMPARISONS_BY_COLOR = config.getboolean("SHOW_COMPARISONS_BY_COLOR")
-SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
-LIMIT_FPS = config.getboolean("LIMIT_FPS")
-DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
-CREATE_MODEL = config.getboolean("CREATE_MODEL")
-USE_MODEL = config.getboolean("USE_MODEL")
-SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
+USE_HISTOGRAMS_FOR_PERSON_DETECTION = None
+SHOW_PREDICTION_DOTS = None
+SHOW_COMPARISONS_BY_COLOR = None
+SHOW_VIDEO_OUTPUT = None
+LIMIT_FPS = None
+DEFAULT_FPS_LIMIT = None
+CREATE_MODEL = None
+USE_MODEL = None
+SAVE_POSITIONS_TO_FILE = None
 
 
 def send_patternrecognition_config(communicator, instance_identifier,
@@ -151,6 +151,32 @@ def read_raw_input():
 
 def track_source(identifier=None, source=None, trackermaster_conf=None,
                  patternmaster_conf=None):
+    """
+    :param identifier:
+    :param source:
+    :param trackermaster_conf:
+    :param patternmaster_conf:
+    :return:
+    """
+
+    """  START SETTING CONSTANTS  """
+
+    global USE_HISTOGRAMS_FOR_PERSON_DETECTION, SHOW_PREDICTION_DOTS, \
+        SHOW_COMPARISONS_BY_COLOR, SHOW_VIDEO_OUTPUT, LIMIT_FPS, \
+        DEFAULT_FPS_LIMIT, CREATE_MODEL, USE_MODEL, SAVE_POSITIONS_TO_FILE
+
+    USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
+        config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
+    SHOW_PREDICTION_DOTS = config.getboolean("SHOW_PREDICTION_DOTS")
+    SHOW_COMPARISONS_BY_COLOR = config.getboolean("SHOW_COMPARISONS_BY_COLOR")
+    SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
+    LIMIT_FPS = config.getboolean("LIMIT_FPS")
+    DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
+    CREATE_MODEL = config.getboolean("CREATE_MODEL")
+    USE_MODEL = config.getboolean("USE_MODEL")
+    SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
+
+    """  FINISH SETTING CONSTANTS  """
 
     if not identifier:
         identifier = sha1(str(dt.utcnow()).encode('utf-8')).hexdigest()
@@ -240,6 +266,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     blobs_detector = BlobDetector()
     # person_detector = Histogram2D()
+    person_detection.pd_init_constants()
     tracker = Tracker(FPS, resolution_multiplier)
 
     loop_time = time.time()
@@ -679,15 +706,58 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 if __name__ == '__main__':
     print('Start to process images...')
     from sys import argv
+
     identifier = None
     source = None
     tmconf = None
     pmconf = None
-    if len(argv) > 1:
-        identifier = argv[1]
-        source = argv[2]
-        tmconf = json.loads(argv[3])
-        pmconf = json.loads(argv[4])
+    tmconffile_path = None
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-i", "--identifier", default=None,
+                    help="identifier")
+    ap.add_argument("-s", "--source", default=None,
+                    help="path to source")
+    ap.add_argument("-t", "--trackerconfjson", default=None,
+                    help="tracker master .conf file in json format")
+    ap.add_argument("-p", "--patternconfjson", default=None,
+                    help="pattern master .conf file in json format")
+    ap.add_argument("-f", "--trackerconffile", default=None,
+                    help="tracker master .conf file path")
+
+    args = vars(ap.parse_args())
+
+    identifier = args['identifier']
+    source = args['source']
+    if args['trackerconfjson']:
+        tmconf = json.loads(args['trackerconfjson'])
+    if args['patternconfjson']:
+        pmconf = json.loads(args['patternconfjson'])
+    if args['trackerconffile']:
+        tmconffile_path = args['trackerconffile']
+
+        name_starts_in = 0
+        if tmconffile_path.rfind('/') != -1:
+            name_starts_in = tmconffile_path.rfind('/') + 1
+        elif tmconffile_path.rfind('\\') != -1:
+            name_starts_in = tmconffile_path.rfind('\\') + 1
+
+        tmconffile_name = tmconffile_path[name_starts_in:]
+
+        if not identifier:
+            identifier = ""
+        identifier += tmconffile_name
+
+        config.change_config_file(tmconffile_path)
+
+    if not (identifier or source or tmconf or pmconf):
+        if len(argv) > 1:
+            identifier = argv[1]
+            source = argv[2]
+            tmconf = json.loads(argv[3])
+            pmconf = json.loads(argv[4])
+
     track_source(identifier=identifier, source=source,
                  trackermaster_conf=tmconf, patternmaster_conf=pmconf)
+
     print('END.')

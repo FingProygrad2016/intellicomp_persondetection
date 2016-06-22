@@ -6,19 +6,16 @@ matplotlib.use('template')
 from matplotlib import pyplot as plt
 from trackermaster.config import config
 from trackermaster.black_boxes.histogram2d import Histogram2D
-from trackermaster.black_boxes.person_detection_task import apply_single
+from trackermaster.black_boxes.person_detection_task import apply_single, \
+    pdt_init_constants
 from utils.tools import crop_image_for_person_detection, normalize_matrix
 
 # LOAD CONFIG. PARAMETERS
-BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
-                      config.getfloat("BORDER_AROUND_BLOB_1"))
-USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
-    config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
-FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS = \
-    config.getint("FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS")
-CONFIDENCE_MATRIX_UPDATE_TIME = config.getint("CONFIDENCE_MATRIX_UPDATE_TIME")
-PERSON_DETECTION_PARALLEL_MODE = \
-    config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+BORDER_AROUND_BLOB = None
+USE_HISTOGRAMS_FOR_PERSON_DETECTION = None
+FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS = None
+CONFIDENCE_MATRIX_UPDATE_TIME = None
+PERSON_DETECTION_PARALLEL_MODE = None
 
 # GLOBAL VARIABLES DECLARATION
 last_update_frame = 0
@@ -28,10 +25,31 @@ HISTOGRAM_2D = None
 CREATE_MODEL = None
 USE_MODEL = None
 
+PROCESSES_POOL = None
 
-if PERSON_DETECTION_PARALLEL_MODE:
-    from multiprocessing.pool import Pool
-    PROCESSES_POOL = Pool()
+
+def pd_init_constants():
+    global BORDER_AROUND_BLOB, USE_HISTOGRAMS_FOR_PERSON_DETECTION, \
+        FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS, CONFIDENCE_MATRIX_UPDATE_TIME, \
+        PERSON_DETECTION_PARALLEL_MODE, PROCESSES_POOL
+
+    # LOAD CONFIG. PARAMETERS
+    BORDER_AROUND_BLOB = (config.getfloat("BORDER_AROUND_BLOB_0"),
+                          config.getfloat("BORDER_AROUND_BLOB_1"))
+    USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
+        config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
+    FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS = \
+        config.getint("FRAMES_COUNT_FOR_TRAINING_HISTOGRAMS")
+    CONFIDENCE_MATRIX_UPDATE_TIME = \
+        config.getint("CONFIDENCE_MATRIX_UPDATE_TIME")
+    PERSON_DETECTION_PARALLEL_MODE = \
+        config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+
+    if PERSON_DETECTION_PARALLEL_MODE:
+        from multiprocessing.pool import Pool
+        PROCESSES_POOL = Pool()
+
+    pdt_init_constants()
 
 
 def set_histogram_size(shape):

@@ -3,16 +3,29 @@ import numpy as np
 from trackermaster.config import config
 from utils.tools import normalize_matrix
 
-USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
-CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
-                     config.getfloat("CONFIDENCE_LEVEL_1"))
-USE_SQUARE_REGION_FOR_VERIFY = \
-    config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
-SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
+USE_CONFIDENCE_LEVELS = None
+CONFIDENCE_LEVELS = None
+USE_SQUARE_REGION_FOR_VERIFY = None
+SQUARE_REGION_RADIUS = None
 
 
 class Histogram2D:
     def __init__(self, shape):
+
+        """  START SETTING CONSTANTS  """
+
+        global USE_CONFIDENCE_LEVELS, CONFIDENCE_LEVELS, \
+            USE_SQUARE_REGION_FOR_VERIFY, SQUARE_REGION_RADIUS
+
+        USE_CONFIDENCE_LEVELS = config.getboolean("USE_CONFIDENCE_LEVELS")
+        CONFIDENCE_LEVELS = (config.getfloat("CONFIDENCE_LEVEL_0"),
+                             config.getfloat("CONFIDENCE_LEVEL_1"))
+        USE_SQUARE_REGION_FOR_VERIFY = \
+            config.getboolean("USE_SQUARE_REGION_FOR_VERIFY")
+        SQUARE_REGION_RADIUS = config.getint("SQUARE_REGION_RADIUS")
+
+        """  FINISH SETTING CONSTANTS  """
+
         self.confidenceMatrix = np.zeros(shape=(int(shape[0] / 5),
                                                 int(shape[1] / 5)),
                                          dtype=np.float64)

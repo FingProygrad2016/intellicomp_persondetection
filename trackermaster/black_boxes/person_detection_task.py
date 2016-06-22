@@ -6,18 +6,31 @@ from trackermaster.config import config
 from utils.tools import x1y1wh_to_x1y1x2y2
 
 # Configuration parameters
-ASPECT_RATIO = config.getfloat('ASPECT_RATIO')
-PADDING = (config.getint('PADDING_0'), config.getint('PADDING_1'))
-SCALE = config.getfloat('SCALE')
-WIN_STRIDE = (config.getint('WINSTRIDE_0'),
-              config.getint('WINSTRIDE_1'))
-BORDER_AROUND_BLOB = (config.getfloat('BORDER_AROUND_BLOB_0'),
-                      config.getfloat('BORDER_AROUND_BLOB_1'))
-PERSON_DETECTION_PARALLEL_MODE = \
-    config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
+ASPECT_RATIO = None
+PADDING = None
+SCALE = None
+WIN_STRIDE = None
+BORDER_AROUND_BLOB = None
+PERSON_DETECTION_PARALLEL_MODE = None
 
 first_time = True
 HOG = None
+
+
+def pdt_init_constants():
+    global ASPECT_RATIO, PADDING, SCALE, WIN_STRIDE, BORDER_AROUND_BLOB, \
+        PERSON_DETECTION_PARALLEL_MODE
+
+    # Configuration parameters
+    ASPECT_RATIO = config.getfloat('ASPECT_RATIO')
+    PADDING = (config.getint('PADDING_0'), config.getint('PADDING_1'))
+    SCALE = config.getfloat('SCALE')
+    WIN_STRIDE = (config.getint('WINSTRIDE_0'),
+                  config.getint('WINSTRIDE_1'))
+    BORDER_AROUND_BLOB = (config.getfloat('BORDER_AROUND_BLOB_0'),
+                          config.getfloat('BORDER_AROUND_BLOB_1'))
+    PERSON_DETECTION_PARALLEL_MODE = \
+        config.getboolean("PERSON_DETECTION_PARALLEL_MODE")
 
 
 def apply_single(args):
