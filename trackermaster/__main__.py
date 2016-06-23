@@ -172,8 +172,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
     LIMIT_FPS = config.getboolean("LIMIT_FPS")
     DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
-    CREATE_MODEL = config.getboolean("CREATE_MODEL")
-    USE_MODEL = config.getboolean("USE_MODEL")
+    if not CREATE_MODEL:
+        CREATE_MODEL = config.getboolean("CREATE_MODEL")
+    if not USE_MODEL:
+        USE_MODEL = config.getboolean("USE_MODEL")
     SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
 
     """  FINISH SETTING CONSTANTS  """
@@ -682,13 +684,16 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         print(avg_times_text)
 
         if SAVE_POSITIONS_TO_FILE:
-            with open("../results/" + identifier + "_positions.txt", "w") as \
+            with open("../experimental_analysis/raw_results/" + identifier +
+                      "-positions.txt", "w") as \
                     text_file:
                 print(positions_to_file, file=text_file)
-            with open("../results/" + identifier + "_times.txt", "w") as \
+            with open("../experimental_analysis/raw_results/" + identifier +
+                      "-times.txt", "w") as \
                     text_file:
                 print(avg_times_text, file=text_file)
-            with open("../results/" + identifier + "_counter.txt", "w") as \
+            with open("../experimental_analysis/raw_results/" + identifier +
+                      "-counter.txt", "w") as \
                     text_file:
                 print(persons_in_scene, file=text_file)
 
@@ -712,6 +717,7 @@ if __name__ == '__main__':
     tmconf = None
     pmconf = None
     tmconffile_path = None
+    train_model = None
 
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--identifier", default=None,
@@ -724,6 +730,9 @@ if __name__ == '__main__':
                     help="pattern master .conf file in json format")
     ap.add_argument("-f", "--trackerconffile", default=None,
                     help="tracker master .conf file path")
+    ap.add_argument("-m", "--createmodel", default=None,
+                    help="create model (Yes or No). By default it gets the "
+                         "configuration from the .conf file")
 
     args = vars(ap.parse_args())
 
@@ -736,6 +745,9 @@ if __name__ == '__main__':
     if args['trackerconffile']:
         tmconffile_path = args['trackerconffile']
 
+        if tmconffile_path[0:2] == './' or tmconffile_path[0:2] == '.\\':
+            tmconffile_path = tmconffile_path[1:]
+
         name_starts_in = 0
         if tmconffile_path.rfind('/') != -1:
             name_starts_in = tmconffile_path.rfind('/') + 1
@@ -746,9 +758,18 @@ if __name__ == '__main__':
 
         if not identifier:
             identifier = ""
+        else:
+            identifier += "-"
         identifier += tmconffile_name
 
         config.change_config_file(tmconffile_path)
+
+    if args['createmodel']:
+        if args['createmodel'] == "Yes":
+            CREATE_MODEL = True
+            USE_MODEL = False
+        elif args['createmodel'] == "No":
+            CREATE_MODEL = False
 
     if not (identifier or source or tmconf or pmconf):
         if len(argv) > 1:
