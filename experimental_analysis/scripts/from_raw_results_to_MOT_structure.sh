@@ -3,12 +3,12 @@ SectionName=$1
 
 cd ../../trackermaster
 
-#for f in ../experimental_analisis/configs/$SectionName/*.conf ;
-#do
-#	echo $f;
-#	python __main__.py -i $SectionName -f $f -m Yes;
-#	python __main__.py -i $SectionName -f $f -m No;
-#done
+for f in ../experimental_analysis/configs/$SectionName/*.conf ;
+do
+	echo $f;
+	python __main__.py -i $SectionName -f $f -m Yes;
+	python __main__.py -i $SectionName -f $f -m No;
+done
 
 cd ../experimental_analysis
 
