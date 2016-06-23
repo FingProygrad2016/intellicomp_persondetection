@@ -747,6 +747,10 @@ if __name__ == '__main__':
 
         if tmconffile_path[0:2] == './' or tmconffile_path[0:2] == '.\\':
             tmconffile_path = tmconffile_path[1:]
+        elif tmconffile_path[0:3] == '../':
+            tmconffile_path = '/' + tmconffile_path
+        elif tmconffile_path[0:3] == '..\\':
+            tmconffile_path = '\\' + tmconffile_path
 
         name_starts_in = 0
         if tmconffile_path.rfind('/') != -1:
