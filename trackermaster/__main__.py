@@ -474,7 +474,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     trayectos = trayectos_ if trayectos_ else trayectos
 
                     if SAVE_POSITIONS_TO_FILE:
-                        positions_to_file += positions_in_frame
+                        if number_frame >= 50:
+                            positions_to_file += positions_in_frame
 
                         for ((x1, y1), (x2, y2)) in rectangles_in_frame:
                             # Draw in green candidate blobs
@@ -563,13 +564,14 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     max_show_info_time = max(aux_time, max_show_info_time)
 
                 if SAVE_POSITIONS_TO_FILE:
-                    persons_in_scene += str(number_frame + 1) + ", " + \
-                                        str(cant_personas) + ", " + \
-                                        str(len(trayectos)) + ", " + \
-                                        str(round(
-                                            (len(trayectos) * .85) +
-                                            (cant_personas * .15))) + \
-                                        "\n"
+                    if number_frame >= 50:
+                        persons_in_scene += str(number_frame) + ", " + \
+                                            str(cant_personas) + ", " + \
+                                            str(len(trayectos)) + ", " + \
+                                            str(round(
+                                                (len(trayectos) * .85) +
+                                                (cant_personas * .15))) + \
+                                            "\n"
 
                 if SHOW_VIDEO_OUTPUT:
                     # #################### ##

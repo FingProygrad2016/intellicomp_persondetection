@@ -542,7 +542,7 @@ class Tracker:
                     y_2 = round(y_2 + 1)
 
                     # if len(kf_group['k_filters']) == 1:
-                    text = str(frame_number + 1) + ',' + \
+                    text = str(frame_number) + ',' + \
                         str(kf.short_id) + ',' + \
                         str(x_1) + ',' + str(y_1) + ',' + \
                         str(x_2 - x_1) + ',' + str(y_2 - y_1) + \
