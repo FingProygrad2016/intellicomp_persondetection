@@ -1,0 +1,61 @@
+if [ $# -eq 2 ] 
+then
+    echo "Starting process..."
+else
+    echo "must be: esh execute_module_and_calculate_metrics.sh ModuleName(e.g.,Background_Subtraction) DoTrackerMasterProcessing(Yes/No)"
+    exit
+fi
+
+# for example, Background_Subtraction
+ModuleName=$1
+
+# Yes or No
+MakePythonProcessing=$2
+
+cd ../../trackermaster
+
+if [ "$2" == "Yes" ] ; then
+	for f in ../experimental_analysis/configs/$ModuleName/*.conf ; do
+		echo $f;
+		python __main__.py -i $ModuleName -f $f -m Yes;
+		python __main__.py -i $ModuleName -f $f -m No;
+	done
+fi
+
+cd ../experimental_analysis
+
+# Process positions results
+
+echo name > ./MOT/devkit/seqmaps/$ModuleName.txt
+mkdir ./MOT/devkit/res/data/$ModuleName
+
+for f in ./raw_results/$ModuleName*-positions.txt ; do
+	FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
+	mkdir ./MOT/data/$FileName
+	mkdir ./MOT/data/$FileName/gt
+	mkdir ./MOT/data/$FileName/img1
+	cp ./ground_truth/gt.txt ./MOT/data/$FileName/gt/
+	cp $f ./MOT/devkit/res/data/$ModuleName/
+	echo $FileName >> ./MOT/devkit/seqmaps/$ModuleName.txt
+done
+
+mkdir ./processed_results/$ModuleName
+mkdir ./processed_results/$ModuleName/counter
+mkdir ./processed_results/$ModuleName/times
+AppendExt="_diff.txt"
+
+cd scripts
+
+# Process counter results
+
+for f in ../raw_results/$ModuleName*-counter.txt ; do
+	FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
+	python ./get_counters_metric.py $f $FileName
+	mv ../processed_results/$FileName$AppendExt ../processed_results/$ModuleName/counter
+done
+
+# Process times results
+
+for f in ../raw_results/$ModuleName*-times.txt ; do
+	cp $f ../processed_results/$ModuleName/times/
+done
