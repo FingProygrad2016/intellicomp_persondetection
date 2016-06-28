@@ -2,7 +2,7 @@ if [ $# -eq 2 ]
 then
     echo "Starting process..."
 else
-    echo "must be: esh execute_module_and_calculate_metrics.sh ModuleName(e.g.,Background_Subtraction) DoTrackerMasterProcessing(Yes/No)"
+    echo "must be: sh execute_module_and_calculate_metrics.sh ModuleName(e.g.,Background_Subtraction) DoTrackerMasterProcessing(Yes/No)"
     exit
 fi
 
@@ -11,6 +11,9 @@ ModuleName=$1
 
 # Yes or No
 MakePythonProcessing=$2
+
+OctavePath="/Applications/Octave.app/Contents/Resources/usr/Cellar/octave/4.0.2_3/bin/octave"
+
 
 cd ../../trackermaster
 
@@ -59,3 +62,16 @@ done
 for f in ../raw_results/$ModuleName*-times.txt ; do
 	cp $f ../processed_results/$ModuleName/times/
 done
+
+
+# Process MOT results
+
+cd ../MOT/devkit
+
+mkdir ../../processed_results/$ModuleName/positions
+
+echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/');" > ./evalTrackAux.m
+
+$OctavePath --no-gui --no-window-system --silent evalTrackAux.m > ../../processed_results/$ModuleName/positions/MOT_results.txt
+
+rm ./evalTrackAux.m
