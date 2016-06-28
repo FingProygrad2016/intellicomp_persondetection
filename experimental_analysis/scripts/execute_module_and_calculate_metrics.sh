@@ -33,8 +33,6 @@ echo name > ./MOT/devkit/seqmaps/$ModuleName.txt
 
 [ -d "./MOT/devkit/res/data/$ModuleName" ] || mkdir ./MOT/devkit/res/data/$ModuleName
 
-# [ -d "$DIRECTORY" ] || mkdir $DIRECTORY
-
 for f in ./raw_results/$ModuleName*-positions.txt ; do
 	FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
 	[ -d "./MOT/data/$FileName" ] || mkdir ./MOT/data/$FileName
