@@ -30,21 +30,25 @@ cd ../experimental_analysis
 # Process positions results
 
 echo name > ./MOT/devkit/seqmaps/$ModuleName.txt
-mkdir ./MOT/devkit/res/data/$ModuleName
+
+[ -d "./MOT/devkit/res/data/$ModuleName" ] || mkdir ./MOT/devkit/res/data/$ModuleName
+
+# [ -d "$DIRECTORY" ] || mkdir $DIRECTORY
 
 for f in ./raw_results/$ModuleName*-positions.txt ; do
 	FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
-	mkdir ./MOT/data/$FileName
-	mkdir ./MOT/data/$FileName/gt
-	mkdir ./MOT/data/$FileName/img1
+	[ -d "./MOT/data/$FileName" ] || mkdir ./MOT/data/$FileName
+	[ -d "./MOT/data/$FileName/gt" ] || mkdir ./MOT/data/$FileName/gt
+	[ -d "./MOT/data/$FileName/img1" ] || mkdir ./MOT/data/$FileName/img1
 	cp ./ground_truth/gt.txt ./MOT/data/$FileName/gt/
 	cp $f ./MOT/devkit/res/data/$ModuleName/
 	echo $FileName >> ./MOT/devkit/seqmaps/$ModuleName.txt
 done
 
-mkdir ./processed_results/$ModuleName
-mkdir ./processed_results/$ModuleName/counter
-mkdir ./processed_results/$ModuleName/times
+[ -d "./processed_results/$ModuleName" ] || mkdir ./processed_results/$ModuleName
+[ -d "./processed_results/$ModuleName/counter" ] || mkdir ./processed_results/$ModuleName/counter
+[ -d "./processed_results/$ModuleName/times" ] || mkdir ./processed_results/$ModuleName/times
+
 AppendExt="_diff.txt"
 
 cd scripts
@@ -68,7 +72,7 @@ done
 
 cd ../MOT/devkit
 
-mkdir ../../processed_results/$ModuleName/positions
+[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
 
 echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/');" > ./evalTrackAux.m
 
