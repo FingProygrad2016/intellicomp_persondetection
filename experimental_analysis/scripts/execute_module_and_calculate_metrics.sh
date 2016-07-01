@@ -1,8 +1,10 @@
+#!/bin/sh
+
 if [ $# -eq 3 ] 
 then
     echo "Starting process..."
 else
-    echo "must be: sh execute_module_and_calculate_metrics.sh ModuleName(e.g.,Background_Subtraction) DoTrackerMasterProcessing(Yes/No) DoMatlabThings(Yes/No)"
+    echo "must be: sh path_to_scripts/execute_module_and_calculate_metrics.sh ModuleName(e.g.,Background_Subtraction) DoTrackerMasterProcessing(Yes/No) DoMatlabThings(Yes/No)"
     exit
 fi
 
@@ -17,15 +19,16 @@ MakeMatlabProcessing=$3
 
 MatlabPath="/Applications/MATLAB_R2016a.app/bin/matlab"
 OctavePath="/Applications/Octave.app/Contents/Resources/usr/Cellar/octave/4.0.2_3/bin/octave"
+Python3Path="python"
 
 
 cd ../../trackermaster
 
-if [ "$2" == "Yes" ] ; then
+if [ "$2" = "Yes" ] ; then
 	for f in ../experimental_analysis/configs/$ModuleName/*.conf ; do
 		echo $f;
-		python __main__.py -i $ModuleName -f $f -m Yes;
-		python __main__.py -i $ModuleName -f $f -m No;
+		$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
+		$Python3Path __main__.py -i $ModuleName -f $f -m No;
 	done
 fi
 
@@ -62,10 +65,10 @@ DirectoryForCounterResults="../processed_results/$ModuleName/counter/"
 
 for f in ../raw_results/$ModuleName*-counter.txt ; do
 	FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
-	python ./get_counters_metric.py $f $FileName $DirectoryForCounterResults
+	$Python3Path ./get_counters_metric.py $f $FileName $DirectoryForCounterResults
 done
 
-python ./get_counters_latex_histograms.py $DirectoryForCounterResults
+$Python3Path ./get_counters_latex_histograms.py $DirectoryForCounterResults
 
 # Process times results
 
@@ -78,14 +81,14 @@ done
 
 # Process MOT results
 
-if [ "$3" == "Yes" ] ; then
+if [ "$3" = "Yes" ] ; then
 	cd ../MOT/devkit
 
 	[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
 
 	echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux.m
 
-	if [ "$MatlabPath" == "" ] ; then
+	if [ "$MatlabPath" = "" ] ; then
 		$OctavePath --no-gui --no-window-system --silent evalTrackAux.m > ../../processed_results/$ModuleName/positions/MOT_results.txt
 	else
 		$MatlabPath -nodesktop -nosplash -r evalTrackAux -logfile ../../processed_results/$ModuleName/positions/MOT_results.txt -nojvm -noFigureWindows -nodisplay > /dev/null

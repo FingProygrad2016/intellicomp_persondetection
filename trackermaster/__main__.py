@@ -172,9 +172,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     SHOW_VIDEO_OUTPUT = config.getboolean("SHOW_VIDEO_OUTPUT")
     LIMIT_FPS = config.getboolean("LIMIT_FPS")
     DEFAULT_FPS_LIMIT = config.getfloat("DEFAULT_FPS_LIMIT")
-    if not CREATE_MODEL:
+    if CREATE_MODEL is None:
         CREATE_MODEL = config.getboolean("CREATE_MODEL")
-    if not USE_MODEL:
+    if USE_MODEL is None:
         USE_MODEL = config.getboolean("USE_MODEL")
     SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
 
