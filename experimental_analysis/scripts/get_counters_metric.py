@@ -15,7 +15,7 @@ else:
 
 infinite = 9999
 
-histogram = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+histogram = [] # [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 one_statistic = {
 	'name': '',
@@ -84,7 +84,7 @@ with open(directory_for_results + "differences/" + result_counter_filename + '_d
 	for i in range(0, 3):
 		out.write(statistics[i]['name']+" (mean, min, max): "+"%.2f" % round(statistics[i]['mean_diff'],2)+", "+str(statistics[i]['min_diff'])+", "+str(statistics[i]['max_diff'])+"\n")
 
-with open(directory_for_results + "histograms/" + result_counter_filename + '_diff-histogram.dat', 'w') as out:
+with open(directory_for_results + "histograms/data/" + result_counter_filename + '_diff-histogram.dat', 'w') as out:
 	histograms_length = len(statistics[0]['histogram'])
 	out.write('diff\tmetric_1\tmetric_2\tmetric_3\n')
 	for i in range(0, histograms_length):

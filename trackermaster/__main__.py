@@ -766,7 +766,7 @@ if __name__ == '__main__':
             identifier = ""
         else:
             identifier += "-"
-        identifier += tmconffile_name
+        identifier += tmconffile_name.replace('.conf', '')
 
         config.change_config_file(tmconffile_path)
 
