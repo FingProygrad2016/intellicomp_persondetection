@@ -48,8 +48,9 @@ class PatternRecognition(object):
         self.communicator = \
             Communicator(
                 expiration_time=self.config.getint('WARNINGS_EXPIRATION_TIME'),
-                host_address=self.config.get('WARNINGS_QUEUE_HOSTADDRESS'),
-                exchange='to_master', exchange_type='topic')
+                host_address=self.config.get('WARNINGS_COMM_HOSTADDRESS'),
+                exchange=self.config.get('WARNINGS_EXCHANGE_NAME'),
+                exchange_type='topic')
 
         self.global_events = []
 
