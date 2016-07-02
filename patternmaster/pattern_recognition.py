@@ -329,7 +329,8 @@ class PatternRecognition(object):
 
             satisfies_global_events, dist3, time_from_start3 = \
                 self.check_ruleevents_in_activeevents(
-                    rule.events, [self.global_events[-1]])
+                    rule.events, [self.global_events[-1]]) if \
+                self.global_events else None, None, None
 
             if satisfies_global_events:
                 found_global_rules.append((dist3, rule, time_from_start3))
