@@ -22,18 +22,18 @@ class PatternMaster(object):
         self.channel = self.connection.channel()
 
         self.channel.exchange_declare(
-            exchange=read_conf().get('TRACK_INFO_QUEUE_NAME'),
+            exchange=read_conf().get('TRACK_INFO_EXCHANGE_NAME'),
             exchange_type='direct')
 
         self.channel.queue_declare(queue='patternmaster_rcv')
 
         self.channel.queue_bind(
             queue='patternmaster_rcv',
-            exchange=read_conf().get('TRACK_INFO_QUEUE_NAME'),
+            exchange=read_conf().get('TRACK_INFO_EXCHANGE_NAME'),
             routing_key='processing_settings')
         self.channel.queue_bind(
             queue='patternmaster_rcv',
-            exchange=read_conf().get('TRACK_INFO_QUEUE_NAME'),
+            exchange=read_conf().get('TRACK_INFO_EXCHANGE_NAME'),
             routing_key='track_info')
 
     def apply(self):
