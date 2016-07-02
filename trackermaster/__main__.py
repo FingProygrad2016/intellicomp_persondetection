@@ -19,7 +19,7 @@ sys.path.insert(0, path)
 from trackermaster.black_boxes import person_detection
 from trackermaster.config import config, set_custome_config
 from trackermaster.black_boxes.background_substraction import \
-    BackgroundSubtractorKNN
+    BackgroundSubtractorKNN, BackgroundSubtractorMOG2
 from trackermaster.black_boxes.blob_detection import BlobDetector
 from trackermaster.black_boxes.tracking import Tracker
 from utils.communicator import Communicator
@@ -177,6 +177,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     if USE_MODEL is None:
         USE_MODEL = config.getboolean("USE_MODEL")
     SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
+    USE_BSUBTRACTOR_KNN = config.getboolean("USE_BSUBTRACTOR_KNN")
 
     """  FINISH SETTING CONSTANTS  """
 
@@ -264,7 +265,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    background_subtractor = BackgroundSubtractorKNN()
+    background_subtractor = BackgroundSubtractorKNN() if USE_BSUBTRACTOR_KNN \
+        else BackgroundSubtractorMOG2()
 
     blobs_detector = BlobDetector()
     # person_detector = Histogram2D()
