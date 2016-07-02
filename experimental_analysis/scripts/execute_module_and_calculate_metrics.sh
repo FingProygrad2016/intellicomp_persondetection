@@ -28,7 +28,11 @@ if [ "$2" = "Yes" ] ; then
 	for f in ../experimental_analysis/configs/$ModuleName/*.conf ; do
 		echo $f;
 		$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
-		$Python3Path __main__.py -i $ModuleName -f $f -m No;
+		if [ $? -eq 0 ]; then
+			$Python3Path __main__.py -i $ModuleName -f $f -m No;
+		else
+			exit
+		fi
 	done
 fi
 
@@ -95,4 +99,8 @@ if [ "$3" = "Yes" ] ; then
 	fi
 
 	rm ./evalTrackAux.m
+
+	cd ../../scripts
+
+	$Python3Path mot_results_parser.py ../processed_results/$ModuleName/positions/MOT_results.txt
 fi

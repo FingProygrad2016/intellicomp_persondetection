@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
+import re
 from sys import argv
 
 if len(argv) == 2:
@@ -42,9 +43,15 @@ latex_document = """
 	\\begin{document}
 """
 
+p = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
+
 for file in os.listdir(directory_of_results + "histograms/data"):
-    if file.endswith(".dat"):
-        latex_document += latex_histogram_template.replace('$1', 'data/' + file).replace('$2', file.replace('.dat', '').replace('_', ' ').replace('-', ' '))
+	if file.endswith(".dat"):
+		m = p.match(file)
+		module_name = m.group(1).replace('_', ' ')
+		block_number = m.group(2)
+		config_in_block = m.group(3)
+		latex_document += latex_histogram_template.replace('$1', 'data/' + file).replace('$2', module_name + ', bloque ' + str(block_number) + ', configuraci\\\'on ' + str(config_in_block))
 
 latex_document += "\\end{document}\n"
 

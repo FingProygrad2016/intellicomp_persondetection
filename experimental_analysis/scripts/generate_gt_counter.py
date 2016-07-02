@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 gt_path = "../ground_truth/gt.txt"
 frame_count_person = {}
