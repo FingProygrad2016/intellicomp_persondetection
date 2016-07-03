@@ -80,7 +80,7 @@ for i in range(0, len(gt_file_lines)):
 					statistics[l]['histogram'].append(0)
 		histogram[diff] += 1
 
-with open(directory_for_results + "differences/" + result_counter_filename + '_diff.txt', 'w') as out:
+with open(directory_for_results + "differences/data/" + result_counter_filename + '_diff.txt', 'w') as out:
 	for i in range(0, 3):
 		out.write(statistics[i]['name']+" (mean, min, max): "+"%.2f" % round(statistics[i]['mean_diff'],2)+", "+str(statistics[i]['min_diff'])+", "+str(statistics[i]['max_diff'])+"\n")
 

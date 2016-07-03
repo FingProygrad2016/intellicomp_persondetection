@@ -38,16 +38,18 @@ latex_histogram_template = """
 latex_document = """
 	\\documentclass{article}
 	\\usepackage[utf8]{inputenc}
+
 	\\usepackage{pgfplots}
 	\\pgfplotsset{compat=1.5}% <-- moves axis labels near ticklabels (respects tick label widths)
+	
 	\\begin{document}
 """
 
-p = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
+module_block_config_matcher = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
 
 for file in os.listdir(directory_of_results + "histograms/data"):
 	if file.endswith(".dat"):
-		m = p.match(file)
+		m = module_block_config_matcher.match(file)
 		module_name = m.group(1).replace('_', ' ')
 		block_number = m.group(2)
 		config_in_block = m.group(3)

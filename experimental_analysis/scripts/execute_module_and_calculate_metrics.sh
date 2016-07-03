@@ -64,6 +64,7 @@ DirectoryForCounterResults="../processed_results/$ModuleName/counter/"
 
 [ -d "$DirectoryForCounterResults" ] || mkdir $DirectoryForCounterResults
 [ -d "$DirectoryForCounterResults/differences" ] || mkdir $DirectoryForCounterResults/differences
+[ -d "$DirectoryForCounterResults/differences/data" ] || mkdir $DirectoryForCounterResults/differences/data
 [ -d "$DirectoryForCounterResults/histograms" ] || mkdir $DirectoryForCounterResults/histograms
 [ -d "$DirectoryForCounterResults/histograms/data" ] || mkdir $DirectoryForCounterResults/histograms/data
 
@@ -77,10 +78,13 @@ $Python3Path ./get_counters_latex_histograms.py $DirectoryForCounterResults
 # Process times results
 
 [ -d "../processed_results/$ModuleName/times" ] || mkdir ../processed_results/$ModuleName/times
+[ -d "../processed_results/$ModuleName/times/data" ] || mkdir ../processed_results/$ModuleName/times/data
 
 for f in ../raw_results/$ModuleName*-times.txt ; do
-	cp $f ../processed_results/$ModuleName/times/
+	cp $f ../processed_results/$ModuleName/times/data/
 done
+
+$Python3Path ./get_times_latex_tables.py ../processed_results/$ModuleName/times/
 
 
 # Process MOT results
@@ -89,18 +93,19 @@ if [ "$3" = "Yes" ] ; then
 	cd ../MOT/devkit
 
 	[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
+	[ -d "../../processed_results/$ModuleName/positions/data" ] || mkdir ../../processed_results/$ModuleName/positions/data
 
 	echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux.m
 
 	if [ "$MatlabPath" = "" ] ; then
-		$OctavePath --no-gui --no-window-system --silent evalTrackAux.m > ../../processed_results/$ModuleName/positions/MOT_results.txt
+		$OctavePath --no-gui --no-window-system --silent evalTrackAux.m > ../../processed_results/$ModuleName/positions/data/MOT_results.txt
 	else
-		$MatlabPath -nodesktop -nosplash -r evalTrackAux -logfile ../../processed_results/$ModuleName/positions/MOT_results.txt -nojvm -noFigureWindows -nodisplay > /dev/null
+		$MatlabPath -nodesktop -nosplash -r evalTrackAux -logfile ../../processed_results/$ModuleName/positions/data/MOT_results.txt -nojvm -noFigureWindows -nodisplay > /dev/null
 	fi
 
 	rm ./evalTrackAux.m
 
 	cd ../../scripts
 
-	$Python3Path mot_results_parser.py ../processed_results/$ModuleName/positions/MOT_results.txt
+	$Python3Path mot_results_parser.py ../processed_results/$ModuleName/positions/
 fi
