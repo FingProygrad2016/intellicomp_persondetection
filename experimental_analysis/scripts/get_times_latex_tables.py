@@ -13,8 +13,8 @@ else:
 latex_table_template = """
 	{\\renewcommand{\\arraystretch}{1.2}
 	\\begin{table}
-	\\begin{tabular}{c c *{5}{@{ }c@{ }}}
-	Bloque & Configuraci\\'on & 
+	\\begin{tabular}{c c | *{5}{@{ }c@{ }}}
+	Bloque & Conf & 
 	\\begin{tabular}{c}Sustracci\\'on\\\\de fondo\\end{tabular} & 
 	\\begin{tabular}{c}Detecci\\'on y\\\\clasificaci\\'on\\\\de blobs\\end{tabular} & 
 	\\begin{tabular}{c}Detecci\\'on\\\\de personas\\end{tabular} & 
@@ -47,7 +47,7 @@ blocks_info = []
 module_block_config_matcher = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
 
 float_matcher = '[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?'
-times_info_matcher_one = '.*?Background.*?('+float_matcher+').*?Blob.*?('+float_matcher+').*?Person.*?('+float_matcher+').*?Tracker.*?('+float_matcher+').*?Total.*?('+float_matcher+')'
+times_info_matcher_one = '.*?Background.*?('+float_matcher+').*?Blob.*?('+float_matcher+').*?Person.*?('+float_matcher+').*?Tracker.*?('+float_matcher+')'
 times_info_matcher_both = re.compile(times_info_matcher_one + times_info_matcher_one)
 
 module_name = None
@@ -75,15 +75,31 @@ for file in os.listdir(directory_of_results + "data"):
 
 		times = times_info_matcher_both.match(file_info)
 
+		average_times = {
+			'BS': float(times.group(1)),
+			'BD': float(times.group(2)),
+			'PD': float(times.group(3)),
+			'T': float(times.group(4))
+		}
+		average_times['Tot'] = average_times['BS'] + average_times['BD'] + average_times['PD'] + average_times['T']
+
+		max_times = {
+			'BS': float(times.group(5)),
+			'BD': float(times.group(6)),
+			'PD': float(times.group(7)),
+			'T': float(times.group(8))
+		}
+		max_times['Tot'] = max_times['BS'] + max_times['BD'] + max_times['PD'] + max_times['T']
+
 		# Average times info
 		block_info[config_in_block - 1][0] = " & " + str(config_in_block) + \
-			" & " + "%.5f" % round(float(times.group(1)),5) + " & " + "%.5f" % round(float(times.group(2)),5) + " & " + "%.5f" % round(float(times.group(3)),5) + \
-			" & " + "%.5f" % round(float(times.group(4)),5) + " & " + "%.5f" % round(float(times.group(5)),5) + "\\\\\n"
+			" & " + "%.5f" % round(average_times['BS'],5) + " & " + "%.5f" % round(average_times['BD'],5) + " & " + "%.5f" % round(average_times['PD'],5) + \
+			" & " + "%.5f" % round(average_times['T'],5) + " & " + "%.5f" % round(average_times['Tot'],5) + "\\\\\n"
 
 		# Max times info
 		block_info[config_in_block - 1][1] = " & " + str(config_in_block) + \
-			" & " + "%.5f" % round(float(times.group(6)),5) + " & " + "%.5f" % round(float(times.group(7)),5) + " & " + "%.5f" % round(float(times.group(8)),5) + \
-			" & " + "%.5f" % round(float(times.group(9)),5) + " & " + "%.5f" % round(float(times.group(10)),5) + "\\\\\n"
+			" & " + "%.5f" % round(max_times['BS'],5) + " & " + "%.5f" % round(max_times['BD'],5) + " & " + "%.5f" % round(max_times['PD'],5) + \
+			" & " + "%.5f" % round(max_times['T'],5) + " & " + "%.5f" % round(max_times['Tot'],5) + "\\\\\n"
 
 average_times_latex_rows = ""
 max_times_latex_rows = ""
@@ -97,8 +113,8 @@ for (i, block_info) in enumerate(blocks_info):
 	average_times_latex_rows += latex_table_multirow_template.replace('$1', str(len(block_info))).replace('$2', str(i + 1)).replace('$3', block_average_times)
 	max_times_latex_rows += latex_table_multirow_template.replace('$1', str(len(block_info))).replace('$2', str(i + 1)).replace('$3', block_max_times)
 
-latex_document += latex_table_template.replace('$1', average_times_latex_rows).replace('$2', module_name + ", tiempos promedio.")
-latex_document += latex_table_template.replace('$1', max_times_latex_rows).replace('$2', module_name + ", tiempos m\\'aximos.")
+latex_document += latex_table_template.replace('$1', average_times_latex_rows).replace('$2', module_name + ", tiempos promedio de procesamiento por frame.")
+latex_document += latex_table_template.replace('$1', max_times_latex_rows).replace('$2', module_name + ", tiempos m\\'aximos de procesamiento por frame.")
 latex_document += "\\end{document}\n"
 
 with open(directory_of_results + "latex_times_tables.tex", 'w') as out:

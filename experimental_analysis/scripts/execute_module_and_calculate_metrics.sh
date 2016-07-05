@@ -73,6 +73,7 @@ for f in ../raw_results/$ModuleName*-counter.txt ; do
 	$Python3Path ./get_counters_metric.py $f $FileName $DirectoryForCounterResults
 done
 
+$Python3Path ./get_counters_latex_tables.py $DirectoryForCounterResults
 $Python3Path ./get_counters_latex_histograms.py $DirectoryForCounterResults
 
 # Process times results
