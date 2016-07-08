@@ -1,0 +1,9 @@
+Background_Subtraction
+##
+background_subtraction_base.conf
+##
+HISTORY;DIST_2_THRESHOLD;KNN_SAMPLES;DETECT_SHADOWS;SHADOW_THRESHOLD;USE_BSUBTRACTOR_KNN
+:[35;105;175][35;140;350][3;5;7][False][#][True]
+:[35;105;175][35;140;350][3;5;7][True][0.3;0.5;0.7][True]
+:[#][#][#][#][#][False]
+##

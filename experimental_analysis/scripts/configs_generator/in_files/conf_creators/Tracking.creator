@@ -1,0 +1,25 @@
+Tracking
+##
+tracking_base.conf
+##
+USE_HISTOGRAMS_FOR_TRACKING;HISTOGRAM_COMPARISON_METHOD;PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS
+:[False][#][0, 0, 1]
+:[True][CORRELATION;CHI_SQUARED;CHI_SQUARED_ALT;INTERSECTION;HELLINGER;KL_DIV;EUCLIDEAN;MANHATTAN;CHEBYSEV][0, 0, 1]
+![mejor de los anteriores][mejor de los anteriores][1, 0, 0;0, 1, 0;0, 0, 1;0.5, 0.25, 0.25;0.25, 0.5, 0.25;0.25, 0.25, 0.5;0.33, 0.34, 0.33]
+##
+MAX_SECONDS_WITHOUT_UPDATE
+:[1;2;4;8]
+##
+MAX_SECONDS_TO_PREDICT_POSITION{(smaller than seconds without update [one on one])}
+:[0.5;1;2;4]
+##
+MAX_SECONDS_WITHOUT_ANY_BLOB{(smaller than seconds without update [one on one])}
+:[0;0.5;1.5;3.5]
+##
+MIN_SECONDS_TO_BE_ACCEPTED_IN_GROUP
+:[0;0.5;1.5;3.5]
+##
+KALMAN_FILTER_TYPE;KALMAN_FILTER_SMOOTH_LAG
+:[NORMAL][#]
+:[SMOOTHED][0;3{(FPS / 2)};7{(FPS)};14{(FPS * 2)}]
+##

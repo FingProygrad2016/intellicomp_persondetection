@@ -1,0 +1,11 @@
+Blobs_Detection
+##
+blobs_detection_base.conf
+##
+MIN_DIST_BETWEEN_BLOBS;FILTER_BY_AREA;MIN_AREA;MAX_AREA;DETECT_BLOBS_BY_BOUNDING_BOXES;EXPAND_BLOBS;EXPAND_BLOBS_RATIO
+:[#][#][#][#][True][True][0.2]
+:[#][#][#][#][True][False][#]
+:[3;30][False][#][#][False][#][#]
+:[3;30][True][50][5000][False][#][#]
+:[3;30][True][500][2500][False][#][#]
+##
