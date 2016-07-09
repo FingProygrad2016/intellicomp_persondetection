@@ -3,6 +3,14 @@
 import re
 from sys import argv
 
+def convert_to_rgb(minval, maxval, val, colors):
+    max_index = len(colors)-1
+    v = float(val-minval) / float(maxval-minval) * max_index
+    i1, i2 = int(v), min(int(v)+1, max_index)
+    (r1, g1, b1), (r2, g2, b2) = colors[i1], colors[i2]
+    f = v - i1
+    return int(r1 + f*(r2-r1)), int(g1 + f*(g2-g1)), int(b1 + f*(b2-b1))
+
 def parse_mot_results(file_path):
 
     tests = {}

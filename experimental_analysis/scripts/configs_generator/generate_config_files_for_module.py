@@ -142,7 +142,7 @@ for i in range(0, len(blocks_info)):
 			text_for_execution_plan = text_for_execution_plan[:-1] + '\n'
 
 			if configuration['is_executable']:
-				with open(result_conf_files_path + 'trackermaster-B' + str(block_number) + '-' + str(config_number_in_block) + '.conf', 'w') as out:
+				with open(result_conf_files_path + 'trackermaster-B' + "%02d" % block_number + '-' + "%03d" % config_number_in_block + '.conf', 'w') as out:
 					out.write(modified_configuration_file)
 
 			config_number_in_block += 1

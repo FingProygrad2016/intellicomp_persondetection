@@ -10,6 +10,14 @@ else:
 	print("must be: python get_counters_latex_tables.py directory_of_results")
 	exit()
 
+def convert_to_rgb(minval, maxval, val, colors):
+	max_index = len(colors)-1
+	v = float(val-minval) / float(maxval-minval) * max_index
+	i1, i2 = int(v), min(int(v)+1, max_index)
+	(r1, g1, b1), (r2, g2, b2) = colors[i1], colors[i2]
+	f = v - i1
+	return int(r1 + f*(r2-r1)), int(g1 + f*(g2-g1)), int(b1 + f*(b2-b1))
+
 latex_table_template = """
 	{\\renewcommand{\\arraystretch}{1.2}
 	\\begin{table}

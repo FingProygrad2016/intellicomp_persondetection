@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -eq 3 ] 
+if [ $# -eq 7 ] 
 then
     echo "Starting process..."
 else
@@ -40,7 +40,7 @@ fi
 # Yes or No
 MakeMatlabProcessing=$7
 
-MatlabPath="/Applications/MATLAB_R2016a.app/bin/matlab"
+MatlabPath="" # /Applications/MATLAB_R2016a.app/bin/matlab"
 OctavePath="/Applications/Octave.app/Contents/Resources/usr/Cellar/octave/4.0.2_3/bin/octave"
 Python3Path="python"
 
@@ -51,14 +51,14 @@ cd ../../trackermaster
 
 if [ "$MakePythonProcessing" = "Yes" ] ; then
 	for f in ../experimental_analysis/configs/$ModuleName/*.conf ; do
-		echo $f;
-
+		
 		[[ $f =~ $module_block_config_matcher ]]
 		
 		BlockNumber=${BASH_REMATCH[1]}
 		ConfigNumber=${BASH_REMATCH[2]}
 
 		if [ "$Block" -eq 0 ] ; then
+			echo $f;
 			$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
 			if [ $? -eq 0 ]; then
 				$Python3Path __main__.py -i $ModuleName -f $f -m No;
@@ -69,6 +69,7 @@ if [ "$MakePythonProcessing" = "Yes" ] ; then
 			if [ "$Block" -eq "$BlockNumber" ] ; then
 				if [ "$MinConfig" -eq 0 ] ; then
 					if [ "$MaxConfig" -eq 0 ]; then
+						echo $f;
 						$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
 						if [ $? -eq 0 ]; then
 							$Python3Path __main__.py -i $ModuleName -f $f -m No;
@@ -77,6 +78,7 @@ if [ "$MakePythonProcessing" = "Yes" ] ; then
 						fi
 					else
 						if [ "$MaxConfig" -ge "$ConfigNumber" ] ; then
+							echo $f;
 							$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
 							if [ $? -eq 0 ]; then
 								$Python3Path __main__.py -i $ModuleName -f $f -m No;
@@ -88,6 +90,7 @@ if [ "$MakePythonProcessing" = "Yes" ] ; then
 				else
 					if [ "$MinConfig" -le "$ConfigNumber" ] ; then
 						if [ "$MaxConfig" -eq 0 ]; then
+							echo $f;
 							$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
 							if [ $? -eq 0 ]; then
 								$Python3Path __main__.py -i $ModuleName -f $f -m No;
@@ -96,6 +99,7 @@ if [ "$MakePythonProcessing" = "Yes" ] ; then
 							fi
 						else
 							if [ "$MaxConfig" -ge "$ConfigNumber" ] ; then
+								echo $f;
 								$Python3Path __main__.py -i $ModuleName -f $f -m Yes;
 								if [ $? -eq 0 ]; then
 									$Python3Path __main__.py -i $ModuleName -f $f -m No;
@@ -167,11 +171,12 @@ if [ "$ProcessResults" = "Yes" ] ; then
 
 	# Process MOT results
 
-	if [ "$3" = "Yes" ] ; then
-		cd ../MOT/devkit
+	cd ../MOT/devkit
 
-		[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
-		[ -d "../../processed_results/$ModuleName/positions/data" ] || mkdir ../../processed_results/$ModuleName/positions/data
+	[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
+	[ -d "../../processed_results/$ModuleName/positions/data" ] || mkdir ../../processed_results/$ModuleName/positions/data
+
+	if [ "$MakeMatlabProcessing" = "Yes" ] ; then
 
 		echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux.m
 
@@ -182,11 +187,11 @@ if [ "$ProcessResults" = "Yes" ] ; then
 		fi
 
 		rm ./evalTrackAux.m
-
-		cd ../../scripts
-
-		$Python3Path mot_results_parser.py ../processed_results/$ModuleName/positions/
 	fi
+
+	cd ../../scripts
+
+	$Python3Path mot_results_parser.py ../processed_results/$ModuleName/positions/
 fi
 
 exit
