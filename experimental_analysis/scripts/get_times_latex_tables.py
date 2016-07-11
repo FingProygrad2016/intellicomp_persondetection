@@ -4,38 +4,60 @@ import os
 import re
 from sys import argv
 
+#import pprint
+import math
+
+import colorsys
+from decimal import *
+
 if len(argv) == 2:
     directory_of_results = argv[1]
 else:
 	print("must be: python get_times_latex_tables.py directory_of_results")
 	exit()
 
-colors = [(0, 255, 0), (255, 0, 0)]
+def transition(value, minimum, maximum, start_point, end_point):
+    return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum))
 
-def convert_to_rgb(minval, maxval, val):
-	print("minval: ", str(minval), '; maxval: ', str(maxval), '; val: ', str(val))
-	max_index = len(colors)-1
-	v = float(val-minval) / float(maxval-minval) * max_index
-	i1, i2 = int(v), min(int(v)+1, max_index)
-	(r1, g1, b1), (r2, g2, b2) = colors[i1], colors[i2]
-	f = v - i1
-	return "\cellcolor{rgb:red," + str(int(r1 + f*(r2-r1))) + ";green," + str(int(g1 + f*(g2-g1))) + ";blue," + str(int(b1 + f*(b2-b1))) + "}"
+def transition3(value, minimum, maximum, start_color_hsv, end_color_hsv):
+    r1 = transition(value, minimum, maximum, start_color_hsv[0], end_color_hsv[0])
+    r2 = transition(value, minimum, maximum, start_color_hsv[1], end_color_hsv[1])
+    r3 = transition(value, minimum, maximum, start_color_hsv[2], end_color_hsv[2])
+    return r1, r2, r3
+
+colors_extreme = [(0, 255, 0), (255, 0, 0)]
+
+start_triplet = colorsys.rgb_to_hsv(62, 220, 29) # 78, 209, 51) # comment: green converted to HSV
+end_triplet = colorsys.rgb_to_hsv(213, 31, 49) # 187, 58, 69) # comment: accordingly for red
+
+def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval, val): # block_info['average_times'], 'BS', average_times['BS']
+
+	minconfig = min_max_values['min_values'][module]['config']
+	maxconfig = min_max_values['max_values'][module]['config']
+
+	if minconfig == config_number:
+		return "\cellcolor{rgb:red," + str(colors_extreme[0][0]) + ";green," + str(colors_extreme[0][1]) + ";blue," + str(colors_extreme[0][2]) + "}" + "%.5f" % round(val, 5)
+	elif maxconfig == config_number:
+		return "\cellcolor{rgb:red," + str(colors_extreme[1][0]) + ";green," + str(colors_extreme[1][1]) + ";blue," + str(colors_extreme[1][2]) + "}" + "%.5f" % round(val, 5)
+	else:
+		minval = min_max_values['min_values'][module]['value']
+		maxval = min_max_values['max_values'][module]['value']
+
+		hsv_color = transition3(val, minval, maxval, start_triplet, end_triplet)
+		rgb_color = colorsys.hsv_to_rgb(hsv_color[0],hsv_color[1],hsv_color[2])
+
+		return "\cellcolor{rgb:red," + str(rgb_color[0]) + ";green," + str(rgb_color[1]) + ";blue," + str(rgb_color[2]) + "}" + "%.5f" % round(val, 5)
 
 latex_table_template = """
 	{\\renewcommand{\\arraystretch}{1.2}
-	\\begin{table}
-	\\begin{tabular}{c c | *{5}{@{ }c@{ }}}
-	Bloque & Conf & 
-	\\begin{tabular}{c}Sustracci\\'on\\\\de fondo\\end{tabular} & 
-	\\begin{tabular}{c}Detecci\\'on y\\\\clasificaci\\'on\\\\de blobs\\end{tabular} & 
-	\\begin{tabular}{c}Detecci\\'on\\\\de personas\\end{tabular} & 
-	\\begin{tabular}{c}Seguimiento\\end{tabular} & 
-	\\begin{tabular}{c}Total\\end{tabular} \\\\
+	\\begin{longtable}{c c | *{5}{@{ }c@{ }}}
+	 & & & Detecci\\'on y & & & \\\\
+	 & & Sustracci\\'on & clasificaci\\'on & Detecci\\'on & & \\\\
+    Bloque & Conf & de fondo & de blobs & de personas & Seguimiento & Total \\\\
 	\\hline
 	$1
-	\\end{tabular}
 	\\caption{$2}
-	\\end{table}
+	\\end{longtable}
 	}
 """
 
@@ -49,6 +71,7 @@ latex_document = """
 	\\usepackage[utf8]{inputenc}
 
 	\\usepackage{multirow}
+	\\usepackage{longtable}
 
 	\\begin{document}
 """
@@ -62,41 +85,6 @@ times_info_matcher_one = '.*?Background.*?('+float_matcher+').*?Blob.*?('+float_
 times_info_matcher_both = re.compile(times_info_matcher_one + times_info_matcher_one)
 
 infinite = 9999
-min_values_template = {
-	'BS': infinite,
-	'BD': infinite,
-	'PD': infinite,
-	'T': infinite,
-	'Tot': infinite,
-}
-max_values_template = {
-	'BS': 0,
-	'BD': 0,
-	'PD': 0,
-	'T': 0,
-	'Tot': 0,
-}
-block_info_template = {
-	'average_times': {'min_values': min_values_template.copy(), 'max_values': max_values_template.copy()},
-	'max_times': {'min_values': min_values_template.copy(), 'max_values': max_values_template.copy()},
-	'configs': []
-}
-config_template = {
-	'average_times': {
-		'BS': 0,
-		'BD': 0,
-		'PD': 0,
-		'T': 0,
-		'Tot': 0
-	},
-	'max_times': {
-		'BS': 0,
-		'BD': 0,
-		'PD': 0,
-		'T': 0,
-		'Tot': 0
-	}
-}
 
 module_name = None
 for file in os.listdir(directory_of_results + "data"):
@@ -106,9 +94,57 @@ for file in os.listdir(directory_of_results + "data"):
 		block_number = int(mbc.group(2))
 		config_in_block = int(mbc.group(3))
 
+		block_info_template = {
+			'average_times': {'min_values': {
+								'BS': {'value': infinite, 'config': -1},
+								'BD': {'value': infinite, 'config': -1},
+								'PD': {'value': infinite, 'config': -1},
+								'T': {'value': infinite, 'config': -1},
+								'Tot': {'value': infinite, 'config': -1}
+								},
+								'max_values': {
+									'BS': {'value': 0, 'config': -1},
+									'BD': {'value': 0, 'config': -1},
+									'PD': {'value': 0, 'config': -1},
+									'T': {'value': 0, 'config': -1},
+									'Tot': {'value': 0, 'config': -1}
+								}},
+			'max_times': {'min_values': {
+							'BS': {'value': infinite, 'config': -1},
+							'BD': {'value': infinite, 'config': -1},
+							'PD': {'value': infinite, 'config': -1},
+							'T': {'value': infinite, 'config': -1},
+							'Tot': {'value': infinite, 'config': -1}
+							},
+							'max_values': {
+								'BS': {'value': 0, 'config': -1},
+								'BD': {'value': 0, 'config': -1},
+								'PD': {'value': 0, 'config': -1},
+								'T': {'value': 0, 'config': -1},
+								'Tot': {'value': 0, 'config': -1}
+							}},
+			'configs': []
+		}
+		config_template = {
+			'average_times': {
+				'BS': 0,
+				'BD': 0,
+				'PD': 0,
+				'T': 0,
+				'Tot': 0
+			},
+			'max_times': {
+				'BS': 0,
+				'BD': 0,
+				'PD': 0,
+				'T': 0,
+				'Tot': 0
+			}
+		}
+
 		if len(blocks_info) < block_number:
 			for i in range(0, block_number - len(blocks_info)):
-				blocks_info.append(block_info_template.copy())
+				blocks_info.append(block_info_template)
 
 		block_info = blocks_info[block_number - 1]
 
@@ -128,58 +164,86 @@ for file in os.listdir(directory_of_results + "data"):
 		average_times = config_info['average_times']
 		
 		average_times['BS'] = float(times.group(1))
-		if average_times['BS'] < block_info['average_times']['min_values']['BS']:
-			block_info['average_times']['min_values']['BS'] = average_times['BS']
-		if average_times['BS'] > block_info['average_times']['max_values']['BS']:
-			block_info['average_times']['max_values']['BS'] = average_times['BS']
+		if average_times['BS'] < block_info['average_times']['min_values']['BS']['value']:
+			block_info['average_times']['min_values']['BS']['value'] = average_times['BS']
+			block_info['average_times']['min_values']['BS']['config'] = config_in_block
+		if average_times['BS'] > block_info['average_times']['max_values']['BS']['value']:
+			block_info['average_times']['max_values']['BS']['value'] = average_times['BS']
+			block_info['average_times']['max_values']['BS']['config'] = config_in_block
+		
 		average_times['BD'] = float(times.group(2))
-		if average_times['BD'] < block_info['average_times']['min_values']['BD']:
-			block_info['average_times']['min_values']['BD'] = average_times['BD']
-		if average_times['BD'] > block_info['average_times']['max_values']['BD']:
-			block_info['average_times']['max_values']['BD'] = average_times['BD']
+		if average_times['BD'] < block_info['average_times']['min_values']['BD']['value']:
+			block_info['average_times']['min_values']['BD']['value'] = average_times['BD']
+			block_info['average_times']['min_values']['BD']['config'] = config_in_block
+		if average_times['BD'] > block_info['average_times']['max_values']['BD']['value']:
+			block_info['average_times']['max_values']['BD']['value'] = average_times['BD']
+			block_info['average_times']['max_values']['BD']['config'] = config_in_block
+		
 		average_times['PD'] = float(times.group(3))
-		if average_times['PD'] < block_info['average_times']['min_values']['PD']:
-			block_info['average_times']['min_values']['PD'] = average_times['PD']
-		if average_times['PD'] > block_info['average_times']['max_values']['PD']:
-			block_info['average_times']['max_values']['PD'] = average_times['PD']
+		if average_times['PD'] < block_info['average_times']['min_values']['PD']['value']:
+			block_info['average_times']['min_values']['PD']['value'] = average_times['PD']
+			block_info['average_times']['min_values']['PD']['config'] = config_in_block
+		if average_times['PD'] > block_info['average_times']['max_values']['PD']['value']:
+			block_info['average_times']['max_values']['PD']['value'] = average_times['PD']
+			block_info['average_times']['max_values']['PD']['config'] = config_in_block
+		
 		average_times['T'] = float(times.group(4))
-		if average_times['T'] < block_info['average_times']['min_values']['T']:
-			block_info['average_times']['min_values']['T'] = average_times['T']
-		if average_times['T'] > block_info['average_times']['max_values']['T']:
-			block_info['average_times']['max_values']['T'] = average_times['T']
+		if average_times['T'] < block_info['average_times']['min_values']['T']['value']:
+			block_info['average_times']['min_values']['T']['value'] = average_times['T']
+			block_info['average_times']['min_values']['T']['config'] = config_in_block
+		if average_times['T'] > block_info['average_times']['max_values']['T']['value']:
+			block_info['average_times']['max_values']['T']['value'] = average_times['T']
+			block_info['average_times']['max_values']['T']['config'] = config_in_block
+		
 		average_times['Tot'] = average_times['BS'] + average_times['BD'] + average_times['PD'] + average_times['T']
-		if average_times['Tot'] < block_info['average_times']['min_values']['Tot']:
-			block_info['average_times']['min_values']['Tot'] = average_times['Tot']
-		if average_times['Tot'] > block_info['average_times']['max_values']['Tot']:
-			block_info['average_times']['max_values']['Tot'] = average_times['Tot']
+		if average_times['Tot'] < block_info['average_times']['min_values']['Tot']['value']:
+			block_info['average_times']['min_values']['Tot']['value'] = average_times['Tot']
+			block_info['average_times']['min_values']['Tot']['config'] = config_in_block
+		if average_times['Tot'] > block_info['average_times']['max_values']['Tot']['value']:
+			block_info['average_times']['max_values']['Tot']['value'] = average_times['Tot']
+			block_info['average_times']['max_values']['Tot']['config'] = config_in_block
 
 		max_times = config_info['max_times']
 
 		max_times['BS'] = float(times.group(5))
-		if max_times['BS'] < block_info['max_times']['min_values']['BS']:
-			block_info['max_times']['min_values']['BS'] = max_times['BS']
-		if max_times['BS'] > block_info['max_times']['max_values']['BS']:
-			block_info['max_times']['max_values']['BS'] = max_times['BS']
+		if max_times['BS'] < block_info['max_times']['min_values']['BS']['value']:
+			block_info['max_times']['min_values']['BS']['value'] = max_times['BS']
+			block_info['max_times']['min_values']['BS']['config'] = config_in_block
+		if max_times['BS'] > block_info['max_times']['max_values']['BS']['value']:
+			block_info['max_times']['max_values']['BS']['value'] = max_times['BS']
+			block_info['max_times']['max_values']['BS']['config'] = config_in_block
+
 		max_times['BD'] = float(times.group(6))
-		if max_times['BD'] < block_info['max_times']['min_values']['BD']:
-			block_info['max_times']['min_values']['BD'] = max_times['BD']
-		if max_times['BD'] > block_info['max_times']['max_values']['BD']:
-			block_info['max_times']['max_values']['BD'] = max_times['BD']
+		if max_times['BD'] < block_info['max_times']['min_values']['BD']['value']:
+			block_info['max_times']['min_values']['BD']['value'] = max_times['BD']
+			block_info['max_times']['min_values']['BD']['config'] = config_in_block
+		if max_times['BD'] > block_info['max_times']['max_values']['BD']['value']:
+			block_info['max_times']['max_values']['BD']['value'] = max_times['BD']
+			block_info['max_times']['max_values']['BD']['config'] = config_in_block
+
 		max_times['PD'] = float(times.group(7))
-		if max_times['PD'] < block_info['max_times']['min_values']['PD']:
-			block_info['max_times']['min_values']['PD'] = max_times['PD']
-		if max_times['PD'] > block_info['max_times']['max_values']['PD']:
-			block_info['max_times']['max_values']['PD'] = max_times['PD']
+		if max_times['PD'] < block_info['max_times']['min_values']['PD']['value']:
+			block_info['max_times']['min_values']['PD']['value'] = max_times['PD']
+			block_info['max_times']['min_values']['PD']['config'] = config_in_block
+		if max_times['PD'] > block_info['max_times']['max_values']['PD']['value']:
+			block_info['max_times']['max_values']['PD']['value'] = max_times['PD']
+			block_info['max_times']['max_values']['PD']['config'] = config_in_block
+
 		max_times['T'] = float(times.group(8))
-		if max_times['T'] < block_info['max_times']['min_values']['T']:
-			block_info['max_times']['min_values']['T'] = max_times['T']
-		if max_times['T'] > block_info['max_times']['max_values']['T']:
-			block_info['max_times']['max_values']['T'] = max_times['T']
+		if max_times['T'] < block_info['max_times']['min_values']['T']['value']:
+			block_info['max_times']['min_values']['T']['value'] = max_times['T']
+			block_info['max_times']['min_values']['T']['config'] = config_in_block
+		if max_times['T'] > block_info['max_times']['max_values']['T']['value']:
+			block_info['max_times']['max_values']['T']['value'] = max_times['T']
+			block_info['max_times']['max_values']['T']['config'] = config_in_block
+
 		max_times['Tot'] = max_times['BS'] + max_times['BD'] + max_times['PD'] + max_times['T']
-		if max_times['Tot'] < block_info['max_times']['min_values']['Tot']:
-			block_info['max_times']['min_values']['Tot'] = max_times['Tot']
-		if max_times['Tot'] > block_info['max_times']['max_values']['Tot']:
-			block_info['max_times']['max_values']['Tot'] = max_times['Tot']
+		if max_times['Tot'] < block_info['max_times']['min_values']['Tot']['value']:
+			block_info['max_times']['min_values']['Tot']['value'] = max_times['Tot']
+			block_info['max_times']['min_values']['Tot']['config'] = config_in_block
+		if max_times['Tot'] > block_info['max_times']['max_values']['Tot']['value']:
+			block_info['max_times']['max_values']['Tot']['value'] = max_times['Tot']
+			block_info['max_times']['max_values']['Tot']['config'] = config_in_block
 
 average_times_latex_rows = ""
 max_times_latex_rows = ""
@@ -190,22 +254,22 @@ for (i, block_info) in enumerate(blocks_info):
 	for (j, config_info) in enumerate(block_info['configs']):
 		average_times = config_info['average_times']
 		block_average_times += " & " + str(j + 1) + \
-			" & " + convert_to_rgb(block_info['average_times']['min_values']['BS'], block_info['average_times']['max_values']['BS'], average_times['BS']) + "%.5f" % round(average_times['BS'],5) + \
-			" & " + convert_to_rgb(block_info['average_times']['min_values']['BD'], block_info['average_times']['max_values']['BD'], average_times['BD']) + "%.5f" % round(average_times['BD'],5) + \
-			" & " + convert_to_rgb(block_info['average_times']['min_values']['PD'], block_info['average_times']['max_values']['PD'], average_times['PD']) + "%.5f" % round(average_times['PD'],5) + \
-			" & " + convert_to_rgb(block_info['average_times']['min_values']['T'], block_info['average_times']['max_values']['T'], average_times['T']) + "%.5f" % round(average_times['T'],5) + \
-			" & " + convert_to_rgb(block_info['average_times']['min_values']['Tot'], block_info['average_times']['max_values']['Tot'], average_times['Tot']) + "%.5f" % round(average_times['Tot'],5) + "\\\\\n"
+			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'BS', average_times['BS']) + \
+			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'BD', average_times['BD']) + \
+			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'PD', average_times['PD']) + \
+			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'T', average_times['T']) + \
+			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'Tot', average_times['Tot']) + "\\\\\n"
 
 		max_times = config_info['max_times']
 		block_max_times += " & " + str(j + 1) + \
-			" & " + convert_to_rgb(block_info['max_times']['min_values']['BS'], block_info['max_times']['max_values']['BS'], max_times['BS']) + "%.5f" % round(max_times['BS'],5) + \
-			" & " + convert_to_rgb(block_info['max_times']['min_values']['BD'], block_info['max_times']['max_values']['BD'], max_times['BD']) + "%.5f" % round(max_times['BD'],5) + \
-			" & " + convert_to_rgb(block_info['max_times']['min_values']['PD'], block_info['max_times']['max_values']['PD'], max_times['PD']) + "%.5f" % round(max_times['PD'],5) + \
-			" & " + convert_to_rgb(block_info['max_times']['min_values']['T'], block_info['max_times']['max_values']['T'], max_times['T']) + "%.5f" % round(max_times['T'],5) + \
-			" & " + convert_to_rgb(block_info['max_times']['min_values']['Tot'], block_info['max_times']['max_values']['Tot'], max_times['Tot']) + "%.5f" % round(max_times['Tot'],5) + "\\\\\n"
+			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'BS', max_times['BS']) + \
+			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'BD', max_times['BD']) + \
+			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'PD', max_times['PD']) + \
+			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'T', max_times['T']) + \
+			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'Tot', max_times['Tot']) + "\\\\\n"
 
-	average_times_latex_rows += latex_table_multirow_template.replace('$1', str(len(block_info))).replace('$2', str(i + 1)).replace('$3', block_average_times)
-	max_times_latex_rows += latex_table_multirow_template.replace('$1', str(len(block_info))).replace('$2', str(i + 1)).replace('$3', block_max_times)
+	average_times_latex_rows += latex_table_multirow_template.replace('$1', '3').replace('$2', str(i + 1)).replace('$3', block_average_times)
+	max_times_latex_rows += latex_table_multirow_template.replace('$1', '3').replace('$2', str(i + 1)).replace('$3', block_max_times)
 
 latex_document += latex_table_template.replace('$1', average_times_latex_rows).replace('$2', module_name + ", tiempos promedio de procesamiento por frame.")
 latex_document += latex_table_template.replace('$1', max_times_latex_rows).replace('$2', module_name + ", tiempos m\\'aximos de procesamiento por frame.")

@@ -43,6 +43,8 @@ MakeMatlabProcessing=$7
 MatlabPath="" # /Applications/MATLAB_R2016a.app/bin/matlab"
 OctavePath="/Applications/Octave.app/Contents/Resources/usr/Cellar/octave/4.0.2_3/bin/octave"
 Python3Path="python"
+MaxThreads=4
+MaxConfigsPerSequence=10
 
 
 module_block_config_matcher=".*-B([0-9]+)-([0-9]+)"
@@ -121,9 +123,12 @@ if [ "$ProcessResults" = "Yes" ] ; then
 
 	# Process positions results
 
-	echo name > ./MOT/devkit/seqmaps/$ModuleName.txt
-
 	[ -d "./MOT/devkit/res/data/$ModuleName" ] || mkdir ./MOT/devkit/res/data/$ModuleName
+
+	configs_count=1
+	seqmap_count=1
+
+	echo name > ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
 
 	for f in ./raw_results/$ModuleName*-positions.txt ; do
 		FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
@@ -132,7 +137,16 @@ if [ "$ProcessResults" = "Yes" ] ; then
 		[ -d "./MOT/data/$FileName/img1" ] || mkdir ./MOT/data/$FileName/img1
 		cp ./ground_truth/gt.txt ./MOT/data/$FileName/gt/
 		cp $f ./MOT/devkit/res/data/$ModuleName/
-		echo $FileName >> ./MOT/devkit/seqmaps/$ModuleName.txt
+
+		echo $FileName >> ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
+
+		if [ "$configs_count" -eq $MaxConfigsPerSequence ]; then
+			(( configs_count = 1 ))
+			(( seqmap_count += 1 ))
+			echo name > ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
+		else
+			(( configs_count += 1 ))
+		fi
 	done
 
 	[ -d "./processed_results/$ModuleName" ] || mkdir ./processed_results/$ModuleName
@@ -178,15 +192,52 @@ if [ "$ProcessResults" = "Yes" ] ; then
 
 	if [ "$MakeMatlabProcessing" = "Yes" ] ; then
 
-		echo "allMets = evaluateTracking('"$ModuleName".txt', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux.m
+		count=1
+		p_count=1
+		pids=""
 
-		if [ "$MatlabPath" = "" ] ; then
-			$OctavePath --no-gui --no-window-system --silent evalTrackAux.m > ../../processed_results/$ModuleName/positions/data/MOT_results.txt
-		else
-			$MatlabPath -nodesktop -nosplash -r evalTrackAux -logfile ../../processed_results/$ModuleName/positions/data/MOT_results.txt -nojvm -noFigureWindows -nodisplay > /dev/null
-		fi
+		for f in ./seqmaps/$ModuleName_*.txt ; do
+			FileName=$(echo $f | sed 's/^.*\///g');
+			echo "allMets = evaluateTracking('"$FileName"', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux_$(printf %03d $count).m
 
-		rm ./evalTrackAux.m
+			if [ "$MatlabPath" = "" ] ; then
+				$OctavePath --no-gui --no-window-system --silent evalTrackAux_$(printf %03d $count).m > ../../processed_results/$ModuleName/positions/data/MOT_results_$(printf %03d $count).txt &
+			else
+				$MatlabPath -nodesktop -nosplash -r evalTrackAux_$(printf %03d $count) -logfile ../../processed_results/$ModuleName/positions/data/MOT_results_$(printf %03d $count).txt -nojvm -noFigureWindows -nodisplay > /dev/null &
+			fi
+
+			pids+="$! "
+
+			if [ "$p_count" -eq $MaxThreads ]; then
+				for pid in $pids; do
+				    wait $pid
+				    if [ $? -eq 0 ]; then
+				        echo "SUCCESS - Job $pid exited with a status of $?"
+				    else
+				        echo "FAILED - Job $pid exited with a status of $?"
+				    fi
+				done
+				(( p_count = 1 ))
+				pids=""
+			else
+				(( p_count += 1 ))
+			fi
+
+			(( count += 1 ))
+
+		done
+
+		for pid in $pids; do
+		    wait $pid
+		    if [ $? -eq 0 ]; then
+		        echo "SUCCESS - Job $pid exited with a status of $?"
+		    else
+		        echo "FAILED - Job $pid exited with a status of $?"
+		    fi
+		done
+		
+		rm ./evalTrackAux_*.m
+
 	fi
 
 	cd ../../scripts
