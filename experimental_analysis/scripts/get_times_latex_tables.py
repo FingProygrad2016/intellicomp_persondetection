@@ -62,7 +62,6 @@ latex_table_template = """
 """
 
 latex_table_multirow_template = """
-	\\multirow{$1}{*}{$2}
 	$3 \\hline
 """
 
@@ -251,7 +250,21 @@ max_times_latex_rows = ""
 for (i, block_info) in enumerate(blocks_info):
 	block_average_times = ""
 	block_max_times = ""
+
+	configs_left = len(block_info['configs'])
+	multirow_size = 27
+
 	for (j, config_info) in enumerate(block_info['configs']):
+		if multirow_size % 27 == 0:
+			if configs_left < 27:
+				multirow_size = configs_left
+			else:
+				multirow_size = 27
+
+			block_number_text = "\\multirow{" + str(multirow_size) + "}{*}{" + str(i + 1) + "} "
+			block_average_times += block_number_text
+			block_max_times += block_number_text
+
 		average_times = config_info['average_times']
 		block_average_times += " & " + str(j + 1) + \
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'BS', average_times['BS']) + \
@@ -268,8 +281,11 @@ for (i, block_info) in enumerate(blocks_info):
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'T', max_times['T']) + \
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'Tot', max_times['Tot']) + "\\\\\n"
 
-	average_times_latex_rows += latex_table_multirow_template.replace('$1', '3').replace('$2', str(i + 1)).replace('$3', block_average_times)
-	max_times_latex_rows += latex_table_multirow_template.replace('$1', '3').replace('$2', str(i + 1)).replace('$3', block_max_times)
+		configs_left -= 1
+		multirow_size -= 1
+
+	average_times_latex_rows += latex_table_multirow_template.replace('$3', block_average_times)
+	max_times_latex_rows += latex_table_multirow_template.replace('$3', block_max_times)
 
 latex_document += latex_table_template.replace('$1', average_times_latex_rows).replace('$2', module_name + ", tiempos promedio de procesamiento por frame.")
 latex_document += latex_table_template.replace('$1', max_times_latex_rows).replace('$2', module_name + ", tiempos m\\'aximos de procesamiento por frame.")
