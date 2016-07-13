@@ -15,6 +15,7 @@ class HungarianAlgorithm:
         self.threshold = threshold
         self.infinite = infinite
         self.cost_function = cost_function
+        self.munkres_ = Munkres()
 
     def get_costs_generic(self, rows_data, columns_data, weights):
 
@@ -81,13 +82,12 @@ class HungarianAlgorithm:
 
         if len(rows_data) > 0:
             if len(columns_data) > 0:
-                m = Munkres()
 
                 costs, assigned_row, valid_columns_amount, columns_relation = \
                     self.get_costs_generic(rows_data, columns_data, weights)
 
                 if costs.shape[0] > 0 and costs.shape[1]:
-                    indexes = m.compute(np.absolute(costs))
+                    indexes = self.munkres_.compute(np.absolute(costs))
 
                     j = 0
                     for i in range(0, len(assigned_row)):
