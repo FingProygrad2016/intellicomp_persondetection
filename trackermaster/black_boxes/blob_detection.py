@@ -1,8 +1,7 @@
 import cv2
 
 from trackermaster.config import config
-from utils.tools import euclidean_distance, x1y1x2y2_to_x1y1wh,\
-    x1y1wh_to_x1y1x2y2
+from utils.tools import x1y1wh_to_x1y1x2y2
 from imutils.object_detection import non_max_suppression
 
 # Referencias en:

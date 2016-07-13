@@ -3,7 +3,7 @@ from datetime import datetime
 import random
 
 import numpy as np
-import imutils
+# import imutils
 import cv2
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise

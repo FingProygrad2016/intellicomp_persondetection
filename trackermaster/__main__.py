@@ -341,7 +341,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             else:
                 if LIMIT_FPS:
                     while has_more_images and \
-                                    number_frame == last_number_frame:
+                            number_frame == last_number_frame:
                         time.sleep(0.01)  # Sleep for avoid Busy waiting
                     if not has_more_images:
                         break
@@ -568,12 +568,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                 if SAVE_POSITIONS_TO_FILE:
                     if number_frame >= 50:
                         persons_in_scene += str(number_frame) + ", " + \
-                                            str(cant_personas) + ", " + \
-                                            str(len(trayectos)) + ", " + \
-                                            str(round(
-                                                (len(trayectos) * .85) +
-                                                (cant_personas * .15))) + \
-                                            "\n"
+                            str(cant_personas) + ", " + \
+                            str(len(trayectos)) + ", " + str(round(
+                                (len(trayectos) * .85) +
+                                (cant_personas * .15))) + "\n"
 
                 if SHOW_VIDEO_OUTPUT:
                     # #################### ##
@@ -656,7 +654,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         blob_det_time /= number_frame_skip_first
         avg_times_text += "\nBlob detector time " + str(blob_det_time)
         person_detection_time /= number_frame_skip_first
-        avg_times_text += "\nPerson detector time " + str(person_detection_time)
+        avg_times_text += "\nPerson detector time " + \
+                          str(person_detection_time)
         t_time /= number_frame_skip_first
         avg_times_text += "\nTracker time " + str(t_time)
         pattern_recogn_time /= number_frame_skip_first
@@ -676,7 +675,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         avg_times_text += "\nBackground subtraction time " + \
                           str(max_bg_sub_time)
         avg_times_text += "\nBlob detector time " + str(max_blob_det_time)
-        avg_times_text += "\nPerson detector time " + str(max_person_detection_time)
+        avg_times_text += "\nPerson detector time " + \
+            str(max_person_detection_time)
         avg_times_text += "\nTracker time " + str(max_t_time)
         avg_times_text += "\nCommunication with pattern recognition time " + \
                           str(max_pattern_recogn_time)
@@ -689,16 +689,13 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         if SAVE_POSITIONS_TO_FILE:
             with open("../experimental_analysis/raw_results/" + identifier +
-                      "-positions.txt", "w") as \
-                    text_file:
+                      "-positions.txt", "w") as text_file:
                 print(positions_to_file, file=text_file)
             with open("../experimental_analysis/raw_results/" + identifier +
-                      "-times.txt", "w") as \
-                    text_file:
+                      "-times.txt", "w") as text_file:
                 print(avg_times_text, file=text_file)
             with open("../experimental_analysis/raw_results/" + identifier +
-                      "-counter.txt", "w") as \
-                    text_file:
+                      "-counter.txt", "w") as text_file:
                 print(persons_in_scene, file=text_file)
 
         comm_info = Communicator(exchange='to_master', exchange_type='topic')
