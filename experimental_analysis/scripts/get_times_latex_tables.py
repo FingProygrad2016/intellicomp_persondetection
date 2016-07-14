@@ -17,8 +17,15 @@ else:
 	exit()
 
 def transition(value, minimum, maximum, start_point, end_point):
-    return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum))
+	if minimum < 0:
+		maximum += -minimum
+		value += -minimum
+		minimum = 0
+	if maximum == 0:
+		return start_point
+	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
+"""
 def transition3(value, minimum, maximum, start_color_hsv, end_color_hsv):
     r1 = transition(value, minimum, maximum, start_color_hsv[0], end_color_hsv[0])
     r2 = transition(value, minimum, maximum, start_color_hsv[1], end_color_hsv[1])
@@ -29,9 +36,11 @@ colors_extreme = [(0, 255, 0), (255, 0, 0)]
 
 start_triplet = colorsys.rgb_to_hsv(62, 220, 29) # 78, 209, 51) # comment: green converted to HSV
 end_triplet = colorsys.rgb_to_hsv(213, 31, 49) # 187, 58, 69) # comment: accordingly for red
+"""
 
 def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval, val): # block_info['average_times'], 'BS', average_times['BS']
-
+	
+	"""
 	minconfig = min_max_values['min_values'][module]['config']
 	maxconfig = min_max_values['max_values'][module]['config']
 
@@ -48,21 +57,35 @@ def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval
 
 		return "\cellcolor{rgb:red," + str(rgb_color[0]) + ";green," + str(rgb_color[1]) + ";blue," + str(rgb_color[2]) + "}" + "%.5f" % round(val, 5)
 
+	"""
+
+	minval = min_max_values['min_values'][module]['value']
+	maxval = min_max_values['max_values'][module]['value']
+
+	opacity = int(transition(val, minval, maxval, 0, 100))
+
+	if opacity >= 45:
+		return "\\color{white}{\\cellcolor{black!" + str(opacity) + "}{" + "%.5f" % round(val, 5) + "}}"
+	else:
+		return "\\cellcolor{black!" + str(opacity) + "}{" + "%.5f" % round(val, 5) + "}"
+
 latex_table_template = """
-	{\\renewcommand{\\arraystretch}{1.2}
-	\\begin{longtable}{c c | *{5}{@{ }c@{ }}}
+	% {\\renewcommand{\\arraystretch}{1.2}
+	% \\begin{longtable}{c c | *{5}{@{ }c@{ }}}
+	\\noindent\\begin{longtabu} to \\linewidth {c c | *{5}{@{ }c@{ }}}
 	 & & & Detecci\\'on y & & & \\\\
 	 & & Sustracci\\'on & clasificaci\\'on & Detecci\\'on & & \\\\
     Bloque & Conf & de fondo & de blobs & de personas & Seguimiento & Total \\\\
-	\\hline
+	\\tabucline-
 	$1
 	\\caption{$2}
-	\\end{longtable}
-	}
+	% \\end{longtable}
+	\\end{longtabu}
+	% }
 """
 
 latex_table_multirow_template = """
-	$3 \\hline
+	$3 \\tabucline-
 """
 
 latex_document = """
@@ -70,7 +93,9 @@ latex_document = """
 	\\usepackage[utf8]{inputenc}
 
 	\\usepackage{multirow}
-	\\usepackage{longtable}
+	% \\usepackage{longtable}
+	\\usepackage{tabu}
+	\\usepackage{xcolor,colortbl}
 
 	\\begin{document}
 """
@@ -250,6 +275,38 @@ max_times_latex_rows = ""
 for (i, block_info) in enumerate(blocks_info):
 	block_average_times = ""
 	block_max_times = ""
+
+	block_average_times += " & " + "mejor" + \
+		" & " + "%.5f" % block_info['average_times']['min_values']['BS']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['min_values']['BD']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['min_values']['PD']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['min_values']['T']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['min_values']['Tot']['value'] + "\\\\\n"
+
+	block_average_times += " & " + "peor" + \
+		" & " + "%.5f" % block_info['average_times']['max_values']['BS']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['max_values']['BD']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['max_values']['PD']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['max_values']['T']['value'] + \
+		" & " + "%.5f" % block_info['average_times']['max_values']['Tot']['value'] + "\\\\\n"
+
+	block_average_times += "\\tabucline{2-7}"
+
+	block_max_times += " & " + "mejor" + \
+		" & " + "%.5f" % block_info['max_times']['min_values']['BS']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['min_values']['BD']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['min_values']['PD']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['min_values']['T']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['min_values']['Tot']['value'] + "\\\\\n"
+
+	block_max_times += " & " + "peor" + \
+		" & " + "%.5f" % block_info['max_times']['max_values']['BS']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['max_values']['BD']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['max_values']['PD']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['max_values']['T']['value'] + \
+		" & " + "%.5f" % block_info['max_times']['max_values']['Tot']['value'] + "\\\\\n"
+
+	block_max_times += "\\tabucline{2-7}"
 
 	configs_left = len(block_info['configs'])
 	multirow_size = 27

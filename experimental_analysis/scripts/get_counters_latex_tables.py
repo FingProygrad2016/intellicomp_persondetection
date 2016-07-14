@@ -21,25 +21,27 @@ def transition(value, minimum, maximum, start_point, end_point):
 		minimum = 0
 	if maximum == 0:
 		return start_point
-	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum))
+	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
+"""
 def transition3(value, minimum, maximum, start_color_hsv, end_color_hsv):
     r1 = transition(value, minimum, maximum, start_color_hsv[0], end_color_hsv[0])
     r2 = transition(value, minimum, maximum, start_color_hsv[1], end_color_hsv[1])
     r3 = transition(value, minimum, maximum, start_color_hsv[2], end_color_hsv[2])
-    return r1, r2, r3
+    return math.floor(r1), math.floor(r2), math.floor(r3)
 
 colors_extreme = [(0, 255, 0), (255, 0, 0)]
 
 start_triplet = colorsys.rgb_to_hsv(62, 220, 29) # 78, 209, 51) # comment: green converted to HSV
 end_triplet = colorsys.rgb_to_hsv(213, 31, 49) # 187, 58, 69) # comment: accordingly for red
+"""
 
-def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval, val): # block_info['average_times'], 'BS', average_times['BS']
+def convert_to_rgb(min_max_values, config_number, module, val, precision): # minval, maxval, val): # block_info['average_times'], 'BS', average_times['BS']
 
+	"""
     minconfig = min_max_values['min_values'][module]['config']
     maxconfig = min_max_values['max_values'][module]['config']
 
-    """
     if minconfig == config_number:
         return "\cellcolor{rgb:red," + str(colors_extreme[0][0]) + ";green," + str(colors_extreme[0][1]) + ";blue," + str(colors_extreme[0][2]) + "}" + "%.2f" % round(val, 2)
    	elif maxconfig == config_number:
@@ -47,13 +49,24 @@ def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval
 	
     else:
    	"""
-    minval = min_max_values['min_values'][module]['value']
-    maxval = min_max_values['max_values'][module]['value']
+	minval = min_max_values['min_values'][module]['value']
+	maxval = min_max_values['max_values'][module]['value']
 
-    hsv_color = transition3(val, minval, maxval, start_triplet, end_triplet)
-    rgb_color = colorsys.hsv_to_rgb(hsv_color[0],hsv_color[1],hsv_color[2])
+	"""
+	hsv_color = transition3(val, minval, maxval, start_triplet, end_triplet)
+	rgb_color = colorsys.hsv_to_rgb(hsv_color[0],hsv_color[1],hsv_color[2])
 
-    return "\cellcolor{rgb:red," + str(rgb_color[0]) + ";green," + str(rgb_color[1]) + ";blue," + str(rgb_color[2]) + "}" + "%.2f" % round(val, 2)
+	return "\cellcolor{rgb:red," + str(rgb_color[0]) + ";green," + str(rgb_color[1]) + ";blue," + str(rgb_color[2]) + "}{" + "%.2f" % round(val, 2) + "}"
+	"""
+
+	opacity = int(transition(val, minval, maxval, 0, 100))
+
+	number_formatter = "%."+str(precision)+"f"
+
+	if opacity >= 45:
+		return "\\color{white}{\\cellcolor{black!" + str(opacity) + "}{" + number_formatter % round(val, precision) + "}}"
+	else:
+		return "\\cellcolor{black!" + str(opacity) + "}{" + number_formatter % round(val, precision) + "}"
 
 
 
@@ -63,7 +76,6 @@ latex_table_template = """
 	% \\begin{longtable}{c c | c@{ }*{2}{@{ }c@{ }} | c@{ }*{2}{@{ }c@{ }} | c@{ }*{2}{@{ }c@{ }}}
 	\\begin{landscape}
 	\\noindent\\begin{longtabu} to \\linewidth {c c | *{3}{c} | *{3}{c} | *{3}{c} }
-	\\tabucline-
 	\\multirow{2}{*}{Bloque} & \\multirow{2}{*}{Conf} & 
 	\\multicolumn{3}{c|}{Nro. de Personas vs GT} & 
 	\\multicolumn{3}{c|}{Nro. de Tracklets vs GT} & 
@@ -78,7 +90,7 @@ latex_table_template = """
 	% \\end{longtable}
 	\\end{longtabu}
 	\\end{landscape}
-	}
+	% }
 """
 
 latex_table_multirow_template = """
@@ -93,6 +105,7 @@ latex_document = """
 	% \\usepackage{longtable}
 	\\usepackage{tabu}
 	\\usepackage{lscape}
+	\\usepackage{xcolor,colortbl}
 
 	\\begin{document}
 """
@@ -269,6 +282,30 @@ latex_rows = ""
 for (i, block_info) in enumerate(blocks_info):
 	block_diffs = ""
 
+	block_diffs += " & " + "mejor" + \
+		" & " + "%.2f" % block_info['metric1']['min_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric1']['min_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric1']['min_values']['max']['value'] + \
+		" & " + "%.2f" % block_info['metric2']['min_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric2']['min_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric2']['min_values']['max']['value'] + \
+		" & " + "%.2f" % block_info['metric3']['min_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric3']['min_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric3']['min_values']['max']['value'] + "\\\\\n"
+
+	block_diffs += " & " + "peor" + \
+		" & " + "%.2f" % block_info['metric1']['max_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric1']['max_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric1']['max_values']['max']['value'] + \
+		" & " + "%.2f" % block_info['metric2']['max_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric2']['max_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric2']['max_values']['max']['value'] + \
+		" & " + "%.2f" % block_info['metric3']['max_values']['mean']['value'] + \
+		" & " + "%.0f" % block_info['metric3']['max_values']['min']['value'] + \
+		" & " + "%.0f" % block_info['metric3']['max_values']['max']['value'] + "\\\\\n"
+
+	block_diffs += "\\tabucline{2-11}"
+
 	configs_left = len(block_info['configs'])
 	multirow_size = 27
 
@@ -287,15 +324,15 @@ for (i, block_info) in enumerate(blocks_info):
 		metric3 = config_info['metric3']
 
 		block_diffs += " & " + str(j + 1) + \
-			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'mean', metric1['mean']) + \
-			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'min', metric1['min']) + \
-			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'max', metric1['max']) + \
-			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'mean', metric2['mean']) + \
-			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'min', metric2['min']) + \
-			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'max', metric2['max']) + \
-			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'mean', metric3['mean']) + \
-			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'min', metric3['min']) + \
-			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'max', metric3['max']) + "\\\\\n"
+			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'mean', metric1['mean'], 2) + \
+			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'min', metric1['min'], 0) + \
+			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'max', metric1['max'], 0) + \
+			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'mean', metric2['mean'], 2) + \
+			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'min', metric2['min'], 0) + \
+			" & " + convert_to_rgb(block_info['metric2'], j + 1, 'max', metric2['max'], 0) + \
+			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'mean', metric3['mean'], 2) + \
+			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'min', metric3['min'], 0) + \
+			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'max', metric3['max'], 0) + "\\\\\n"
 
 		configs_left -= 1
 		multirow_size -= 1
