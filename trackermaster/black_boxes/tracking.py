@@ -3,7 +3,7 @@ from datetime import datetime
 import random
 
 import numpy as np
-import imutils
+# import imutils
 import cv2
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
@@ -274,8 +274,10 @@ class Tracker:
                 best_kf = best_kf_per_blob_pos[i]
                 if best_kf != -1:
                     kf = self.k_filters[best_kf]
-                    self.kfs_per_blob[kf.group_number]['blobs'].append((blob, i))
-                    self.kfs_per_blob[kf.group_number]['has_been_assigned'] = True
+                    self.kfs_per_blob[kf.group_number]['blobs'].\
+                        append((blob, i))
+                    self.kfs_per_blob[kf.group_number]['has_been_assigned'] = \
+                        True
                     group_per_blob.append(kf.group_number)
                 else:
                     # this is the result of a new blob
@@ -336,7 +338,8 @@ class Tracker:
                             # it has been created a very short time ago:
                             # remove it
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
-                        elif not kf.prediction_is_inside_image(image_dimension):
+                        elif not kf.prediction_is_inside_image(
+                                image_dimension):
                             # it is probably a blob that went out of the i
                             # mage; remove it tracklet
                             kf_to_remove_in_item.append({"index": j, "kf": kf})
@@ -417,7 +420,8 @@ class Tracker:
                             # worst match keeps the remaining kfs
 
                             kfs_to_compare_aux = np.asarray(kfs_to_compare)
-                            best_filter_per_blob, best_filter_per_blob_costs = \
+                            best_filter_per_blob, \
+                                best_filter_per_blob_costs = \
                                 self.primary_hung_alg_comparison(
                                     unassigned_blobs_aux,
                                     kfs_to_compare_aux[0:, 0])
@@ -457,23 +461,24 @@ class Tracker:
 
                             kfs_to_compare_aux = np.asarray(kfs_to_compare)
                             best_filter_per_blob, \
-                            best_filter_per_blob_costs = \
+                                best_filter_per_blob_costs = \
                                 self.secondary_hung_alg_comparison(
                                     unassigned_blobs_aux,
                                     kfs_to_compare_aux[0:, 0])
 
-                            # if more kalman filters than blobs, the worst fitting blob keeps the remaining filters
+                            # if more kalman filters than blobs, the worst
+                            # fitting blob keeps the remaining filters
                             if len(kfs_to_compare) > len(unassigned_blobs):
                                 choose_worst_fit_blob = True
 
-                            aux_kfs_to_remove, aux_blobs_to_remove = self.get_nearest_blobs(groups_to_append, raw_image,
-                                                                                            bg_subtraction_image,
-                                                                                            frame_number,
-                                                                                            unassigned_blobs,
-                                                                                            kfs_to_compare,
-                                                                                            best_filter_per_blob,
-                                                                                            best_filter_per_blob_costs,
-                                                                                            choose_worst_fit_blob)
+                            aux_kfs_to_remove, aux_blobs_to_remove = \
+                                self.get_nearest_blobs(
+                                    groups_to_append, raw_image,
+                                    bg_subtraction_image, frame_number,
+                                    unassigned_blobs, kfs_to_compare,
+                                    best_filter_per_blob,
+                                    best_filter_per_blob_costs,
+                                    choose_worst_fit_blob)
 
                             kf_to_remove_in_item.extend(aux_kfs_to_remove)
                             blob_to_remove_in_item.extend(aux_blobs_to_remove)
@@ -530,7 +535,7 @@ class Tracker:
 
                 if SAVE_POSITIONS_TO_FILE:
                     multiplier = self.resolution_multiplier * \
-                                 IMAGE_MULTIPLIER_ON_POSITIONS_SAVE
+                        IMAGE_MULTIPLIER_ON_POSITIONS_SAVE
                     ((x_1, y_1), (x_2, y_2)) = kf.rectangle
                     x_1 *= multiplier
                     x_1 = round(x_1 + 1)
@@ -816,7 +821,7 @@ class Tracker:
                     show = False
                 else:
                     if SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO and \
-                                    len(sorted_comparisons) > 0:
+                            len(sorted_comparisons) > 0:
                         if sorted_comparisons[0][1] == 0:
                             show = False
 
@@ -824,7 +829,7 @@ class Tracker:
                 rows_filled += 1
                 x_axis_images = [resized_blob_image]
                 if SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION and \
-                                len(sorted_comparisons) == 0:
+                        len(sorted_comparisons) == 0:
                     x_axis_images.append(np.zeros((120, 60, 3), np.uint8))
                 else:
                     for comp in sorted_comparisons:
@@ -855,7 +860,7 @@ class Tracker:
                     self.color_comparison_greens + self.color_comparison_reds
                 if color_comparison_amount:
                     green_percentage = self.color_comparison_greens * 100 / \
-                                       color_comparison_amount
+                        color_comparison_amount
 
                 greens_average_score = 0
                 if self.color_comparison_greens > 0:
@@ -1153,7 +1158,8 @@ class TrackInfo:
                     new_rect_height = new_rect[1][1] - new_rect[0][1]
 
                     new_rect_width = new_rect_width / (EXPAND_BLOBS_RATIO) / 2
-                    new_rect_height = new_rect_height / (EXPAND_BLOBS_RATIO) / 2
+                    new_rect_height = \
+                        new_rect_height / (EXPAND_BLOBS_RATIO) / 2
 
                     self.rectangle = ((new_rect_mid_x - new_rect_width,
                                        new_rect_mid_y - new_rect_height),
@@ -1301,11 +1307,9 @@ class TrackInfo:
         return {
             # "color": list(self.color),
             # "size": self.size,
-            "created_timestamp":
-                self.created_datetime.isoformat(),
+            "created_timestamp": self.created_datetime.isoformat(),
             "id": self.id,
-            "last_update_timestamp":
-                self.last_update.isoformat(),
+            "last_update_timestamp": self.last_update.isoformat(),
             "last_position": self.last_point,
             "rectangle": ((int(self.rectangle[0][0]),
                            int(self.rectangle[0][1])),

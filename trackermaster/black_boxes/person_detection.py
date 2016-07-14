@@ -187,10 +187,9 @@ def apply(rectangles, resolution_multiplier, raw_frame_copy,
                         x_a, y_a, x_b, y_b = person
 
                         blobs.append({
-                            "position":
-                                cv2.KeyPoint(round((x_a + x_b) / 2),
-                                             round((y_a + y_b) / 2),
-                                             (x_b - x_a) * (y_b - y_a)),
+                            "position": cv2.KeyPoint(
+                                round((x_a + x_b) / 2), round((y_a + y_b) / 2),
+                                (x_b - x_a) * (y_b - y_a)),
                             "box": ((x_a, y_a), (x_b, y_b)),
                             "score": score
                         })

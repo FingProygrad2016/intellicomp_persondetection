@@ -148,8 +148,9 @@ class Histogram2D:
             self.normalizedConfidenceMatrix = \
                 normalize_matrix(self.confidenceMatrix)
             self.onePersonConfidenceMatrix = np.load('one_person_model.npy')
+
             return True, ""
-        except FileNotFoundError as f:
-            return False, "Error({0}): {1} - {2}".format(f.errno,
-                                                         f.filename,
-                                                         f.strerror)
+
+        except FileNotFoundError as e:
+            return False, "Error({0}): {1} - {2}".format(
+                e.errno, e.filename, e.strerror)
