@@ -411,8 +411,6 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
                 t0 = time.time()
 
-                # blobs_points = blobs_detector.apply(bg_sub)
-                # bounding_boxes = find_blobs_bounding_boxes(bg_sub)
                 bounding_boxes = blobs_detector.apply(bg_sub)
 
                 aux_time = time.time() - t0
