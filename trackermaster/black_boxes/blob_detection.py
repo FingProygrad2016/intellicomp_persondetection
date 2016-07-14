@@ -32,8 +32,6 @@ def find_blobs_bounding_boxes(bg_image, expand_blobs):
 class BlobDetector:
 
     detector = None
-    small_blobs = []
-    big_blobs = []
 
     def __init__(self):
 
@@ -56,10 +54,7 @@ class BlobDetector:
         self.filter_by_inertia = [config.getboolean('FILTER_BY_INERTIA'),
                                   config.getfloat('MIN_INERTIA'),
                                   config.getfloat('MAX_INERTIA')]
-        self.small_blobs_size_threshold = \
-            config.getint('SMALL_BLOBS_SIZE_THRESHOLD')
-        self.small_blobs_size_distance_threshold = \
-            config.getint('SMALL_BLOBS_SIZE_DISTANCE_THRESHOLD')
+
         self.detect_blobs_by_bounding_boxes = \
             config.getboolean('DETECT_BLOBS_BY_BOUNDING_BOXES')
         self.expand_blobs = \
@@ -99,9 +94,7 @@ class BlobDetector:
         params.maxInertiaRatio = self.filter_by_inertia[2]
 
         self.detector = cv2.SimpleBlobDetector_create(params)
-        self.small_blobs_size_threshold = self.small_blobs_size_threshold
-        self.small_blobs_size_distance_threshold = \
-            self.small_blobs_size_distance_threshold
+
         self.min_person_blob_size = 0
         self.max_person_blob_size = 1000000
 
@@ -140,22 +133,4 @@ class BlobDetector:
             blobs = non_max_suppression(x1y1wh_to_x1y1x2y2(blobs),
                                         overlapThresh=0.4)
 
-            # for blob in blobs:
-            #     if (blob.size > (max_person_size * 1.1)) or \
-            #             (blob.size < (min_person_size * 0.9)):
-            #         blobs.remove(blob)
         return blobs
-        # self.big_blobs = []
-        # self.small_blobs = []
-        #
-        # for blob in blobs:
-        #     if blob.size > self.small_blobs_size_threshold:
-        #         self.big_blobs.append(blob)
-        #     else:
-        #         self.small_blobs.append(blob)
-        #
-        # if self.small_blobs:
-        #     result = self.identify_small_blobs()
-        #     return result
-        # else:
-        #     return self.big_blobs
