@@ -291,6 +291,7 @@ for (i, block_info) in enumerate(blocks_info):
 		" & " + "%.5f" % block_info['average_times']['max_values']['Tot']['value'] + "\\\\\n"
 
 	block_average_times += "\\tabucline{2-7}"
+	block_average_times += "\\tabucline{2-7}"
 
 	block_max_times += " & " + "mejor" + \
 		" & " + "%.5f" % block_info['max_times']['min_values']['BS']['value'] + \
@@ -306,6 +307,7 @@ for (i, block_info) in enumerate(blocks_info):
 		" & " + "%.5f" % block_info['max_times']['max_values']['T']['value'] + \
 		" & " + "%.5f" % block_info['max_times']['max_values']['Tot']['value'] + "\\\\\n"
 
+	block_max_times += "\\tabucline{2-7}"
 	block_max_times += "\\tabucline{2-7}"
 
 	configs_left = len(block_info['configs'])
@@ -329,6 +331,7 @@ for (i, block_info) in enumerate(blocks_info):
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'PD', average_times['PD']) + \
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'T', average_times['T']) + \
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'Tot', average_times['Tot']) + "\\\\\n"
+		block_average_times += "\\tabucline{2-7}"
 
 		max_times = config_info['max_times']
 		block_max_times += " & " + str(j + 1) + \
@@ -337,6 +340,7 @@ for (i, block_info) in enumerate(blocks_info):
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'PD', max_times['PD']) + \
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'T', max_times['T']) + \
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'Tot', max_times['Tot']) + "\\\\\n"
+		block_max_times += "\\tabucline{2-7}"
 
 		configs_left -= 1
 		multirow_size -= 1

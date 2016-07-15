@@ -257,6 +257,7 @@ def parsed_results_to_latex_table(tests):
             " & " + "%.1f" % block_info['min_values']['v13']['value'] + "\\\\\n"
 
         block_values += "\\tabucline{2-16}"
+        block_values += "\\tabucline{2-16}"
 
         configs_left = len(block_info['configs'])
         multirow_size = 27
@@ -286,6 +287,7 @@ def parsed_results_to_latex_table(tests):
                 " & " + convert_to_rgb(block_info, j + 1, 'v11', config_info['v11'], 1, True) + \
                 " & " + convert_to_rgb(block_info, j + 1, 'v12', config_info['v12'], 1, True) + \
                 " & " + convert_to_rgb(block_info, j + 1, 'v13', config_info['v13'], 1, True) + "\\\\\n"
+            block_values += "\\tabucline{2-16}"
 
             configs_left -= 1
             multirow_size -= 1

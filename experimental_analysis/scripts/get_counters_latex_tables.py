@@ -305,6 +305,7 @@ for (i, block_info) in enumerate(blocks_info):
 		" & " + "%.0f" % block_info['metric3']['max_values']['max']['value'] + "\\\\\n"
 
 	block_diffs += "\\tabucline{2-11}"
+	block_diffs += "\\tabucline{2-11}"
 
 	configs_left = len(block_info['configs'])
 	multirow_size = 27
@@ -333,6 +334,7 @@ for (i, block_info) in enumerate(blocks_info):
 			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'mean', metric3['mean'], 2) + \
 			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'min', metric3['min'], 0) + \
 			" & " + convert_to_rgb(block_info['metric3'], j + 1, 'max', metric3['max'], 0) + "\\\\\n"
+		block_diffs += "\\tabucline{2-11}"
 
 		configs_left -= 1
 		multirow_size -= 1
