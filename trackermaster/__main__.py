@@ -149,6 +149,21 @@ def read_raw_input():
     return None
 
 
+def get_status_info_comm():
+    STATUS_INFO_EXCHANGE_HOSTADDRESS = \
+        config.get('STATUS_INFO_EXCHANGE_HOSTADDRESS')
+    STATUS_INFO_EXCHANGE_NAME = \
+        config.get('STATUS_INFO_EXCHANGE_NAME')
+    STATUS_INFO_EXPIRATION_TIME = \
+        config.getint('STATUS_INFO_EXPIRATION_TIME')
+    comm_info = Communicator(host_address=STATUS_INFO_EXCHANGE_HOSTADDRESS,
+                             exchange=STATUS_INFO_EXCHANGE_NAME,
+                             exchange_type='topic',
+                             expiration_time=STATUS_INFO_EXPIRATION_TIME)
+
+    return comm_info
+
+
 def track_source(identifier=None, source=None, trackermaster_conf=None,
                  patternmaster_conf=None):
     """
@@ -195,11 +210,15 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     #       "focus_absolute=inactive,focus_auto=0,exposure_auto_priority=0")
 
     # Communication with Launcher and others
-    comm_info = Communicator(exchange='to_master', exchange_type='topic')
+    comm_info = get_status_info_comm()
 
     # Communication with PatternMaster
     communicator = \
-        Communicator(exchange=config.get('TRACK_INFO_QUEUE_NAME'),
+        Communicator(exchange=config.get('TRACK_INFO_EXCHANGE_NAME'),
+                     host_address=config.get(
+                         'TRACK_INFO_EXCHANGE_HOSTADDRESS'),
+                     expiration_time=config.getint(
+                         'TRACK_INFO_EXPIRATION_TIME'),
                      exchange_type='direct')
     exit_cause = 'FINISHED'
 
@@ -696,7 +715,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                       "-counter.txt", "w") as text_file:
                 print(persons_in_scene, file=text_file)
 
-        comm_info = Communicator(exchange='to_master', exchange_type='topic')
+        comm_info = get_status_info_comm()
         comm_info.send_message(json.dumps(dict(
             info_id="EXIT", id=identifier,
             content="CAUSE: " + exit_cause,

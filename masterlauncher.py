@@ -93,8 +93,9 @@ if __name__ == '__main__':
                     if len(cmd) > 5 else None
 
                 stream_controller.add(identifier, subprocess.Popen(
-                    ["python3", "trackermaster", identifier, path,
-                     json.dumps(trackermaster_conf),
+                    ["python3", "trackermaster", "-i", identifier,
+                     "-s", path, "-t",
+                     json.dumps(trackermaster_conf), "-p",
                      json.dumps(patternmaster_conf)]))
 
             elif cmd[0] == 'SOURCE' and cmd[1] == 'TERMINATE':

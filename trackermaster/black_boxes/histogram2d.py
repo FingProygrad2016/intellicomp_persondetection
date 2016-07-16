@@ -125,7 +125,7 @@ class Histogram2D:
                     else:
                         # Check is needed, there maybe a person
                         return True, False
-                # Level 0
+                # Level 2
                 else:
                     if USE_SQUARE_REGION_FOR_VERIFY and \
                        max_around >= CONFIDENCE_LEVELS[0]:
