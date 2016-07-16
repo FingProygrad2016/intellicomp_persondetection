@@ -57,5 +57,5 @@ for file in os.listdir(directory_of_results + "histograms/data"):
 
 latex_document += "\\end{document}\n"
 
-with open(directory_of_results + "histograms/latex_histograms.tex", 'w') as out:
+with open(directory_of_results + "histograms/out/latex_histograms.tex", 'w') as out:
 	out.write(latex_document)

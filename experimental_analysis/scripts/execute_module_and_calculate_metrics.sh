@@ -160,8 +160,10 @@ if [ "$ProcessResults" = "Yes" ] ; then
 	[ -d "$DirectoryForCounterResults" ] || mkdir $DirectoryForCounterResults
 	[ -d "$DirectoryForCounterResults/differences" ] || mkdir $DirectoryForCounterResults/differences
 	[ -d "$DirectoryForCounterResults/differences/data" ] || mkdir $DirectoryForCounterResults/differences/data
+	[ -d "$DirectoryForCounterResults/differences/out" ] || mkdir $DirectoryForCounterResults/differences/out
 	[ -d "$DirectoryForCounterResults/histograms" ] || mkdir $DirectoryForCounterResults/histograms
 	[ -d "$DirectoryForCounterResults/histograms/data" ] || mkdir $DirectoryForCounterResults/histograms/data
+	[ -d "$DirectoryForCounterResults/histograms/out" ] || mkdir $DirectoryForCounterResults/histograms/out
 
 	for f in ../raw_results/$ModuleName*-counter.txt ; do
 		FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
@@ -175,6 +177,7 @@ if [ "$ProcessResults" = "Yes" ] ; then
 
 	[ -d "../processed_results/$ModuleName/times" ] || mkdir ../processed_results/$ModuleName/times
 	[ -d "../processed_results/$ModuleName/times/data" ] || mkdir ../processed_results/$ModuleName/times/data
+	[ -d "../processed_results/$ModuleName/times/out" ] || mkdir ../processed_results/$ModuleName/times/out
 
 	for f in ../raw_results/$ModuleName*-times.txt ; do
 		cp $f ../processed_results/$ModuleName/times/data/
@@ -189,6 +192,7 @@ if [ "$ProcessResults" = "Yes" ] ; then
 
 	[ -d "../../processed_results/$ModuleName/positions" ] || mkdir ../../processed_results/$ModuleName/positions
 	[ -d "../../processed_results/$ModuleName/positions/data" ] || mkdir ../../processed_results/$ModuleName/positions/data
+	[ -d "../../processed_results/$ModuleName/positions/out" ] || mkdir ../../processed_results/$ModuleName/positions/out
 
 	if [ "$MakeMatlabProcessing" = "Yes" ] ; then
 

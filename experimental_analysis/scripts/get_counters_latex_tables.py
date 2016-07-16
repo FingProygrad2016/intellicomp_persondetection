@@ -110,6 +110,8 @@ latex_document = """
 	\\begin{document}
 """
 
+csv_header_template = "Conf\tPersonas.vs.GT(mean)\tPersonas.vs.GT(min)\tPersonas.vs.GT(max)\tTracklets.vs.GT(mean)\tTracklets.vs.GT(min)\tTracklets.vs.GT(max)\tInterpolado.vs.GT(mean)\tInterpolado.vs.GT(min)\tInterpolado.vs.GT(max)\n"
+
 blocks_info = []
 
 module_block_config_matcher = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
@@ -277,9 +279,13 @@ for file in os.listdir(directory_of_results + "differences/data"):
 			block_info['metric3']['max_values']['max']['value'] = metric3['max']
 			block_info['metric3']['max_values']['max']['config'] = config_in_block
 		
+csv_files_text = []
 latex_rows = ""
 
 for (i, block_info) in enumerate(blocks_info):
+
+	csv_file_text = csv_header_template
+
 	block_diffs = ""
 
 	block_diffs += " & " + "mejor" + \
@@ -311,6 +317,16 @@ for (i, block_info) in enumerate(blocks_info):
 	multirow_size = 27
 
 	for (j, config_info) in enumerate(block_info['configs']):
+
+		metric1 = config_info['metric1']
+		metric2 = config_info['metric2']
+		metric3 = config_info['metric3']
+
+		csv_file_text += str(j + 1) + \
+			"\t" + "%.2f" % metric1['mean'] + "\t" + "%.0f" % metric1['min'] + "\t" + "%.0f" % metric1['max'] + \
+			"\t" + "%.2f" % metric2['mean'] + "\t" + "%.0f" % metric2['min'] + "\t" + "%.0f" % metric2['max'] + \
+			"\t" + "%.2f" % metric3['mean'] + "\t" + "%.0f" % metric3['min'] + "\t" + "%.0f" % metric3['max'] + "\n"
+
 		if multirow_size % 27 == 0:
 			if configs_left < 27:
 				multirow_size = configs_left
@@ -319,10 +335,6 @@ for (i, block_info) in enumerate(blocks_info):
 
 			block_number_text = "\\multirow{" + str(multirow_size) + "}{*}{" + str(i + 1) + "} "
 			block_diffs += block_number_text
-
-		metric1 = config_info['metric1']
-		metric2 = config_info['metric2']
-		metric3 = config_info['metric3']
 
 		block_diffs += " & " + str(j + 1) + \
 			" & " + convert_to_rgb(block_info['metric1'], j + 1, 'mean', metric1['mean'], 2) + \
@@ -339,10 +351,16 @@ for (i, block_info) in enumerate(blocks_info):
 		configs_left -= 1
 		multirow_size -= 1
 
+	csv_files_text.append((i + 1, csv_file_text))
+
 	latex_rows += latex_table_multirow_template.replace('$3', block_diffs)
 
 latex_document += latex_table_template.replace('$1', latex_rows).replace('$2', module_name + ", diferencias contra el Ground Truth (GT) en el conteo de personas, seg\\'un las tres m\\'etricas.")
 latex_document += "\\end{document}\n"
 
-with open(directory_of_results + "differences/latex_counter_diff_tables.tex", 'w') as out:
+with open(directory_of_results + "differences/out/latex_counter_diff_tables.tex", 'w') as out:
 	out.write(latex_document)
+
+for (block_number, text) in csv_files_text:
+	with open(directory_of_results + "differences/out/counter_diff_B" + "%02d" % block_number + ".csv", "w") as f:
+		f.write(text)

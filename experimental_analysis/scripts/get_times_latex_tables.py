@@ -100,6 +100,8 @@ latex_document = """
 	\\begin{document}
 """
 
+csv_header_template = "Conf\tBS(avg)\tBS(max)\tBD(avg)\tBD(max)\tPD(avg)\tPD(max)\tT(avg)\tT(max)\tTot(avg)\tTot(max)\n"
+
 blocks_info = []
 
 module_block_config_matcher = re.compile('(.+?)-.*-B(\d+?)-(\d+)')
@@ -269,10 +271,14 @@ for file in os.listdir(directory_of_results + "data"):
 			block_info['max_times']['max_values']['Tot']['value'] = max_times['Tot']
 			block_info['max_times']['max_values']['Tot']['config'] = config_in_block
 
+csv_files_text = []
 average_times_latex_rows = ""
 max_times_latex_rows = ""
 
 for (i, block_info) in enumerate(blocks_info):
+
+	csv_file_text = csv_header_template
+
 	block_average_times = ""
 	block_max_times = ""
 
@@ -314,6 +320,17 @@ for (i, block_info) in enumerate(blocks_info):
 	multirow_size = 27
 
 	for (j, config_info) in enumerate(block_info['configs']):
+
+		average_times = config_info['average_times']
+		max_times = config_info['max_times']
+
+		csv_file_text += str(j + 1) + \
+			"\t" + "%.5f" % average_times['BS'] + "\t" + "%.5f" % max_times['BS'] + \
+			"\t" + "%.5f" % average_times['BD'] + "\t" + "%.5f" % max_times['BD'] + \
+			"\t" + "%.5f" % average_times['PD'] + "\t" + "%.5f" % max_times['PD'] + \
+			"\t" + "%.5f" % average_times['T'] + "\t" + "%.5f" % max_times['T'] + \
+			"\t" + "%.5f" % average_times['Tot'] + "\t" + "%.5f" % max_times['Tot'] + "\n"
+
 		if multirow_size % 27 == 0:
 			if configs_left < 27:
 				multirow_size = configs_left
@@ -323,8 +340,7 @@ for (i, block_info) in enumerate(blocks_info):
 			block_number_text = "\\multirow{" + str(multirow_size) + "}{*}{" + str(i + 1) + "} "
 			block_average_times += block_number_text
 			block_max_times += block_number_text
-
-		average_times = config_info['average_times']
+		
 		block_average_times += " & " + str(j + 1) + \
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'BS', average_times['BS']) + \
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'BD', average_times['BD']) + \
@@ -333,7 +349,6 @@ for (i, block_info) in enumerate(blocks_info):
 			" & " + convert_to_rgb(block_info['average_times'], j + 1, 'Tot', average_times['Tot']) + "\\\\\n"
 		block_average_times += "\\tabucline{2-7}"
 
-		max_times = config_info['max_times']
 		block_max_times += " & " + str(j + 1) + \
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'BS', max_times['BS']) + \
 			" & " + convert_to_rgb(block_info['max_times'], j + 1, 'BD', max_times['BD']) + \
@@ -345,6 +360,8 @@ for (i, block_info) in enumerate(blocks_info):
 		configs_left -= 1
 		multirow_size -= 1
 
+	csv_files_text.append((i + 1, csv_file_text))
+
 	average_times_latex_rows += latex_table_multirow_template.replace('$3', block_average_times)
 	max_times_latex_rows += latex_table_multirow_template.replace('$3', block_max_times)
 
@@ -352,5 +369,9 @@ latex_document += latex_table_template.replace('$1', average_times_latex_rows).r
 latex_document += latex_table_template.replace('$1', max_times_latex_rows).replace('$2', module_name + ", tiempos m\\'aximos de procesamiento por frame.")
 latex_document += "\\end{document}\n"
 
-with open(directory_of_results + "latex_times_tables.tex", 'w') as out:
+with open(directory_of_results + "out/latex_times_tables.tex", 'w') as out:
 	out.write(latex_document)
+
+for (block_number, text) in csv_files_text:
+	with open(directory_of_results + "out/times_B" + "%02d" % block_number + ".csv", "w") as f:
+		f.write(text)
