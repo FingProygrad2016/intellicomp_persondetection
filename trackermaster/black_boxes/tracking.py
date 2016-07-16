@@ -27,7 +27,6 @@ SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO = None
 SHOW_COMPARISONS_BY_COLOR_GREEN = None
 SHOW_COMPARISONS_BY_COLOR_RED = None
 SHOW_COMPARISONS_BY_COLOR_GREY = None
-JOURNEYS_RANDOM_COLOR = None
 USE_HISTOGRAMS_FOR_TRACKING = None
 HISTOGRAM_COMPARISON_METHOD = None
 SAVE_POSITIONS_TO_FILE = None
@@ -55,7 +54,7 @@ class Tracker:
             SHOW_COMPARISONS_BY_COLOR_GLOBAL_BETTER_DECISION, \
             SHOW_COMPARISONS_BY_COLOR_ONLY_NON_ZERO, \
             SHOW_COMPARISONS_BY_COLOR_GREEN, SHOW_COMPARISONS_BY_COLOR_RED, \
-            SHOW_COMPARISONS_BY_COLOR_GREY, JOURNEYS_RANDOM_COLOR, \
+            SHOW_COMPARISONS_BY_COLOR_GREY, \
             USE_HISTOGRAMS_FOR_TRACKING, HISTOGRAM_COMPARISON_METHOD, \
             SAVE_POSITIONS_TO_FILE, IMAGE_MULTIPLIER_ON_POSITIONS_SAVE, \
             PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS, \
@@ -77,7 +76,6 @@ class Tracker:
             config.getboolean('SHOW_COMPARISONS_BY_COLOR_RED')
         SHOW_COMPARISONS_BY_COLOR_GREY = \
             config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREY')
-        JOURNEYS_RANDOM_COLOR = config.getboolean('JOURNEYS_RANDOM_COLOR')
         USE_HISTOGRAMS_FOR_TRACKING = \
             config.getboolean('USE_HISTOGRAMS_FOR_TRACKING')
         HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
@@ -927,12 +925,8 @@ class TrackInfo:
         self.color = self.previous_color
         self.image = self.previous_image
 
-        if JOURNEYS_RANDOM_COLOR:
-            self.journey_color = \
-                (random.randint(0, 255), random.randint(0, 255),
-                 random.randint(0, 255))
-        else:
-            self.journey_color = self.color
+        self.journey_color = (random.randint(0, 255), random.randint(0, 255),
+                              random.randint(0, 255))
 
         self.number_updates = 1
 
@@ -1186,8 +1180,6 @@ class TrackInfo:
             self.previous_image = self.image
             self.color, self.image = \
                 get_color_aux(raw_image, bg_subtraction_image, blob["box"])
-            if not JOURNEYS_RANDOM_COLOR:
-                self.journey_color = self.color
 
     def update_pos_info(self, frame_number, new_position,
                         has_confidence_in_measure):
