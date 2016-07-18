@@ -8,29 +8,37 @@ class BackgroundSubtractorMOG2:
     subtractor = None
 
     def __init__(self):
-        self.subtractor = cv2.createBackgroundSubtractorMOG2(history=500)
+        self.gaussian_size = (config.getint('GAUSSIANBLUR_SIZE_X'),
+                              config.getint('GAUSSIANBLUR_SIZE_Y'))
+        self.erode_size = np.ones((config.getint('ERODE_SIZE_X'),
+                                   config.getint('ERODE_SIZE_Y')), np.uint8)
+        self.erode_times = config.getint('ERODE_TIMES')
+        self.dilate_size = np.ones((config.getint('DILATE_SIZE_X'),
+                                    config.getint('DILATE_SIZE_Y')), np.uint8)
+        self.dilate_times = config.getint('DILATE_TIMES')
+        self.history = config.getint('HISTORY')
+        self.detect_shadows = config.getboolean('DETECT_SHADOWS')
+        self.learning_rate = config.getfloat('MOG2_LEARNING_RATE')
+
+        self.subtractor = cv2.createBackgroundSubtractorMOG2(
+            history=self.history, detectShadows=self.detect_shadows)
 
     def apply(self, raw_image):
         # Convierto imagen a escalas de grices
         bg = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
 
         # Aplico filtro Blur
-        bg = cv2.GaussianBlur(bg, (11, 11), 0)
+        bg = cv2.GaussianBlur(bg, self.gaussian_size, 0)
 
         # Aplico la deteccion de fondo, esto tiene en cuenta el o los frames
         # previamente cargados
-        bg = self.subtractor.apply(bg, 0.3, 0.05)
+        bg = self.subtractor.apply(bg, 0.3, self.learning_rate)
 
         # Erosiono y dilato el resultado para eliminar el ruido
-        bg = cv2.erode(bg, np.ones((2, 2), np.uint8), iterations=3)
-        bg = cv2.dilate(bg, np.ones((4, 1), np.uint8), iterations=1)
-        bg = cv2.dilate(bg, np.ones((4, 2), np.uint8), iterations=1)
-        bg = cv2.dilate(bg, np.ones((2, 3), np.uint8), iterations=1)
+        bg = cv2.erode(bg, self.erode_size, iterations=self.erode_times)
+        bg = cv2.dilate(bg, self.erode_size, iterations=self.erode_times)
 
         return bg
-
-ones_matrix_for_erode = np.ones((3, 3), np.uint8)
-ones_matrix_for_dilate = np.ones((4, 3), np.uint8)
 
 
 class BackgroundSubtractorKNN:
@@ -38,6 +46,15 @@ class BackgroundSubtractorKNN:
     def __init__(self):
 
         # Configuration parameters
+        self.gaussian_size = (config.getint('GAUSSIANBLUR_SIZE_X'),
+                              config.getint('GAUSSIANBLUR_SIZE_Y'))
+        self.erode_size = np.ones((config.getint('ERODE_SIZE_X'),
+                                   config.getint('ERODE_SIZE_Y')), np.uint8)
+        self.erode_times = config.getint('ERODE_TIMES')
+        self.dilate_size = np.ones((config.getint('DILATE_SIZE_X'),
+                                    config.getint('DILATE_SIZE_Y')), np.uint8)
+        self.dilate_times = config.getint('DILATE_TIMES')
+
         self.history = config.getint('HISTORY')
         self.dist_2_threshold = config.getint('DIST_2_THRESHOLD')
         self.n_samples = config.getint('N_SAMPLES')
@@ -86,16 +103,16 @@ class BackgroundSubtractorKNN:
         bg = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY)
 
         # Aplico filtro Blur
-        bg = cv2.GaussianBlur(bg, (3, 3), 0)
+        bg = cv2.GaussianBlur(bg, self.gaussian_size, 0)
 
         # Aplico la deteccion de fondo, esto tiene en cuenta el o los frames
         # previamente cargados
         fgmaskknn = self.subtractor.apply(bg, -1)
 
-        # Erosiono y dilato el resultado para eliminar el ruido
-        erode_dilate = \
-            cv2.erode(fgmaskknn, ones_matrix_for_erode, iterations=1)
-        erode_dilate = \
-            cv2.dilate(erode_dilate, ones_matrix_for_dilate, iterations=1)
+        # Erode and Dilate the results for removing the noise
+        erode_dilate = cv2.erode(fgmaskknn, self.erode_size,
+                                 iterations=self.erode_times)
+        erode_dilate = cv2.dilate(erode_dilate, self.dilate_size,
+                                  iterations=self.dilate_times)
 
         return erode_dilate
