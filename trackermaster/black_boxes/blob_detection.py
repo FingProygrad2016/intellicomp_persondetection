@@ -28,6 +28,8 @@ class BlobDetector:
             self.threshold = [config.getint('MIN_THRESHOLD'),
                               config.getint('MAX_THRESHOLD'),
                               config.getint('THRESHOLD_STEP')]
+            self.min_dist_between_blobs = \
+                config.getint('MIN_DIST_BETWEEN_BLOBS')
             self.filter_by_color = [config.getboolean('FILTER_BY_COLOR'),
                                     config.getint('BLOB_COLOR')]
             self.filter_by_area = [config.getboolean('FILTER_BY_AREA'),
@@ -53,6 +55,9 @@ class BlobDetector:
             params.minThreshold = self.threshold[0]
             params.maxThreshold = self.threshold[1]
             params.thresholdStep = self.threshold[2]
+
+            # Minimum distance between blobs
+            params.minDistBetweenBlobs = self.min_dist_between_blobs
 
             # Filter by Color
             params.filterByColor = self.filter_by_color[0]
