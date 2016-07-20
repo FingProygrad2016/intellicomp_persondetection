@@ -29,10 +29,12 @@ if not os.path.exists(result_conf_files_path):
     os.makedirs(result_conf_files_path)
 
 string_variables_names_matcher = re.compile(r"^([^:!].+)")
-divide_string_variables_names_matcher = re.compile(r"[\n\r;]([^\n\r;]+)")
+divide_string_variables_names_matcher = re.compile(r"[\n\r;](\([^\n\r]+?\)|[^\(\)\n\r;]+)") # re.compile(r"[\n\r;]([^\n\r;]+)")
 block_string_config_creators_matcher = re.compile(r"([:!].+)")
 divide_string_config_creator_matcher = re.compile(r"(\[.+?\])")
-string_variable_possibilities_to_array_matcher = re.compile(r"[^\[;\]]+")
+string_variable_possibilities_to_array_matcher = re.compile(r"[\[\[;](\(.+?\)|[^;\]]+)") # re.compile(r"[^\[;\]]+")
+
+divide_multiple_string_variable_matcher = re.compile(r"[\(;]([^;\)]+)")
 
 blocks_info = []
 for i in range(2, len(all_blocks)):
@@ -106,9 +108,15 @@ for i in range(0, len(blocks_info)):
 	variables_count = len(block_info['variables_names'])
 	for j in range(0, variables_count):
 		variable_name = block_info['variables_names'][j]
-		matcher = re.compile(r"(\n" + extra_text_matcher.sub('', variable_name) + "\s*=\s*).*(\n)")
+		matcher = []
+		if variable_name[0] == '(' and variable_name[-1] == ')':
+			names = divide_multiple_string_variable_matcher.findall(variable_name)
+			for k in range(0, len(names)):
+				matcher.append(re.compile(r"(\n" + extra_text_matcher.sub('', names[k]) + "\s*=\s*).*(\n)"))
+		else:
+			matcher.append(re.compile(r"(\n" + extra_text_matcher.sub('', variable_name) + "\s*=\s*).*(\n)"))
 		variables_substitution_matchers.append(matcher)
-		text_for_execution_plan += variable_name.replace('{', ' ').replace('}', ' ') + '\t'
+		text_for_execution_plan += variable_name.replace('{', ' ').replace('}', ' ').replace('(', ' ').replace(')', ' ').replace(';', ', ') + '\t'
 	text_for_execution_plan = text_for_execution_plan[:-1] + '\n'
 
 	configurations = block_info['configurations']
@@ -134,11 +142,17 @@ for i in range(0, len(blocks_info)):
 				if variable_value == '#':
 					text_for_execution_plan += 'N/A\t'
 				else:
-					text_for_execution_plan += variable_value.replace('{', ' ').replace('}', ' ') + '\t'
+					text_for_execution_plan += variable_value.replace('{', ' ').replace('}', ' ').replace('(', ' ').replace(')', ' ').replace(';', ', ') + '\t'
 					if configuration['is_executable']:
 						variable_value_without_comments = extra_text_matcher.sub('', variable_value)
-						modified_configuration_file = \
-							variables_substitution_matchers[l].sub(r"\g<1>" + variable_value_without_comments + r"\g<2>", modified_configuration_file)
+						if len(variables_substitution_matchers[l]) == 1:
+							modified_configuration_file = \
+								variables_substitution_matchers[l][0].sub(r"\g<1>" + variable_value_without_comments + r"\g<2>", modified_configuration_file)
+						else:
+							variable_value_wo_com_and_divided = divide_multiple_string_variable_matcher.findall(variable_value_without_comments)
+							for m in range(0, len(variables_substitution_matchers[l])):
+								modified_configuration_file = \
+									variables_substitution_matchers[l][m].sub(r"\g<1>" + variable_value_wo_com_and_divided[m] + r"\g<2>", modified_configuration_file)
 			text_for_execution_plan = text_for_execution_plan[:-1] + '\n'
 
 			if configuration['is_executable']:

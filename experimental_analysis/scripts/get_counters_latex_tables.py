@@ -110,7 +110,7 @@ latex_document = """
 	\\begin{document}
 """
 
-csv_header_template = "Conf\tPersonas.vs.GT(mean)\tPersonas.vs.GT(min)\tPersonas.vs.GT(max)\tTracklets.vs.GT(mean)\tTracklets.vs.GT(min)\tTracklets.vs.GT(max)\tInterpolado.vs.GT(mean)\tInterpolado.vs.GT(min)\tInterpolado.vs.GT(max)\n"
+csv_header_template = "Conf\t(mean)Personas.vs.GT\t(min)Personas.vs.GT\t(max)Personas.vs.GT\t(mean)Tracklets.vs.GT\t(min)Tracklets.vs.GT\t(max)Tracklets.vs.GT\t(mean)Interpolado.vs.GT\t(min)Interpolado.vs.GT\t(max)Interpolado.vs.GT\n"
 
 blocks_info = []
 

@@ -128,8 +128,6 @@ if [ "$ProcessResults" = "Yes" ] ; then
 	configs_count=1
 	seqmap_count=1
 
-	echo name > ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
-
 	for f in ./raw_results/$ModuleName*-positions.txt ; do
 		FileName=$(echo $f | sed 's/^.*\///g' | sed 's/\.txt$//');
 		[ -d "./MOT/data/$FileName" ] || mkdir ./MOT/data/$FileName
@@ -138,12 +136,15 @@ if [ "$ProcessResults" = "Yes" ] ; then
 		cp ./ground_truth/gt.txt ./MOT/data/$FileName/gt/
 		cp $f ./MOT/devkit/res/data/$ModuleName/
 
+		if [ "$configs_count" -eq 1 ]; then
+			echo name > ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
+		fi
+
 		echo $FileName >> ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
 
 		if [ "$configs_count" -eq $MaxConfigsPerSequence ]; then
 			(( configs_count = 1 ))
 			(( seqmap_count += 1 ))
-			echo name > ./MOT/devkit/seqmaps/${ModuleName}_$(printf %03d ${seqmap_count}).txt
 		else
 			(( configs_count += 1 ))
 		fi
@@ -200,7 +201,7 @@ if [ "$ProcessResults" = "Yes" ] ; then
 		p_count=1
 		pids=""
 
-		for f in ./seqmaps/$ModuleName_*.txt ; do
+		for f in ./seqmaps/${ModuleName}_*.txt ; do
 			FileName=$(echo $f | sed 's/^.*\///g');
 			echo "allMets = evaluateTracking('"$FileName"', 'res/data/"$ModuleName"/', '../data/'); exit();" > ./evalTrackAux_$(printf %03d $count).m
 
