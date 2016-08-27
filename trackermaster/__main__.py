@@ -336,6 +336,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     trayectos = []
     tracklets = {}
     last_number_frame = number_frame
+    p_matrix_history = ''
 
     if model_load[0]:
         # Start the main loop
@@ -486,7 +487,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     trayectos_, info_to_send, tracklets, \
                         comparisons_by_color_image_aux, \
                         positions_in_frame,\
-                        rectangles_in_frame = \
+                        rectangles_in_frame,\
+                        frame_p_matrix_history = \
                         tracker.apply(persons, frame_resized,
                                       bg_subtraction_resized, number_frame)
                     del persons
@@ -502,6 +504,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                                           (int(x1), int(y1)),
                                           (int(x2), int(y2)),
                                           (0, 255, 0), 1)
+
+                        p_matrix_history += frame_p_matrix_history
 
                     if len(comparisons_by_color_image_aux) > 0:
                         comparisons_by_color_image = \
@@ -714,6 +718,10 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             with open("../experimental_analysis/raw_results/" + identifier +
                       "-counter.txt", "w") as text_file:
                 print(persons_in_scene, file=text_file)
+
+            with open("../experimental_analysis/raw_results/" + identifier +
+                      "-p_matrix.txt", "w") as text_file:
+                print(p_matrix_history, file=text_file)
 
         comm_info = get_status_info_comm()
         comm_info.send_message(json.dumps(dict(

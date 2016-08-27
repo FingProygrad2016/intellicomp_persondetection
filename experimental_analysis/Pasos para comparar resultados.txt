@@ -1,0 +1,49 @@
+Primero, de los resultados del MOT, se eligen las mejores combinaciones.
+
+<<< Comienza acotación >>>
+Durante este proceso, también se ve qué valores para cada columna parecen ser los mejores, comparando configuraciones en que los valores de las demás columnas se mantengan fijos. Se hace esto con dos o tres configuraciones de las otras columnas.
+Por ejemplo, si se tienen las combinaciones:
+Configuración, Columna 1, Columna 2, Columna 3, Resultado
+----------------------------------------------------------
+			1						A1					A2				A3					R1
+			2						A1					A2				B3					R2
+			3						A1					B2				A3					R3
+			4						A1					B2				B3					R4
+			5						B1					A2				A3					R5
+			6						B1					A2				B3					R6
+			7						B1					B2				A3					R7
+			8						B1					B2				B3					R8
+Para ver el mejor valor de la Columna 1, se pueden elegir las configuraciones 1 y 5, que tienen diferente valor de la Columna 1, pero iguales valores en las restantes columnas. La que tenga un mejor resultado de las dos, indica un mejor valor de la Columna 1.
+Para corroborar, se pueden elegir además las configuraciones 3 y 7, y realizar la misma comparación de resultados.
+
+De esta forma, se pueden encontrar los mejores valores para cada variable (columna).
+
+No se tiene por qué llegar a un único valor bueno, ya que en general las columnas no son independientes. Con una configuración de las otras columnas, un valor A puede ser mejor que uno B, pero con otra configuración, ser mejor el B. Lo que se quiere encontrar no es el mejor valor, sino los mejores.
+
+Luego de que se tienen los mejores valores para cada columna, se pueden seleccionar las configuraciones que posean dichos valores.
+
+Para cada variable (Columna), tratar de explicar por qué ciertos valores resultan buenos y por qué resultan malos los otros. Realizar esta deducción a partir de los resultados del MOT y del conteo (utilizar también histogramas).
+<<< Finaliza acotación >>>
+
+Obtenidas las mejores combinaciones del MOT, se comprueba que también tengan buenos resultados en el conteo de las personas (mediante el uso de la tabla con las métricas).
+Si hay alguna que tenga malos resultados, se la estudia aparte (ya que es raro que dé bien en el MOT y mal en el conteo).
+
+Finalmente, se filtran las configuraciones que tengan malos tiempos de ejecución.
+
+
+---------------------------------------------------------------
+
+Background Subtraction:
+Bloque 1:
+Ordenado por MOTAL: se observa que los distintos valores de DETECT_SHADOWS y SHADOW_THRESHOLD no afectan significativamente los resultados. Por lo tanto, se pueden omitir dichas variables para los resultados. Omitiendo esas variables, las mejores tres configuraciones son la 64, 17 y 101.
+64	105	140	3	True	0.7	True	True	N/A
+17	105	350	5	False	N/A	False	True	N/A
+101	175	350	3	True	0.8	True	True	N/A
+Esas tres son también los mejores resultados en el conteo de personas, y sus tiempos de ejecución están dentro del promedio entre los mejores resultados.
+Bloque 2:
+Utilizando las mejores tres configuraciones del Bloque 1 y variando los valores del Bloque 2.
+Ordenado por MOTAL: 315, 58, 195, 123, 171.
+Comparando las diferencias de personas de dichas configuraciones, da que la mejor es la 123. Los tiempos, además, no tienen diferencias significativas.
+
+Blobs Detection:
+Utilizamos como base la configuración 123 de Background Subtraction.
