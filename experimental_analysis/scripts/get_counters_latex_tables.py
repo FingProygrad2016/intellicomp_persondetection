@@ -19,7 +19,7 @@ def transition(value, minimum, maximum, start_point, end_point):
 		maximum += -minimum
 		value += -minimum
 		minimum = 0
-	if maximum == 0:
+	if maximum == 0 or minimum == maximum:
 		return start_point
 	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 

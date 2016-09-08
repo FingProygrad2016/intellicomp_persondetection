@@ -35,15 +35,47 @@ Finalmente, se filtran las configuraciones que tengan malos tiempos de ejecució
 
 Background Subtraction:
 Bloque 1:
-Ordenado por MOTAL: se observa que los distintos valores de DETECT_SHADOWS y SHADOW_THRESHOLD no afectan significativamente los resultados. Por lo tanto, se pueden omitir dichas variables para los resultados. Omitiendo esas variables, las mejores tres configuraciones son la 64, 17 y 101.
-64	105	140	3	True	0.7	True	True	N/A
-17	105	350	5	False	N/A	False	True	N/A
-101	175	350	3	True	0.8	True	True	N/A
+Ordenado por MOTAL: se observa que los distintos valores de DETECT_SHADOWS y SHADOW_THRESHOLD no afectan significativamente los resultados. Por lo tanto, se pueden omitir dichas variables para los resultados. Omitiendo esas variables, las mejores tres configuraciones son la 14, 13 y 22.
+14	105	140	5	False	N/A	False	True	N/A
+13	105	140	3	False	N/A	False	True	N/A
+22	175	140	3	False	N/A	False	True	N/A
 Esas tres son también los mejores resultados en el conteo de personas, y sus tiempos de ejecución están dentro del promedio entre los mejores resultados.
 Bloque 2:
 Utilizando las mejores tres configuraciones del Bloque 1 y variando los valores del Bloque 2.
-Ordenado por MOTAL: 315, 58, 195, 123, 171.
-Comparando las diferencias de personas de dichas configuraciones, da que la mejor es la 123. Los tiempos, además, no tienen diferencias significativas.
+Ordenado por MOTAL: 253, 314, 14, 67, 68.
+Ordenado por error medio (mean) de conteo de personas por tracklets, la mejor es la 278.
+Los tiempos en esas dos primeras posiciones no son malos, por lo que estas se eligen para blob detection.
+253: 175	140	3	FALSE	N/A	FALSE	TRUE	N/A	(9, 9)	(2, 2)	1	(3, 2)	1
+278: 175	140	3	FALSE	N/A	FALSE	TRUE	N/A	(9, 9)	(4, 4)	1	(3, 2)	3
 
 Blobs Detection:
-Utilizamos como base la configuración 123 de Background Subtraction.
+Utilizamos como base la configuración 253 de Background Subtraction, y se agregan al generador de configuraciones los cambios para incluir también la configuración 278 de Background Subtraction.
+Ordenado por MOTAL, la mejor es la 3.
+Ordenado por error medio (mean) de conteo de personas por tracklets, la mejor es la 127.
+Los tiempos en esas dos primeras posiciones no son malos, por lo que estas se eligen para blob detection.
+3: 		(2, 2) 	1	N/A	N/A	N/A	N/A	True	True	0.2
+127: 	(4, 4) 	3	N/A	N/A	N/A	N/A	True	True	0.2
+
+Filtro de Blobs:
+Bloque 1:
+Se eligen las configuraciones 29 (mejor por MOTAL (48.9)), 4 (de las mejores en MOTAL, es la que tiene mejor counter) y 35 (mejor counter (0.4)).
+29: (2, 2)	1	TRUE	5000	FALSE	N/A	N/A
+4: 	(2, 2)	1	TRUE	2500	TRUE	0.7	0.1
+35: (4, 4)	3	TRUE	2500	TRUE	0.7	0.1
+
+Bloque 2:
+En la ejecución de la configuración 1 no se procesaron 28 frames.
+En la ejecución de la configuración 10 no se procesaron 33 frames.
+En la ejecución de la configuración 19 no se procesaron 31 frames.
+En la ejecución de la configuración 28 no se procesaron 40 frames.
+En la ejecución de la configuración 37 no se procesaron 35 frames.
+En la ejecución de la configuración 46 no se procesaron 40 frames.
+En la ejecución de la configuración 55 no se procesaron 2 frames.
+En la ejecución de la configuración 64 no se procesaron 8 frames.
+En la ejecución de la configuración 73 no se procesaron 8 frames.
+Estas configuraciones son las que tienen SCALE en 1.01.
+Se eligen las configuraciones 77 (mejor por MOTAL (49.2)), 77 (de las mejores 10 en MOTAL, es la que tiene mejor counter) y 78 (mejor counter (0.39)). Se repite la 77, por lo que son sólo dos configuraciones.
+77:	(4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4)
+78:	(4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8)
+
+Bloque 3:

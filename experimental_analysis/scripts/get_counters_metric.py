@@ -48,13 +48,15 @@ gt_dataline = gt_file_lines[0].split(",")
 # first res data line
 res_dataline = res_file_lines[0].split(",")
 
-if gt_dataline[0] != res_dataline[0]:
-	print("first frame in \"", result_counter_path, "\" is not ", gt_dataline[0], "\n")
-	exit()
-
+missing_frames = -1
+res_index = 0
 for i in range(0, len(gt_file_lines)):
 	gt_dataline = gt_file_lines[i].split(",")
-	res_dataline = res_file_lines[i].split(",")
+	res_dataline = res_file_lines[res_index].split(",")
+
+	if gt_dataline[0] != res_dataline[0]:
+		missing_frames += 1
+		continue
 
 	gt_curr_persons = int(gt_dataline[1])
 
@@ -80,6 +82,8 @@ for i in range(0, len(gt_file_lines)):
 					statistics[l]['histogram'].append(0)
 		histogram[diff] += 1
 
+	res_index += 1
+
 with open(directory_for_results + "differences/data/" + result_counter_filename + '_diff.txt', 'w') as out:
 	for i in range(0, 3):
 		out.write(statistics[i]['name']+" (mean, min, max): "+"%.2f" % round(statistics[i]['mean_diff'],2)+", "+str(statistics[i]['min_diff'])+", "+str(statistics[i]['max_diff'])+"\n")
@@ -93,3 +97,5 @@ with open(directory_for_results + "histograms/data/" + result_counter_filename +
 			out.write("\t" + str(statistics[j]['histogram'][i]))
 		out.write("\n")
 
+if missing_frames > 0:
+	print("Missing frames in ", result_counter_filename, ": ", str(missing_frames))

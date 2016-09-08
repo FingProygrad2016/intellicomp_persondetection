@@ -988,7 +988,7 @@ class TrackInfo:
         # If the max error between real position and initial position is X px,
         # then the distance has a standard deviation of X/3 pixels
         # (99% of error distances are in range 0 to 3 * standard deviation).
-        # Then, the INITIAL_ERROR_VARIANCE_OF_POSITION is X * X.
+        # Then, the INITIAL_ERROR_VARIANCE_OF_POSITION is (X*X)/9.
         # The same calculation is for velocity and acceleration, taking into
         # account that velocity and acceleration are initialized with zero.
         # So, the max error in those cases is the maximum velocity and the

@@ -317,7 +317,7 @@ def parsed_results_to_latex_table(tests):
 
 		latex_rows += latex_table_multirow_template.replace('$3', block_values)
 
-	csv_files_text.append((i + 1, csv_file_text))
+		csv_files_text.append((i + 1, csv_file_text))
 
 	latex_document += latex_table_template.replace('$1', latex_rows).replace('$2', module_name + ", resultados del MOT Challenge.")
 	latex_document += "\\end{document}\n"

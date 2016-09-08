@@ -323,7 +323,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                        "Current tracklets, " \
                        "Current tracklets/persons interpol. num\n\n"
 
-    model_load = False, ""
+    model_load = True, ""
     if USE_HISTOGRAMS_FOR_PERSON_DETECTION:
         person_detection.set_histogram_size(shape=(work_w, work_h))
         person_detection.set_create_model(CREATE_MODEL)
@@ -662,7 +662,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
         cv2.destroyAllWindows()
 
-        if CREATE_MODEL:
+        if USE_HISTOGRAMS_FOR_PERSON_DETECTION and CREATE_MODEL:
             person_detection.save_histogram()
 
         number_frame_skip_first = number_frame - 200
