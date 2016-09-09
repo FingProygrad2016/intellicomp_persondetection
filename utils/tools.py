@@ -213,6 +213,11 @@ def crop_image_with_rect(image, rect):
 
     ((x1, y1), (x2, y2)) = rect
 
+    if x1 < 0:
+        x1 = 0
+    if y1 < 0:
+        y1 = 0
+
     return image[y1:y2, x1:x2]
 
 
@@ -249,7 +254,15 @@ def crop_image_for_person_detection(image, rect, border_around_blob):
     x_bottom = int(x_bottom)
     y_bottom = int(y_bottom)
 
-    return cv2.resize((image[y_top:y_bottom, x_top:x_bottom]), resize), \
+    y_top_aux = y_top
+    x_top_aux = x_top
+    if y_top < 0:
+        y_top_aux = 0
+    if x_top < 0:
+        x_top_aux = 0
+
+    return cv2.resize((image[y_top_aux:y_bottom,
+                       x_top_aux:x_bottom]), resize),\
         (x_top, y_top, width_with_frame, height_with_frame), fact
 
 

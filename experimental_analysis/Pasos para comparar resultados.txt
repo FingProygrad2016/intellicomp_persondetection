@@ -79,3 +79,27 @@ Se eligen las configuraciones 77 (mejor por MOTAL (49.2)), 77 (de las mejores 10
 78:	(4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8)
 
 Bloque 3:
+Las 8 configuraciones se dividen en 4 bloques de resultados diferentes.
+De las 3 configuraciones con mejor resultado en el MOTAL, se elige la 2, que es la que tiene un mejor tiempo, aunque estos distan muy poco unos de otros. Además, estas configuraciones tienen el segundo lugar por counter, por lo que sólo se elige una configuración más (la mejor en counter).
+Hay 3 configuraciones que son las mejores en el counter, por lo que se elige la que tiene un mejor tiempo (aunque por poco margen): 7.
+Resumiendo, del bloque 3 se eligen las configuraciones 2 y 7.
+2:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2
+7:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4
+
+Bloque 4:
+Las configuraciones 3 y 6 (border around blob en 0.5) lanzan el siguiente error antes de llegar a procesar 20 frames, utilizando el modelo (USE_MODEL):
+OpenCV Error: Assertion failed (j < nimages) in histPrepareImages, file /Users/usuario/opencv/modules/imgproc/src/histogram.cpp, line 146
+Traceback (most recent call last):
+  File "__main__.py", line 812, in <module>
+    trackermaster_conf=tmconf, patternmaster_conf=pmconf)
+  File "__main__.py", line 493, in track_source
+    bg_subtraction_resized, number_frame)
+  File "../trackermaster/black_boxes/tracking.py", line 278, in apply
+    get_color_aux(raw_image, bg_subtraction_image, blob["box"])
+  File "../trackermaster/black_boxes/tracking.py", line 1319, in get_color_aux
+    get_color_histogram(image, bg_subtraction_image, rect)
+  File "../utils/tools.py", line 94, in get_color_histogram
+    crop_image_with_rect(bg_subtraction_image, rect)[0:, 0:, 0]
+  File "../utils/tools.py", line 131, in get_color_histogram_aux
+    [0, 256, 0, 256, 0, 256])
+cv2.error: /Users/usuario/opencv/modules/imgproc/src/histogram.cpp:146: error: (-215) j < nimages in function histPrepareImages

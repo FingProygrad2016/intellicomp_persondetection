@@ -246,6 +246,21 @@ class Tracker:
         :return: A list of TrackInfo which journey is greater than 5
         """
 
+        blobs_to_remove = []
+        for i, blob in enumerate(blobs):
+            if blob["box"][0] != blob["box"][1]:
+                # It is a rectangle. It is not a dot.
+                blob["color"], image = \
+                    get_color_aux(raw_image, bg_subtraction_image, blob["box"])
+            else:
+                blobs_to_remove.append(i)
+
+        # Remove the blobs that are a dot. In certain cases, this happens.
+        # For example, if BORDER_AROUND_BLOB_0 and BORDER_AROUND_BLOB_1
+        # variables are set to 0.5 each.
+        for x in reversed(blobs_to_remove):
+            blobs.pop(x)
+
         journeys = []
         comparisons_by_color = []
         positions_in_frame = ''
@@ -272,10 +287,6 @@ class Tracker:
             for item in self.kfs_per_blob:
                 item['blobs'] = []
                 item['has_been_assigned'] = False
-
-            for blob in blobs:
-                blob["color"], image = \
-                    get_color_aux(raw_image, bg_subtraction_image, blob["box"])
 
             # Apply hungarian algorithm for blob position
             best_kf_per_blob_pos, best_kf_per_blob_pos_costs = \
