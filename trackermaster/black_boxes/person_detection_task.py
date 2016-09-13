@@ -49,7 +49,7 @@ def apply_single(args):
         aux = cv2.HOGDescriptor_getDefaultPeopleDetector()
         HOG.setSVMDetector(aux)
         first_time = False
-
+    pdt_init_constants()
     (rects, weights) = HOG.detectMultiScale(
         image, winStride=WIN_STRIDE, padding=PADDING, scale=SCALE)
 
