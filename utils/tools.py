@@ -301,3 +301,25 @@ def x1y1wh_to_x1y1x2y2(rectangles):
 
 def normalize_matrix(matrix):
     return matrix / np.max(matrix) if np.max(matrix) > 0 else matrix
+
+
+class WelfordAlgorithm:
+    def __init__(self):
+        self.n = 0
+        self.mu = 0.0
+        self.sq = 0.0
+
+    def update(self, x):
+        self.n += 1
+        new_mu = self.mu + (x - self.mu)/self.n
+        self.sq += (x - self.mu) * (x - new_mu)
+        self.mu = new_mu
+
+    def mean(self):
+        return self.mu
+
+    def var(self):
+        if self.n > 1:
+            return self.sq/self.n
+        else:
+            return 0.0

@@ -36,6 +36,7 @@ DEFAULT_FPS_LIMIT = None
 CREATE_MODEL = None
 USE_MODEL = None
 SAVE_POSITIONS_TO_FILE = None
+VERBOSE = None
 
 
 def send_patternrecognition_config(communicator, instance_identifier,
@@ -178,7 +179,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
 
     global USE_HISTOGRAMS_FOR_PERSON_DETECTION, SHOW_PREDICTION_DOTS, \
         SHOW_COMPARISONS_BY_COLOR, SHOW_VIDEO_OUTPUT, LIMIT_FPS, \
-        DEFAULT_FPS_LIMIT, CREATE_MODEL, USE_MODEL, SAVE_POSITIONS_TO_FILE
+        DEFAULT_FPS_LIMIT, CREATE_MODEL, USE_MODEL, SAVE_POSITIONS_TO_FILE, \
+        VERBOSE
 
     USE_HISTOGRAMS_FOR_PERSON_DETECTION = \
         config.getboolean("USE_HISTOGRAMS_FOR_PERSON_DETECTION")
@@ -192,6 +194,7 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     if USE_MODEL is None:
         USE_MODEL = config.getboolean("USE_MODEL")
     SAVE_POSITIONS_TO_FILE = config.getboolean("SAVE_POSITIONS_TO_FILE")
+    VERBOSE = config.getboolean('VERBOSE')
     USE_BSUBTRACTOR_KNN = config.getboolean("USE_BSUBTRACTOR_KNN")
 
     """  FINISH SETTING CONSTANTS  """
@@ -649,8 +652,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
                     if number_frame > 200:
                         wait_key_time += aux_time
                         max_wait_key_time = max(aux_time, max_wait_key_time)
-                else:
-                    print("frame: ", str(number_frame), "; fps: ", str(_fps))
+                if VERBOSE:
+                    print("frame: ", str(number_frame),
+                          "; fps: ", str(_fps))
 
                 aux_time = time.time() - t_total
                 if number_frame > 200:
@@ -731,6 +735,9 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
             routing_key='info')
     else:
         print(model_load[1])
+
+    if SHOW_COMPARISONS_BY_COLOR:
+        cv2.imwrite("comparisons_by_color.png", comparisons_by_color_image)
 
     exit()
 

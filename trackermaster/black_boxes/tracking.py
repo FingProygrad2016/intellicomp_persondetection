@@ -10,7 +10,7 @@ from filterpy.common import Q_discrete_white_noise
 from filterpy.kalman import FixedLagSmoother
 
 from utils.tools import get_avg_color, euclidean_distance, compare_color,\
-    compare_color_histogram, get_color_histogram
+    compare_color_histogram, get_color_histogram, WelfordAlgorithm
 from trackermaster.black_boxes.blob_assignment import HungarianAlgorithm
 from trackermaster.config import config
 
@@ -31,6 +31,7 @@ USE_HISTOGRAMS_FOR_TRACKING = None
 HISTOGRAM_COMPARISON_METHOD = None
 SAVE_POSITIONS_TO_FILE = None
 IMAGE_MULTIPLIER_ON_POSITIONS_SAVE = None
+VERBOSE = None
 PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = None
 SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS = None
 KALMAN_FILTER_TYPE = None
@@ -61,6 +62,7 @@ class Tracker:
             SHOW_COMPARISONS_BY_COLOR_GREY, \
             USE_HISTOGRAMS_FOR_TRACKING, HISTOGRAM_COMPARISON_METHOD, \
             SAVE_POSITIONS_TO_FILE, IMAGE_MULTIPLIER_ON_POSITIONS_SAVE, \
+            VERBOSE, \
             PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS, \
             SECONDARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS, \
             KALMAN_FILTER_TYPE, KALMAN_FILTER_SMOOTH_LAG, \
@@ -84,6 +86,7 @@ class Tracker:
             config.getboolean('SHOW_COMPARISONS_BY_COLOR_RED')
         SHOW_COMPARISONS_BY_COLOR_GREY = \
             config.getboolean('SHOW_COMPARISONS_BY_COLOR_GREY')
+        VERBOSE = config.getboolean('VERBOSE')
         USE_HISTOGRAMS_FOR_TRACKING = \
             config.getboolean('USE_HISTOGRAMS_FOR_TRACKING')
         HISTOGRAM_COMPARISON_METHOD = config.get('HISTOGRAM_COMPARISON_METHOD')
@@ -227,12 +230,11 @@ class Tracker:
                                self.threshold_color, self.INFINITE_DISTANCE)
 
         # Debug/Evaluation Parameters
-        self.color_comparison_average_greens_score = 0
-        self.color_comparison_average_reds_score = 0
-        self.color_comparison_average_greys_score = 0
+        self.color_comparison_greens_WA = WelfordAlgorithm()
+        self.color_comparison_reds_WA = WelfordAlgorithm()
+        self.color_comparison_greys_WA = WelfordAlgorithm()
         self.color_comparison_greens = 0
         self.color_comparison_reds = 0
-        self.color_comparison_greys = 0
 
     def apply(self, blobs, raw_image, bg_subtraction_image, frame_number):
         """
@@ -815,9 +817,10 @@ class Tracker:
                     cv2.rectangle(resized_blob_image, (0, 0), (3, 120),
                                   (0, 255, 0), -1)
                     self.color_comparison_greens += 1
-                    self.color_comparison_average_greens_score += \
-                        sorted_comparisons[0][1]
-                    print("Green color comparison: ", sorted_comparisons[0][1])
+                    self.color_comparison_greens_WA.update(
+                        sorted_comparisons[0][1])
+                    if VERBOSE:
+                        print("Green color comparison: ", sorted_comparisons[0][1])
                     if not SHOW_COMPARISONS_BY_COLOR_GREEN:
                         show = False
                     else:
@@ -828,9 +831,10 @@ class Tracker:
                     cv2.rectangle(resized_blob_image, (0, 0), (3, 120),
                                   (0, 0, 255), -1)
                     self.color_comparison_reds += 1
-                    self.color_comparison_average_reds_score += \
-                        sorted_comparisons[0][1]
-                    print("Red color comparison: ", sorted_comparisons[0][1])
+                    self.color_comparison_reds_WA.update(
+                        sorted_comparisons[0][1])
+                    if VERBOSE:
+                        print("Red color comparison: ", sorted_comparisons[0][1])
                     if not SHOW_COMPARISONS_BY_COLOR_RED:
                         show = False
                     else:
@@ -841,10 +845,10 @@ class Tracker:
                 cv2.rectangle(resized_blob_image, (0, 0), (3, 120),
                               (100, 100, 100), -1)
                 if len(sorted_comparisons) > 0:
-                    self.color_comparison_greys += 1
-                    self.color_comparison_average_greys_score += \
-                        sorted_comparisons[0][1]
-                    print("Grey color comparison: ", sorted_comparisons[0][1])
+                    self.color_comparison_greys_WA.update(
+                        sorted_comparisons[0][1])
+                    if VERBOSE:
+                        print("Grey color comparison: ", sorted_comparisons[0][1])
                 if not SHOW_COMPARISONS_BY_COLOR_GREY:
                     show = False
                 else:
@@ -890,35 +894,33 @@ class Tracker:
                     green_percentage = self.color_comparison_greens * 100 / \
                         color_comparison_amount
 
-                greens_average_score = 0
-                if self.color_comparison_greens > 0:
-                    greens_average_score = \
-                        self.color_comparison_average_greens_score / \
-                        self.color_comparison_greens
-                reds_average_score = 0
-                if self.color_comparison_reds > 0:
-                    reds_average_score = \
-                        self.color_comparison_average_reds_score / \
-                        self.color_comparison_reds
-                greys_average_score = 0
-                if self.color_comparison_greys > 0:
-                    greys_average_score = \
-                        self.color_comparison_average_greys_score / \
-                        self.color_comparison_greys
-
                 cv2.putText(
                     comparisons_by_color, '{0:.2f}%'.format(green_percentage),
                     (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 3)
                 cv2.putText(
                     comparisons_by_color,
-                    '{0:.2f}'.format(greens_average_score), (200, 350),
+                    'mean:{0:.2f}, var: {1:.2f}'.format(
+                        self.color_comparison_greens_WA.mean(),
+                        self.color_comparison_greens_WA.var()
+                    ),
+                    (200, 350),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
-                cv2.putText(comparisons_by_color,
-                            '{0:.2f}'.format(reds_average_score), (200, 400),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
-                cv2.putText(comparisons_by_color,
-                            '{0:.2f}'.format(greys_average_score), (200, 450),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 100), 1)
+                cv2.putText(
+                    comparisons_by_color,
+                    'mean:{0:.2f}, var: {1:.2f}'.format(
+                        self.color_comparison_reds_WA.mean(),
+                        self.color_comparison_reds_WA.var()
+                    ),
+                    (200, 400),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
+                cv2.putText(
+                    comparisons_by_color,
+                    'mean:{0:.2f}, var: {1:.2f}'.format(
+                        self.color_comparison_greys_WA.mean(),
+                        self.color_comparison_greys_WA.var()
+                    ),
+                    (200, 450),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 100), 1)
 
         return comparisons_by_color
 

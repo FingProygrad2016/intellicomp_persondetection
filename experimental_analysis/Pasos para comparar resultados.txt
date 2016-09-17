@@ -87,19 +87,18 @@ Resumiendo, del bloque 3 se eligen las configuraciones 2 y 7.
 7:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4
 
 Bloque 4:
-Las configuraciones 3 y 6 (border around blob en 0.5) lanzan el siguiente error antes de llegar a procesar 20 frames, utilizando el modelo (USE_MODEL):
-OpenCV Error: Assertion failed (j < nimages) in histPrepareImages, file /Users/usuario/opencv/modules/imgproc/src/histogram.cpp, line 146
-Traceback (most recent call last):
-  File "__main__.py", line 812, in <module>
-    trackermaster_conf=tmconf, patternmaster_conf=pmconf)
-  File "__main__.py", line 493, in track_source
-    bg_subtraction_resized, number_frame)
-  File "../trackermaster/black_boxes/tracking.py", line 278, in apply
-    get_color_aux(raw_image, bg_subtraction_image, blob["box"])
-  File "../trackermaster/black_boxes/tracking.py", line 1319, in get_color_aux
-    get_color_histogram(image, bg_subtraction_image, rect)
-  File "../utils/tools.py", line 94, in get_color_histogram
-    crop_image_with_rect(bg_subtraction_image, rect)[0:, 0:, 0]
-  File "../utils/tools.py", line 131, in get_color_histogram_aux
-    [0, 256, 0, 256, 0, 256])
-cv2.error: /Users/usuario/opencv/modules/imgproc/src/histogram.cpp:146: error: (-215) j < nimages in function histPrepareImages
+Se eligen las configuraciones 1 (mejor por MOTAL), 1 (de las mejores en MOTAL, es la que tiene mejor counter) y 4 (mejor counter). Se repite la 1, por lo que son sólo dos configuraciones.
+Estas dos configuraciones, en realidad, son las mismas dos que en el bloque 3, ya que son las que tienen el BORDER_AROUND_BLOB_X en 0.25, tal como está en la configuración base.
+Entonces:
+1:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2	 (0.25, 0.25)
+4:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4	 (0.25, 0.25)
+
+Bloque 5:
+Sólo hay 4 configuraciones (2 con ejecución en paralelo, y 2 con ejecución serial). De esas, las mejores dos son las que tienen ejecución serial.
+Entonces, se eligen las configuraciones 2 y 4:
+(ERODE_SIZE_X;ERODE_SIZE_Y);DILATE_TIMES;USE_HISTOGRAMS_FOR_PERSON_DETECTION;CONFIDENCE_MATRIX_UPDATE_TIME;USE_CONFIDENCE_LEVELS;CONFIDENCE_LEVEL_0;CONFIDENCE_LEVEL_1;ASPECT_RATIO;SCALE;(WINSTRIDE_0;WINSTRIDE_1);USE_SQUARE_REGION_FOR_VERIFY;SQUARE_REGION_RADIUS;(BORDER_AROUND_BLOB_0;BORDER_AROUND_BLOB_1);PERSON_DETECTION_PARALLEL_MODE
+2	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2	 (0.25, 0.25) 	False
+4	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4	 (0.25, 0.25) 	False
+Estas se eligen para la etapa de tracking.
+
+Tracking:
