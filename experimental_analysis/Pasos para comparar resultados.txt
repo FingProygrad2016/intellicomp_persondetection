@@ -102,3 +102,22 @@ Entonces, se eligen las configuraciones 2 y 4:
 Estas se eligen para la etapa de tracking.
 
 Tracking:
+Bloque 1:
+Se eligen las configuraciones 6 (mejor MOTAL), 16 (de los mejores en tiempo [hay una diferencia de 1/2 sobre el tiempo del mejor MOTAL], la que tiene mejor MOTAL) y la 15 (mejor en counter).
+6	 		(4, 4) 	2	True	 (HELLINGER, 0.5) 		(0, 0, 1)	N/A
+16	 	(8, 8) 	4	True	 (HELLINGER, 0.5) 		(0, 0, 1)	N/A
+15	 	(8, 8) 	4	True	 (INTERSECTION, 1.0) 	(0, 0, 1)	N/A
+
+Bloque 2:
+Al igual que con otros bloques, hay ciertas configuraciones que tienen exactamente el mismo resultado. En general, se puede deducir que los diferentes valores de SECONDARY_HUNG_ALG_COMPARISON_METHOD no alteran el resultado. Puede que sea porque hay muy pocos momentos en los que se forman grupos y este parámetro entra en juego. Debido a que cuando este parámetro entra en juego, los blobs para los que se usa ya son cercanos (están formando un grupo), de las mejores configuraciones se eligen las que tienen el parámetro SECONDARY_HUNG_ALG_COMPARISON_METHOD en <0, 0, 1>, para que la comparación sea por color y no por posición.
+Se eligen las configuraciones 45 (mejor MOTAL), 38 (es la mejor en counter) y la 122 (de las mejores en MOTAL, es la mejor en tiempo).
+45	 (4, 4) 	2	True	 (HELLINGER, 0.5) 		(0.33, 0.34, 0.33)	(0, 0, 1)
+38	 (4, 4) 	2	True	 (HELLINGER, 0.5) 		(0.25, 0.25, 0.5)		(0, 0, 1)
+122	 (8, 8) 	4	True	 (INTERSECTION, 1.0) 	(0.5, 0.25, 0.25)		(0, 0, 1)
+
+Bloque 3:
+Al igual que con otros bloques, hay ciertas configuraciones que tienen exactamente el mismo resultado. En general, se puede deducir que los diferentes valores de MAX_SECONDS_TO_PREDICT_POSITION y MAX_SECONDS_WITHOUT_ANY_BLOB casi nunca alteran el resultado.
+Se eligen las configuraciones 151 (mejor MOTAL), 159 (mejor counter) y 294 (de los mejores en MOTAL, el que tiene mejor tiempo).
+151	 4, 4 	2	True	 HELLINGER, 0.5 	0.25, 0.25, 0.5	0, 0, 1	1	0.5	0.5	1.5
+159	 4, 4 	2	True	 HELLINGER, 0.5 	0.25, 0.25, 0.5	0, 0, 1	2	0.5	0.5	1.5
+294	 8, 8 	4	True	 INTERSECTION, 1.0 	0.5, 0.25, 0.25	0, 0, 1	1	0.5	0.5	0.5

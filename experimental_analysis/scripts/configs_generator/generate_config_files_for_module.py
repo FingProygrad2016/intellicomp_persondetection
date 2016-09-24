@@ -29,7 +29,7 @@ if not os.path.exists(result_conf_files_path):
     os.makedirs(result_conf_files_path)
 
 string_variables_names_matcher = re.compile(r"^([^:!].+)")
-divide_string_variables_names_matcher = re.compile(r"[\n\r;](\([^\n\r]+?\)|[^\(\)\n\r;]+)") # re.compile(r"[\n\r;]([^\n\r;]+)")
+divide_string_variables_names_matcher = re.compile(r"[\n\r;](\([^\n\r]+?\)|[^\(\)\n\r;{}]+(?:{[^\n\r]+?})?)") # re.compile(r"[\n\r;]([^\n\r;]+)")
 block_string_config_creators_matcher = re.compile(r"([:!].+)")
 divide_string_config_creator_matcher = re.compile(r"(\[.+?\])")
 string_variable_possibilities_to_array_matcher = re.compile(r"[\[\[;](\(.+?\)|[^;\]]+)") # re.compile(r"[^\[;\]]+")
@@ -50,7 +50,7 @@ for i in range(2, len(all_blocks)):
 	# turns: '\nUSE_HISTOGRAMS_FOR_TRACKING;HISTOGRAM_COMPARISON_METHOD;PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS'
 	block_info['variables_names'] = divide_string_variables_names_matcher.findall(block_i_string_variables_names[0])
 	# in: ['USE_HISTOGRAMS_FOR_TRACKING', 'HISTOGRAM_COMPARISON_METHOD', 'PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS']
-
+	
 	# turns: '\nUSE_HISTOGRAMS_FOR_TRACKING;HISTOGRAM_COMPARISON_METHOD;PRIMARY_HUNG_ALG_COMPARISON_METHOD_WEIGHTS\n:[False][#][0, 0, 1]\n:[True][CORRELATION;CHI_SQUARED;CHI_SQUARED_ALT;INTERSECTION;HELLINGER;KL_DIV;EUCLIDEAN;MANHATTAN;CHEBYSEV][0, 0, 1]\n![mejor de los anteriores][mejor de los anteriores][1, 0, 0;0, 1, 0;0, 0, 1;0.5, 0.25, 0.25;0.25, 0.5, 0.25;0.25, 0.25, 0.5;0.33, 0.34, 0.33]\n'
 	block_i_string_config_creators = block_string_config_creators_matcher.findall(block_i)
 	# in: [':[False][#][0, 0, 1]', ':[True][CORRELATION;CHI_SQUARED;CHI_SQUARED_ALT;INTERSECTION;HELLINGER;KL_DIV;EUCLIDEAN;MANHATTAN;CHEBYSEV][0, 0, 1]', '![mejor de los anteriores][mejor de los anteriores][1, 0, 0;0, 1, 0;0, 0, 1;0.5, 0.25, 0.25;0.25, 0.5, 0.25;0.25, 0.25, 0.5;0.33, 0.34, 0.33]']
@@ -116,7 +116,7 @@ for i in range(0, len(blocks_info)):
 		else:
 			matcher.append(re.compile(r"(\n" + extra_text_matcher.sub('', variable_name) + "\s*=\s*).*(\n)"))
 		variables_substitution_matchers.append(matcher)
-		text_for_execution_plan += variable_name.replace('{', ' ').replace('}', ' ').replace('(', ' ').replace(')', ' ').replace(';', ', ') + '\t'
+		text_for_execution_plan += variable_name.replace('{', ' ').replace('}', ' ') + '\t'
 	text_for_execution_plan = text_for_execution_plan[:-1] + '\n'
 
 	configurations = block_info['configurations']
@@ -142,7 +142,7 @@ for i in range(0, len(blocks_info)):
 				if variable_value == '#':
 					text_for_execution_plan += 'N/A\t'
 				else:
-					text_for_execution_plan += variable_value.replace('{', ' ').replace('}', ' ').replace('(', ' ').replace(')', ' ').replace(';', ', ') + '\t'
+					text_for_execution_plan += variable_value.replace('{', ' ').replace('}', ' ') + '\t'
 					if configuration['is_executable']:
 						variable_value_without_comments = extra_text_matcher.sub('', variable_value)
 						if len(variables_substitution_matchers[l]) == 1:
