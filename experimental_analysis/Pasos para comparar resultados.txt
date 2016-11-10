@@ -87,18 +87,18 @@ Resumiendo, del bloque 3 se eligen las configuraciones 2 y 7.
 7:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4
 
 Bloque 4:
-Se eligen las configuraciones 1 (mejor por MOTAL), 1 (de las mejores en MOTAL, es la que tiene mejor counter) y 4 (mejor counter). Se repite la 1, por lo que son sólo dos configuraciones.
+Se eligen las configuraciones 1 (mejor por MOTAL), 4 (de las mejores en MOTAL, es la que tiene mejor counter) y 4 (mejor counter). Se repite la 4, por lo que son sólo dos configuraciones.
 Estas dos configuraciones, en realidad, son las mismas dos que en el bloque 3, ya que son las que tienen el BORDER_AROUND_BLOB_X en 0.25, tal como está en la configuración base.
 Entonces:
 1:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2	 (0.25, 0.25)
 4:	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4	 (0.25, 0.25)
 
 Bloque 5:
-Sólo hay 4 configuraciones (2 con ejecución en paralelo, y 2 con ejecución serial). De esas, las mejores dos son las que tienen ejecución serial.
-Entonces, se eligen las configuraciones 2 y 4:
+Sólo hay 4 configuraciones (2 con ejecución en paralelo, y 2 con ejecución serial). De esas, cada par tiene los mismos resultados, excepto por el tiempo, variable en la cual las mejores son las que tienen ejecución en paralelo (al contrario de lo que se da cuando se ejecuta sin utilizar un modelo [USE_MODEL]).
+Entonces, se eligen las configuraciones 1 y 3:
 (ERODE_SIZE_X;ERODE_SIZE_Y);DILATE_TIMES;USE_HISTOGRAMS_FOR_PERSON_DETECTION;CONFIDENCE_MATRIX_UPDATE_TIME;USE_CONFIDENCE_LEVELS;CONFIDENCE_LEVEL_0;CONFIDENCE_LEVEL_1;ASPECT_RATIO;SCALE;(WINSTRIDE_0;WINSTRIDE_1);USE_SQUARE_REGION_FOR_VERIFY;SQUARE_REGION_RADIUS;(BORDER_AROUND_BLOB_0;BORDER_AROUND_BLOB_1);PERSON_DETECTION_PARALLEL_MODE
-2	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2	 (0.25, 0.25) 	False
-4	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4	 (0.25, 0.25) 	False
+1	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (4, 4) 	True	2	 (0.25, 0.25) 	True
+3	 (4, 4) 	3	True	2500	True	0.7	0.1	3	1.1	 (8, 8) 	True	4	 (0.25, 0.25) 	True
 Estas se eligen para la etapa de tracking.
 
 Tracking:
@@ -109,15 +109,13 @@ Se eligen las configuraciones 6 (mejor MOTAL), 16 (de los mejores en tiempo [hay
 15	 	(8, 8) 	4	True	 (INTERSECTION, 1.0) 	(0, 0, 1)	N/A
 
 Bloque 2:
-Al igual que con otros bloques, hay ciertas configuraciones que tienen exactamente el mismo resultado. En general, se puede deducir que los diferentes valores de SECONDARY_HUNG_ALG_COMPARISON_METHOD no alteran el resultado. Puede que sea porque hay muy pocos momentos en los que se forman grupos y este parámetro entra en juego. Debido a que cuando este parámetro entra en juego, los blobs para los que se usa ya son cercanos (están formando un grupo), de las mejores configuraciones se eligen las que tienen el parámetro SECONDARY_HUNG_ALG_COMPARISON_METHOD en <0, 0, 1>, para que la comparación sea por color y no por posición.
-Se eligen las configuraciones 45 (mejor MOTAL), 38 (es la mejor en counter) y la 122 (de las mejores en MOTAL, es la mejor en tiempo).
-45	 (4, 4) 	2	True	 (HELLINGER, 0.5) 		(0.33, 0.34, 0.33)	(0, 0, 1)
-38	 (4, 4) 	2	True	 (HELLINGER, 0.5) 		(0.25, 0.25, 0.5)		(0, 0, 1)
-122	 (8, 8) 	4	True	 (INTERSECTION, 1.0) 	(0.5, 0.25, 0.25)		(0, 0, 1)
+Se eligen las configuraciones 44 (mejor MOTAL), 41 (es la mejor en counter) y la 120 (de las mejores en tiempo, es la mejor en MOTAL).
+44	(4;4)	2	True	(HELLINGER;0.5)	0.33, 0.34, 0.33	0, 1, 0
+41	(4;4)	2	True	(HELLINGER;0.5)	0.25, 0.25, 0.5	0.25, 0.25, 0.5
+120	(8;8)	4	True	(INTERSECTION;1.0)	0.5, 0.25, 0.25	1, 0, 0
 
 Bloque 3:
-Al igual que con otros bloques, hay ciertas configuraciones que tienen exactamente el mismo resultado. En general, se puede deducir que los diferentes valores de MAX_SECONDS_TO_PREDICT_POSITION y MAX_SECONDS_WITHOUT_ANY_BLOB casi nunca alteran el resultado.
-Se eligen las configuraciones 151 (mejor MOTAL), 159 (mejor counter) y 294 (de los mejores en MOTAL, el que tiene mejor tiempo).
-151	 4, 4 	2	True	 HELLINGER, 0.5 	0.25, 0.25, 0.5	0, 0, 1	1	0.5	0.5	1.5
-159	 4, 4 	2	True	 HELLINGER, 0.5 	0.25, 0.25, 0.5	0, 0, 1	2	0.5	0.5	1.5
-294	 8, 8 	4	True	 INTERSECTION, 1.0 	0.5, 0.25, 0.25	0, 0, 1	1	0.5	0.5	0.5
+Se eligen las configuraciones 7 (mejor MOTAL), 279 (mejor counter) y 294 (de las mejores en tiempo, el la mejor en MOTAL).
+7	(4;4)	2	True	(HELLINGER;0.5)	0.33, 0.34, 0.33	0, 1, 0	1	0.5	0.5	1.5
+279	(4;4)	2	True	(HELLINGER;0.5)	0.25, 0.25, 0.5	0.25, 0.25, 0.5	8	4	0.5	1.5
+294	(8;8)	4	True	(INTERSECTION;1.0)	0.5, 0.25, 0.25	1, 0, 0	1	0.5	0.5	0.5

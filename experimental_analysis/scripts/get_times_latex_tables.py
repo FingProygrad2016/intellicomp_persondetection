@@ -21,7 +21,7 @@ def transition(value, minimum, maximum, start_point, end_point):
 		maximum += -minimum
 		value += -minimum
 		minimum = 0
-	if maximum == 0:
+	if minimum == maximum:
 		return start_point
 	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
@@ -120,63 +120,60 @@ for file in os.listdir(directory_of_results + "data"):
 		block_number = int(mbc.group(2))
 		config_in_block = int(mbc.group(3))
 
-		block_info_template = {
-			'average_times': {'min_values': {
-								'BS': {'value': infinite, 'config': -1},
-								'BD': {'value': infinite, 'config': -1},
-								'PD': {'value': infinite, 'config': -1},
-								'T': {'value': infinite, 'config': -1},
-								'Tot': {'value': infinite, 'config': -1}
-								},
-								'max_values': {
-									'BS': {'value': 0, 'config': -1},
-									'BD': {'value': 0, 'config': -1},
-									'PD': {'value': 0, 'config': -1},
-									'T': {'value': 0, 'config': -1},
-									'Tot': {'value': 0, 'config': -1}
-								}},
-			'max_times': {'min_values': {
-							'BS': {'value': infinite, 'config': -1},
-							'BD': {'value': infinite, 'config': -1},
-							'PD': {'value': infinite, 'config': -1},
-							'T': {'value': infinite, 'config': -1},
-							'Tot': {'value': infinite, 'config': -1}
-							},
-							'max_values': {
-								'BS': {'value': 0, 'config': -1},
-								'BD': {'value': 0, 'config': -1},
-								'PD': {'value': 0, 'config': -1},
-								'T': {'value': 0, 'config': -1},
-								'Tot': {'value': 0, 'config': -1}
-							}},
-			'configs': []
-		}
-		config_template = {
-			'average_times': {
-				'BS': 0,
-				'BD': 0,
-				'PD': 0,
-				'T': 0,
-				'Tot': 0
-			},
-			'max_times': {
-				'BS': 0,
-				'BD': 0,
-				'PD': 0,
-				'T': 0,
-				'Tot': 0
-			}
-		}
-
 		if len(blocks_info) < block_number:
 			for i in range(0, block_number - len(blocks_info)):
-				blocks_info.append(block_info_template)
+				blocks_info.append({
+					'average_times': {'min_values': {
+										'BS': {'value': infinite, 'config': -1},
+										'BD': {'value': infinite, 'config': -1},
+										'PD': {'value': infinite, 'config': -1},
+										'T': {'value': infinite, 'config': -1},
+										'Tot': {'value': infinite, 'config': -1}
+										},
+										'max_values': {
+											'BS': {'value': 0, 'config': -1},
+											'BD': {'value': 0, 'config': -1},
+											'PD': {'value': 0, 'config': -1},
+											'T': {'value': 0, 'config': -1},
+											'Tot': {'value': 0, 'config': -1}
+										}},
+					'max_times': {'min_values': {
+									'BS': {'value': infinite, 'config': -1},
+									'BD': {'value': infinite, 'config': -1},
+									'PD': {'value': infinite, 'config': -1},
+									'T': {'value': infinite, 'config': -1},
+									'Tot': {'value': infinite, 'config': -1}
+									},
+									'max_values': {
+										'BS': {'value': 0, 'config': -1},
+										'BD': {'value': 0, 'config': -1},
+										'PD': {'value': 0, 'config': -1},
+										'T': {'value': 0, 'config': -1},
+										'Tot': {'value': 0, 'config': -1}
+									}},
+					'configs': []
+				})
 
 		block_info = blocks_info[block_number - 1]
 
 		if len(block_info['configs']) < config_in_block:
 			for i in range(0, config_in_block - len(block_info['configs'])):
-				block_info['configs'].append(config_template.copy())
+				block_info['configs'].append({
+					'average_times': {
+						'BS': 0,
+						'BD': 0,
+						'PD': 0,
+						'T': 0,
+						'Tot': 0
+					},
+					'max_times': {
+						'BS': 0,
+						'BD': 0,
+						'PD': 0,
+						'T': 0,
+						'Tot': 0
+					}
+				})
 
 		config_info = block_info['configs'][config_in_block - 1]
 

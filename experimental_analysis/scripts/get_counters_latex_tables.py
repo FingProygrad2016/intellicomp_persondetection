@@ -19,7 +19,7 @@ def transition(value, minimum, maximum, start_point, end_point):
 		maximum += -minimum
 		value += -minimum
 		minimum = 0
-	if maximum == 0 or minimum == maximum:
+	if minimum == maximum:
 		return start_point
 	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
@@ -131,66 +131,63 @@ for file in os.listdir(directory_of_results + "differences/data"):
 		block_number = int(mbc.group(2))
 		config_in_block = int(mbc.group(3))
 
-		block_info_template = {
-			'metric1': {'min_values': {
-								'mean': {'value': infinite, 'config': -1},
-								'min': {'value': infinite, 'config': -1},
-								'max': {'value': infinite, 'config': -1}
-								},
-								'max_values': {
-									'mean': {'value': 0, 'config': -1},
-									'min': {'value': 0, 'config': -1},
-									'max': {'value': 0, 'config': -1}
-								}},
-			'metric2': {'min_values': {
-							'mean': {'value': infinite, 'config': -1},
-							'min': {'value': infinite, 'config': -1},
-							'max': {'value': infinite, 'config': -1}
-							},
-							'max_values': {
-								'mean': {'value': 0, 'config': -1},
-								'min': {'value': 0, 'config': -1},
-								'max': {'value': 0, 'config': -1}
-							}},
-			'metric3': {'min_values': {
-							'mean': {'value': infinite, 'config': -1},
-							'min': {'value': infinite, 'config': -1},
-							'max': {'value': infinite, 'config': -1}
-							},
-							'max_values': {
-								'mean': {'value': 0, 'config': -1},
-								'min': {'value': 0, 'config': -1},
-								'max': {'value': 0, 'config': -1}
-							}},
-			'configs': []
-		}
-		config_template = {
-			'metric1': {
-				'mean': 0,
-				'min': 0,
-				'max': 0
-			},
-			'metric2': {
-				'mean': 0,
-				'min': 0,
-				'max': 0
-			},
-			'metric3': {
-				'mean': 0,
-				'min': 0,
-				'max': 0
-			}
-		}
-
 		if len(blocks_info) < block_number:
 			for i in range(0, block_number - len(blocks_info)):
-				blocks_info.append(block_info_template)
+				blocks_info.append({
+					'metric1': {'min_values': {
+										'mean': {'value': infinite, 'config': -1},
+										'min': {'value': infinite, 'config': -1},
+										'max': {'value': infinite, 'config': -1}
+										},
+										'max_values': {
+											'mean': {'value': 0, 'config': -1},
+											'min': {'value': 0, 'config': -1},
+											'max': {'value': 0, 'config': -1}
+										}},
+					'metric2': {'min_values': {
+									'mean': {'value': infinite, 'config': -1},
+									'min': {'value': infinite, 'config': -1},
+									'max': {'value': infinite, 'config': -1}
+									},
+									'max_values': {
+										'mean': {'value': 0, 'config': -1},
+										'min': {'value': 0, 'config': -1},
+										'max': {'value': 0, 'config': -1}
+									}},
+					'metric3': {'min_values': {
+									'mean': {'value': infinite, 'config': -1},
+									'min': {'value': infinite, 'config': -1},
+									'max': {'value': infinite, 'config': -1}
+									},
+									'max_values': {
+										'mean': {'value': 0, 'config': -1},
+										'min': {'value': 0, 'config': -1},
+										'max': {'value': 0, 'config': -1}
+									}},
+					'configs': []
+				})
 
 		block_info = blocks_info[block_number - 1]
 
 		if len(block_info['configs']) < config_in_block:
 			for i in range(0, config_in_block - len(block_info['configs'])):
-				block_info['configs'].append(config_template.copy())
+				block_info['configs'].append({
+					'metric1': {
+						'mean': 0,
+						'min': 0,
+						'max': 0
+					},
+					'metric2': {
+						'mean': 0,
+						'min': 0,
+						'max': 0
+					},
+					'metric3': {
+						'mean': 0,
+						'min': 0,
+						'max': 0
+					}
+				})
 
 		config_info = block_info['configs'][config_in_block - 1]
 

@@ -13,7 +13,7 @@ def transition(value, minimum, maximum, start_point, end_point):
 		maximum += -minimum
 		value += -minimum
 		minimum = 0
-	if maximum == 0:
+	if minimum == maximum:
 		return start_point
 	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
@@ -144,67 +144,64 @@ def parsed_results_to_latex_table(tests):
 		block_number = int(mbc.group(2))
 		config_in_block = int(mbc.group(3))
 
-		block_info_template = {
-			'min_values': {
-				'v0': {'value': infinite, 'config': -1},
-				'v1': {'value': infinite, 'config': -1},
-				'v2': {'value': infinite, 'config': -1},
-				'v3': {'value': infinite, 'config': -1},
-				'v4': {'value': infinite, 'config': -1},
-				'v5': {'value': infinite, 'config': -1},
-				'v6': {'value': infinite, 'config': -1},
-				'v7': {'value': infinite, 'config': -1},
-				'v8': {'value': infinite, 'config': -1},
-				'v9': {'value': infinite, 'config': -1},
-				'v10': {'value': infinite, 'config': -1},
-				'v11': {'value': infinite, 'config': -1},
-				'v12': {'value': infinite, 'config': -1},
-				'v13': {'value': infinite, 'config': -1}
-			},
-			'max_values': {
-				'v0': {'value': 0, 'config': -1},
-				'v1': {'value': 0, 'config': -1},
-				'v2': {'value': 0, 'config': -1},
-				'v3': {'value': 0, 'config': -1},
-				'v4': {'value': 0, 'config': -1},
-				'v5': {'value': 0, 'config': -1},
-				'v6': {'value': 0, 'config': -1},
-				'v7': {'value': 0, 'config': -1},
-				'v8': {'value': 0, 'config': -1},
-				'v9': {'value': 0, 'config': -1},
-				'v10': {'value': 0, 'config': -1},
-				'v11': {'value': 0, 'config': -1},
-				'v12': {'value': 0, 'config': -1},
-				'v13': {'value': 0, 'config': -1}
-			},
-			'configs': []
-		}
-		config_template = {
-			'v0': 0,
-			'v1': 0,
-			'v2': 0,
-			'v3': 0,
-			'v4': 0,
-			'v5': 0,
-			'v6': 0,
-			'v7': 0,
-			'v8': 0,
-			'v9': 0,
-			'v10': 0,
-			'v11': 0,
-			'v12': 0,
-			'v13': 0
-		}
-
 		if len(blocks_info) < block_number:
 			for i in range(0, block_number - len(blocks_info)):
-				blocks_info.append(block_info_template)
+				blocks_info.append({
+					'min_values': {
+						'v0': {'value': infinite, 'config': -1},
+						'v1': {'value': infinite, 'config': -1},
+						'v2': {'value': infinite, 'config': -1},
+						'v3': {'value': infinite, 'config': -1},
+						'v4': {'value': infinite, 'config': -1},
+						'v5': {'value': infinite, 'config': -1},
+						'v6': {'value': infinite, 'config': -1},
+						'v7': {'value': infinite, 'config': -1},
+						'v8': {'value': infinite, 'config': -1},
+						'v9': {'value': infinite, 'config': -1},
+						'v10': {'value': infinite, 'config': -1},
+						'v11': {'value': infinite, 'config': -1},
+						'v12': {'value': infinite, 'config': -1},
+						'v13': {'value': infinite, 'config': -1}
+					},
+					'max_values': {
+						'v0': {'value': 0, 'config': -1},
+						'v1': {'value': 0, 'config': -1},
+						'v2': {'value': 0, 'config': -1},
+						'v3': {'value': 0, 'config': -1},
+						'v4': {'value': 0, 'config': -1},
+						'v5': {'value': 0, 'config': -1},
+						'v6': {'value': 0, 'config': -1},
+						'v7': {'value': 0, 'config': -1},
+						'v8': {'value': 0, 'config': -1},
+						'v9': {'value': 0, 'config': -1},
+						'v10': {'value': 0, 'config': -1},
+						'v11': {'value': 0, 'config': -1},
+						'v12': {'value': 0, 'config': -1},
+						'v13': {'value': 0, 'config': -1}
+					},
+					'configs': []
+				})
 
 		block_info = blocks_info[block_number - 1]
 
 		if len(block_info['configs']) < config_in_block:
 			for i in range(0, config_in_block - len(block_info['configs'])):
-				block_info['configs'].append(config_template.copy())
+				block_info['configs'].append({
+					'v0': 0,
+					'v1': 0,
+					'v2': 0,
+					'v3': 0,
+					'v4': 0,
+					'v5': 0,
+					'v6': 0,
+					'v7': 0,
+					'v8': 0,
+					'v9': 0,
+					'v10': 0,
+					'v11': 0,
+					'v12': 0,
+					'v13': 0
+				})
 
 		config_info = block_info['configs'][config_in_block - 1]
 

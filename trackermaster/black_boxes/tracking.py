@@ -10,7 +10,8 @@ from filterpy.common import Q_discrete_white_noise
 from filterpy.kalman import FixedLagSmoother
 
 from utils.tools import get_avg_color, euclidean_distance, compare_color,\
-    compare_color_histogram, get_color_histogram, WelfordAlgorithm
+    compare_color_histogram, get_color_histogram, WelfordAlgorithm, \
+    point_is_inside_rectangle
 from trackermaster.black_boxes.blob_assignment import HungarianAlgorithm
 from trackermaster.config import config
 
@@ -619,24 +620,38 @@ class Tracker:
                                         kalman_filters, blob, kf_to_remove,
                                         items_to_remove, image, bg_sub_image):
 
-        # first of all, remove the kalman filters that are no longer valid
+        # FIXME: CHANGED AFTER EXPERIMENTAL ANALYSIS
+        oldest_kf = -1
+        oldest_time = 0
+
         kf_to_remove_in_item = []
+        # remove the kalman filters that are too young
         for j, kf in enumerate(kalman_filters):
-            # Amount of frames it has been without a one to one relationship
-            frames_without_one_to_one = self.last_frame - kf.last_frame_update
             # Amount of frames since it has been created
             frames_since_created = self.last_frame - kf.created_frame
-            if frames_without_one_to_one > self.valid_frames_without_update:
-                # If TrackInfo is too old, remove it forever
-                kf_to_remove_in_item.append({"index": j, "kf": kf})
-            elif frames_since_created < self.valid_frames_since_created:
+            if frames_since_created > oldest_time:
+                oldest_kf = j
+            if frames_since_created < self.valid_frames_since_created:
                 # it has been created a very short time ago: remove it
                 kf_to_remove_in_item.append({"index": j, "kf": kf})
+
+        # remove the kalman filters that didn't had a recent update,
+        # except for the oldest one (to keep at least one kf)
+        for j, kf in enumerate(kalman_filters):
+            if j != oldest_kf:
+                # Amount of frames it has been without one to one relationship
+                frames_without_one_to_one = self.last_frame -\
+                                            kf.last_frame_update
+                if frames_without_one_to_one > \
+                        self.valid_frames_without_update:
+                    # If TrackInfo is too old, remove it forever
+                    kf_to_remove_in_item.append({"index": j, "kf": kf})
 
         kf_to_remove.extend(kf_to_remove_in_item)
 
         # Remove the old tracked objects
-        for x in reversed(kf_to_remove_in_item):
+        for x in reversed(
+                sorted(kf_to_remove_in_item, key=lambda item: item["index"])):
             kalman_filters.pop(x["index"])
 
         if len(kalman_filters) == 0:
@@ -666,17 +681,35 @@ class Tracker:
                     kf.update_pos_info_with_no_measure_confidence(frame_number)
 
     def search_nearest_blob(self, kfs_group_item, blobs):
+        # FIXME: CHANGED AFTER EXPERIMENTAL ANALYSIS
         min_distance = self.INFINITE_DISTANCE
         prediction = kfs_group_item['average_pos']
         nearest_blob = -1
-        for i in range(0, len(blobs)):
-            distance = euclidean_distance(
-                (prediction[0], prediction[1]), blobs[i]["position"].pt)
-            if distance < min_distance:
-                min_distance = distance
-                nearest_blob = i
 
-        if min_distance <= self.threshold_distance:
+        min_distance_to_containing_blob = self.INFINITE_DISTANCE
+        nearest_containing_blob = -1
+        for i in range(0, len(blobs)):
+            is_inside_a_blob = point_is_inside_rectangle((prediction[0],
+                                                          prediction[1]),
+                                                         blobs[i]["box"])
+
+            distance = euclidean_distance(
+                    (prediction[0], prediction[1]), blobs[i]["position"].pt)
+
+            if is_inside_a_blob:
+                if distance < min_distance_to_containing_blob:
+                    min_distance_to_containing_blob = distance
+                    nearest_containing_blob = i
+            else:
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_blob = i
+
+        if nearest_containing_blob != -1:
+            # If there is a containing blob, independently of the distance,
+            # it is said to be the nearest blob.
+            return nearest_containing_blob
+        elif min_distance <= self.threshold_distance:
             return nearest_blob
         else:
             return -1

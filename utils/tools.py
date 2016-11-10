@@ -323,3 +323,12 @@ class WelfordAlgorithm:
             return self.sq/self.n
         else:
             return 0.0
+
+
+def point_is_inside_rectangle(point, rectangle):
+    # point is (x,y)
+    # rectangle is: ((x_1,y_1), (x_2,y_2)) and has edges parallel to
+    # x and y axis
+
+    return rectangle[0][0] <= point[0] <= rectangle[1][0] and \
+        rectangle[0][1] <= point[1] <= rectangle[1][1]
