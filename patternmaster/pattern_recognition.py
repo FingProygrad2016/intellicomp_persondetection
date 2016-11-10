@@ -330,11 +330,11 @@ class PatternRecognition(object):
             satisfies_global_events, dist3, time_from_start3 = \
                 self.check_ruleevents_in_activeevents(
                     rule.events, [self.global_events[-1]]) if \
-                self.global_events else None, None, None
+                self.global_events else (None, None, None)
 
             if satisfies_global_events:
                 found_global_rules.append((dist3, rule, time_from_start3))
-            elif satisfies_speed_events or satisfies_dir_events:
+            if satisfies_speed_events or satisfies_dir_events:
                 found_local_rules.append(
                     (dist1 + dist2, rule,
                      min(time_from_start1, time_from_start2)))
@@ -375,6 +375,7 @@ class PatternRecognition(object):
                         time_from_start += last_event.duration
                     last_event = next(last_events_iter)
             else:
+                # print("CON EVENTOS0:: %s" % list(last_events))
                 return True, distance, time_from_start
         except StopIteration:
             pass
@@ -392,6 +393,8 @@ class PatternRecognition(object):
                        'img': tracklet_info.img,
                        'timestamp': str(tracklet_info.last_time_found_rules)}
 
+        print("INDIVIDUAL:: %s" % str(tracklet_info.last_found_rules))
+        # print("CON EVENTOS:: %s" % str(tracklet_info.active_speed_events[-10:-1]))
         self.communicator.apply(json.dumps(return_data),
                                 routing_key='warnings')
 
@@ -410,8 +413,8 @@ class PatternRecognition(object):
         self.globals_last_notification_datetime = \
             self.global_events[-1].last_update
         self.globals_last_notification_number = self.global_events[-1].type_
-        print("GLOBAL:: %s" % [x for x in return_data.items()
-                               if x[0] != 'img'])
-        print("GLOBAL TOTAL:: %s" % self.global_events)
+        # print("GLOBAL:: %s" % [x for x in return_data.items()
+        #                        if x[0] != 'img'])
+        print("GLOBAL TOTAL:: %s" % self.global_events[-1])
         self.communicator.apply(json.dumps(return_data),
                                 routing_key='warnings')
