@@ -630,6 +630,7 @@ class Tracker:
             # Amount of frames since it has been created
             frames_since_created = self.last_frame - kf.created_frame
             if frames_since_created > oldest_time:
+                oldest_time = frames_since_created
                 oldest_kf = j
             if frames_since_created < self.valid_frames_since_created:
                 # it has been created a very short time ago: remove it
@@ -705,12 +706,13 @@ class Tracker:
                     min_distance = distance
                     nearest_blob = i
 
-        if nearest_containing_blob != -1:
-            # If there is a containing blob, independently of the distance,
+        if min_distance <= self.threshold_distance and \
+            min_distance <= min_distance_to_containing_blob:
+            return nearest_blob
+        elif nearest_containing_blob != -1:
+            # If there is a containing blob,
             # it is said to be the nearest blob.
             return nearest_containing_blob
-        elif min_distance <= self.threshold_distance:
-            return nearest_blob
         else:
             return -1
 
