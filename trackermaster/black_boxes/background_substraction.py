@@ -92,6 +92,7 @@ class BackgroundSubtractorKNN:
         # Trivedi and Cucchiarra, \
         # Detecting Moving Shadows...*, IEEE PAMI,2003.
         self.subtractor.setShadowThreshold(self.shadow_threshold)
+        self.subtractor.setShadowValue(0)
 
         # Sets the number of data samples in the background model. \
         # The model needs to be reinitialized to reserve memory.
