@@ -1254,6 +1254,7 @@ class TrackInfo:
     def update_pos_info_with_no_measure_confidence(self, frame_number):
         self.update_pos_info(frame_number,
                              self.get_predicted_state_position())
+        self.last_update = datetime.now()
 
     def update_with_medium_measure_confidence(self, new_position,
                                               frame_number):

@@ -102,6 +102,12 @@ class PatternRecognition(object):
                                      time_lapse, distance, angle,
                                      last_position)
 
+                # print("TRACKLET ID:: %s" % trackled_id)
+                # print("LAST POSITION:: %s" % last_position)
+                # print("LAST UPDATED DATETIME:: %s " % last_update_datetime)
+                # print("DISTANCE/TIMELAPSE:: %s / %s" % (distance, time_lapse))
+                # print("CURRENT EVENTS:: %s" % current_local_events)
+
                 # Add found local events to the current tracklet
                 tracklet_info.add_new_events(current_local_events)
 
@@ -116,6 +122,9 @@ class PatternRecognition(object):
                 # check if any rule matches
                 found_local_rules, found_global_rules = \
                     self.calc_rules(tracklet_info)
+
+                for r in found_local_rules:
+                    r[1].tracklet_owner = trackled_id
 
                 # Update the last tracklet's image
                 tracklet_info.img = tracklet_raw_info['img']
@@ -322,10 +331,10 @@ class PatternRecognition(object):
         for rule in self.movement_change_rules:
             satisfies_speed_events, dist1, time_from_start1 = \
                 self.check_ruleevents_in_activeevents(
-                    rule.events, last_speed_events)
+                    rule.events, reversed(last_speed_events))
             satisfies_dir_events, dist2, time_from_start2 = \
                 self.check_ruleevents_in_activeevents(
-                    rule.events, last_dir_events)
+                    rule.events, reversed(last_dir_events))
 
             satisfies_global_events, dist3, time_from_start3 = \
                 self.check_ruleevents_in_activeevents(

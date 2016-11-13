@@ -19,6 +19,7 @@ class Tracklet(object):
 
         :return: nothing but the thanks :p
         """
+        # print("NEW EVENTS:: %s" % str(events))
         for event in events:
             if isinstance(event, EventSpeed):
                 if self.active_speed_events and \
