@@ -620,7 +620,6 @@ class Tracker:
                                         kalman_filters, blob, kf_to_remove,
                                         items_to_remove, image, bg_sub_image):
 
-        # FIXME: CHANGED AFTER EXPERIMENTAL ANALYSIS
         oldest_kf = -1
         oldest_time = 0
 
@@ -682,7 +681,6 @@ class Tracker:
                     kf.update_pos_info_with_no_measure_confidence(frame_number)
 
     def search_nearest_blob(self, kfs_group_item, blobs):
-        # FIXME: CHANGED AFTER EXPERIMENTAL ANALYSIS
         min_distance = self.INFINITE_DISTANCE
         prediction = kfs_group_item['average_pos']
         nearest_blob = -1
@@ -1254,6 +1252,7 @@ class TrackInfo:
     def update_pos_info_with_no_measure_confidence(self, frame_number):
         self.update_pos_info(frame_number,
                              self.get_predicted_state_position())
+        self.last_update = datetime.now()
 
     def update_with_medium_measure_confidence(self, new_position,
                                               frame_number):

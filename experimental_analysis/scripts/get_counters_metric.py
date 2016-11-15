@@ -15,7 +15,7 @@ else:
 
 infinite = 9999
 
-histogram = [] # [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+histogram = []
 
 one_statistic = {
 	'name': '',

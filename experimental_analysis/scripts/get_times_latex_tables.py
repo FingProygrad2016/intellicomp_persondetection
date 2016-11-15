@@ -4,7 +4,6 @@ import os
 import re
 from sys import argv
 
-#import pprint
 import math
 
 import colorsys
@@ -25,40 +24,7 @@ def transition(value, minimum, maximum, start_point, end_point):
 		return start_point
 	return float(Decimal(start_point) + Decimal(end_point - start_point)*Decimal(value - minimum)/Decimal(maximum - minimum))
 
-"""
-def transition3(value, minimum, maximum, start_color_hsv, end_color_hsv):
-    r1 = transition(value, minimum, maximum, start_color_hsv[0], end_color_hsv[0])
-    r2 = transition(value, minimum, maximum, start_color_hsv[1], end_color_hsv[1])
-    r3 = transition(value, minimum, maximum, start_color_hsv[2], end_color_hsv[2])
-    return r1, r2, r3
-
-colors_extreme = [(0, 255, 0), (255, 0, 0)]
-
-start_triplet = colorsys.rgb_to_hsv(62, 220, 29) # 78, 209, 51) # comment: green converted to HSV
-end_triplet = colorsys.rgb_to_hsv(213, 31, 49) # 187, 58, 69) # comment: accordingly for red
-"""
-
-def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval, val): # block_info['average_times'], 'BS', average_times['BS']
-	
-	"""
-	minconfig = min_max_values['min_values'][module]['config']
-	maxconfig = min_max_values['max_values'][module]['config']
-
-	if minconfig == config_number:
-		return "\cellcolor{rgb:red," + str(colors_extreme[0][0]) + ";green," + str(colors_extreme[0][1]) + ";blue," + str(colors_extreme[0][2]) + "}" + "%.5f" % round(val, 5)
-	elif maxconfig == config_number:
-		return "\cellcolor{rgb:red," + str(colors_extreme[1][0]) + ";green," + str(colors_extreme[1][1]) + ";blue," + str(colors_extreme[1][2]) + "}" + "%.5f" % round(val, 5)
-	else:
-		minval = min_max_values['min_values'][module]['value']
-		maxval = min_max_values['max_values'][module]['value']
-
-		hsv_color = transition3(val, minval, maxval, start_triplet, end_triplet)
-		rgb_color = colorsys.hsv_to_rgb(hsv_color[0],hsv_color[1],hsv_color[2])
-
-		return "\cellcolor{rgb:red," + str(rgb_color[0]) + ";green," + str(rgb_color[1]) + ";blue," + str(rgb_color[2]) + "}" + "%.5f" % round(val, 5)
-
-	"""
-
+def convert_to_rgb(min_max_values, config_number, module, val):
 	minval = min_max_values['min_values'][module]['value']
 	maxval = min_max_values['max_values'][module]['value']
 
@@ -70,8 +36,6 @@ def convert_to_rgb(min_max_values, config_number, module, val): # minval, maxval
 		return "\\cellcolor{black!" + str(opacity) + "}{" + "%.5f" % round(val, 5) + "}"
 
 latex_table_template = """
-	% {\\renewcommand{\\arraystretch}{1.2}
-	% \\begin{longtable}{c c | *{5}{@{ }c@{ }}}
 	\\noindent\\begin{longtabu} to \\linewidth {c c | *{5}{@{ }c@{ }}}
 	 & & & Detecci\\'on y & & & \\\\
 	 & & Sustracci\\'on & clasificaci\\'on & Detecci\\'on & & \\\\
@@ -79,7 +43,6 @@ latex_table_template = """
 	\\tabucline-
 	$1
 	\\caption{$2}
-	% \\end{longtable}
 	\\end{longtabu}
 	% }
 """
@@ -93,7 +56,7 @@ latex_document = """
 	\\usepackage[utf8]{inputenc}
 
 	\\usepackage{multirow}
-	% \\usepackage{longtable}
+	\\usepackage{longtable}
 	\\usepackage{tabu}
 	\\usepackage{xcolor,colortbl}
 
