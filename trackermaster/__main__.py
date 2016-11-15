@@ -176,6 +176,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
     """
 
     """  START SETTING CONSTANTS  """
+    trackermaster_conf=None
+    patternmaster_conf=None
 
     global USE_HISTOGRAMS_FOR_PERSON_DETECTION, SHOW_PREDICTION_DOTS, \
         SHOW_COMPARISONS_BY_COLOR, SHOW_VIDEO_OUTPUT, LIMIT_FPS, \
@@ -243,7 +245,8 @@ def track_source(identifier=None, source=None, trackermaster_conf=None,
         # Videos de muestra
         videos_path = os.path.dirname(
             os.path.abspath(inspect.getfile(inspect.currentframe())))
-        source = videos_path + '/../Videos/Video_003.avi'
+        # source = videos_path + '/../Videos/Video_003.avi'
+        source = videos_path + '/../../videos_demo/DSC_3133_luminosa.mkv'
         cap = cv2.VideoCapture(source)
 
     has_at_least_one_frame, raw_image = cap.read()
